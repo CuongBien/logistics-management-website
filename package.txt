@@ -1,0 +1,32 @@
+# Packages Đã Cài Đặt
+
+## Ngày 16/01/2026
+
+### Entity Framework Core & PostgreSQL
+```bash
+dotnet add package Microsoft.EntityFrameworkCore --version 8.0.0
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL --version 8.0.0
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite
+```
+
+**Tác dụng:**
+- Microsoft.EntityFrameworkCore: ORM framework để làm việc với database
+- Npgsql.EntityFrameworkCore.PostgreSQL: Provider kết nối EF Core với PostgreSQL
+- Dependencies tự động cài: Microsoft.EntityFrameworkCore.Relational, Npgsql
+
+**Sử dụng cho:** Kết nối và quản lý PostgreSQL database, CRUD operations, migrations
+
+---
+## Template Ghi Chú Mới
+
+### [Tên Package] - [Ngày cài]
+```bash
+dotnet add package [PackageName] --version [Version]
+```
+
+**Tác dụng:**
+- [Mô tả tác dụng]
+
+**Sử dụng cho:** [Mục đích sử dụng]
+
+---
