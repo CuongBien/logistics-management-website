@@ -17,7 +17,15 @@ namespace Logistics.Domain.Entities
         public string DeliveryAddress { get; set; } = string.Empty;
         
         public OrderStatus Status { get; set; } = OrderStatus.New;
-        public decimal TotalFee { get; set; } // Phí vận chuyển
+        public decimal ShippingFee { get; set; }  // Phí ship (vd: 30k)
+        public decimal CODAmount { get; set; }    // Tiền thu hộ (vd: 500k tiền hàng)
+        
+        public decimal TotalAmountToCollect => 
+            PaymentMethod == PaymentMethod.ReceiverPays ? (CODAmount + ShippingFee) : CODAmount;
+            
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.SenderPays;
+        public bool IsCodCollected { get; set; } = false; // Đã thu tiền chưa?
+        public bool IsReconciled { get; set; } = false;   // Đã trả tiền lại cho Shop chưa?
         
         public ICollection<TransportOrderLine> Lines { get; set; } = new List<TransportOrderLine>();
 
@@ -72,6 +80,37 @@ namespace Logistics.Domain.Entities
                 throw new BusinessRuleException("Cannot cancel an order that has already been delivered or completed.");
 
             Status = OrderStatus.Cancelled;
+        }
+
+        public void CollectPayment()
+        {
+            if (Status != OrderStatus.Delivered && Status != OrderStatus.Completed)
+                throw new BusinessRuleException("Cannot collect payment for an order that is not Delivered.");
+
+            if (IsCodCollected)
+                throw new BusinessRuleException("Payment has already been collected.");
+
+            if (TotalAmountToCollect <= 0)
+                throw new BusinessRuleException("No amount to collect for this order.");
+
+            IsCodCollected = true;
+        }
+
+        public void Reconcile()
+        {
+            if (!IsCodCollected && TotalAmountToCollect > 0)
+                throw new BusinessRuleException("Cannot reconcile before collecting payment.");
+            
+            if (IsReconciled)
+                 throw new BusinessRuleException("Order is already reconciled.");
+
+            IsReconciled = true;
+            
+            // If everything is done, we can mark order as Completed entirely
+            if (Status == OrderStatus.Delivered)
+            {
+                Status = OrderStatus.Completed;
+            }
         }
     }
 }
