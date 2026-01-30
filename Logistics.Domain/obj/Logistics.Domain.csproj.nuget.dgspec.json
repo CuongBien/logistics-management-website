@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj": {}
+    "d:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj": {}
   },
   "projects": {
-    "D:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj": {
+    "d:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj",
+        "projectUniqueName": "d:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj",
         "projectName": "Logistics.Domain",
-        "projectPath": "D:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj",
+        "projectPath": "d:\\PBL3\\Logistics.Domain\\Logistics.Domain.csproj",
         "packagesPath": "C:\\Users\\Victus\\.nuget\\packages\\",
-        "outputPath": "D:\\PBL3\\Logistics.Domain\\obj\\",
+        "outputPath": "d:\\PBL3\\Logistics.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Victus\\AppData\\Roaming\\NuGet\\NuGet.Config"

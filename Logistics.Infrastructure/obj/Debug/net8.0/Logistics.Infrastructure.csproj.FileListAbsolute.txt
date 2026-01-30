@@ -1,0 +1,11 @@
+D:\PBL3\Logistics.Infrastructure\bin\Debug\net8.0\Logistics.Infrastructure.deps.json
+D:\PBL3\Logistics.Infrastructure\bin\Debug\net8.0\Logistics.Infrastructure.dll
+D:\PBL3\Logistics.Infrastructure\bin\Debug\net8.0\Logistics.Infrastructure.pdb
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\Logistics.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\Logistics.Infrastructure.AssemblyInfoInputs.cache
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\Logistics.Infrastructure.AssemblyInfo.cs
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\Logistics.Infrastructure.csproj.CoreCompileInputs.cache
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\Logistics.Infrastructure.dll
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\refint\Logistics.Infrastructure.dll
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\Logistics.Infrastructure.pdb
+D:\PBL3\Logistics.Infrastructure\obj\Debug\net8.0\ref\Logistics.Infrastructure.dll
