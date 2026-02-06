@@ -1,4 +1,4 @@
-using Logistics.Api.Data;
+using Logistics.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
