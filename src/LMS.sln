@@ -1,0 +1,60 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{CE4F440A-2E80-4EA0-9AD0-D4643428B409}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OMS", "OMS", "{87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OMS.Api", "Services\OMS\OMS.Api\OMS.Api.csproj", "{7366EDE3-F3D4-426C-99DC-8947484413A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OMS.Application", "Services\OMS\OMS.Application\OMS.Application.csproj", "{8B56C9E2-E400-44E2-8DA2-EEE00AE0E5BA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OMS.Domain", "Services\OMS\OMS.Domain\OMS.Domain.csproj", "{BBC2E8E8-D38F-4A44-BE39-ACCF977F9143}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OMS.Infrastructure", "Services\OMS\OMS.Infrastructure\OMS.Infrastructure.csproj", "{F6EF76F0-7A93-413D-89AE-CC44620A2F03}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingBlocks", "{E999D80C-4BAC-42CD-BF53-1D9CC3620CA0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Domain", "BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj", "{721074C4-CA59-4F48-AEF7-0DF2D34F8883}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7366EDE3-F3D4-426C-99DC-8947484413A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7366EDE3-F3D4-426C-99DC-8947484413A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7366EDE3-F3D4-426C-99DC-8947484413A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7366EDE3-F3D4-426C-99DC-8947484413A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B56C9E2-E400-44E2-8DA2-EEE00AE0E5BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B56C9E2-E400-44E2-8DA2-EEE00AE0E5BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B56C9E2-E400-44E2-8DA2-EEE00AE0E5BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B56C9E2-E400-44E2-8DA2-EEE00AE0E5BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BBC2E8E8-D38F-4A44-BE39-ACCF977F9143}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BBC2E8E8-D38F-4A44-BE39-ACCF977F9143}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BBC2E8E8-D38F-4A44-BE39-ACCF977F9143}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BBC2E8E8-D38F-4A44-BE39-ACCF977F9143}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6EF76F0-7A93-413D-89AE-CC44620A2F03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6EF76F0-7A93-413D-89AE-CC44620A2F03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6EF76F0-7A93-413D-89AE-CC44620A2F03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6EF76F0-7A93-413D-89AE-CC44620A2F03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{721074C4-CA59-4F48-AEF7-0DF2D34F8883}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{721074C4-CA59-4F48-AEF7-0DF2D34F8883}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{721074C4-CA59-4F48-AEF7-0DF2D34F8883}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{721074C4-CA59-4F48-AEF7-0DF2D34F8883}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608} = {CE4F440A-2E80-4EA0-9AD0-D4643428B409}
+		{7366EDE3-F3D4-426C-99DC-8947484413A6} = {87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608}
+		{8B56C9E2-E400-44E2-8DA2-EEE00AE0E5BA} = {87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608}
+		{BBC2E8E8-D38F-4A44-BE39-ACCF977F9143} = {87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608}
+		{F6EF76F0-7A93-413D-89AE-CC44620A2F03} = {87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608}
+		{721074C4-CA59-4F48-AEF7-0DF2D34F8883} = {E999D80C-4BAC-42CD-BF53-1D9CC3620CA0}
+	EndGlobalSection
+EndGlobal

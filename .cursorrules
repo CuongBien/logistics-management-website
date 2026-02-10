@@ -1,0 +1,6 @@
+# ANTIGRAVITY AGENT RULES
+
+1. **CONTEXT FIRST**: Before writing code, ALWAYS check `brain/architecture` to ensure compliance with tech stack and conventions.
+2. **NO GUESSWORK**: If a library is not listed in `brain/architecture/01_tech_stack_rules.md`, ask the user before installing.
+3. **UPDATE THE BRAIN**: If we decide to change a core logic or schema, YOU MUST update the corresponding file in `brain/` first, then code.
+4. **PLANNING**: Before implementing a feature, create a plan in `brain/plans/` and reference the architecture docs.
