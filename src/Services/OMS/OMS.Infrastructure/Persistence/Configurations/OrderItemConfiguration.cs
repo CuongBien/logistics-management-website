@@ -8,16 +8,28 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
 {
     public void Configure(EntityTypeBuilder<OrderItem> builder)
     {
-        builder.HasKey(t => t.Id);
+        builder.ToTable("OrderItems");
 
-        builder.Property(t => t.ProductId)
+        builder.HasKey(oi => oi.Id);
+
+        builder.Property(oi => oi.ProductId)
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.OwnsOne(o => o.UnitPrice, a =>
+        builder.Property(oi => oi.Quantity)
+            .IsRequired();
+
+        builder.OwnsOne(oi => oi.UnitPrice, price =>
         {
-            a.Property(p => p.Amount).HasPrecision(18, 2);
-            a.Property(p => p.Currency).HasMaxLength(3);
+            price.Property(p => p.Amount)
+                .HasColumnName("UnitPrice")
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            price.Property(p => p.Currency)
+                .HasColumnName("Currency")
+                .HasMaxLength(3)
+                .IsRequired();
         });
     }
 }

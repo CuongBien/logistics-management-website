@@ -1,6 +1,7 @@
 version: "3.8"
 
 services:
+  # Main Application Database
   postgres:
     image: postgis/postgis:16-3.4
     container_name: lms-postgres
@@ -9,7 +10,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: lms_oms_dev
     ports:
-      - "5432:5432"
+      - "56432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,6 +18,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - lms-network
+
+  # Keycloak Database (Separate container for isolation)
+  postgres-keycloak:
+    image: postgres:16-alpine
+    container_name: lms-postgres-keycloak
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak123
+      POSTGRES_DB: keycloak
+    ports:
+      - "5434:5432"  # Different port to avoid conflict
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lms-network
 
   rabbitmq:
     image: rabbitmq:3.12-management
@@ -34,9 +57,12 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - lms-network
 
   redis:
     image: redis:7.2-alpine
+    platform: linux/amd64
     container_name: lms-redis
     command: redis-server --requirepass redis123
     ports:
@@ -46,17 +72,23 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    networks:
+      - lms-network
 
   seq:
     image: datalust/seq:latest
+    platform: linux/amd64
     container_name: lms-seq
     environment:
-      ACCEPT_EULA: Y
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=Admin@123
     ports:
       - "5341:5341"
       - "8081:80"
     volumes:
       - seq_data:/data
+    networks:
+      - lms-network
 
   jaeger:
     image: jaegertracing/all-in-one:1.51
@@ -64,9 +96,11 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
-      - "16686:16686"
-      - "4317:4317"
-      - "4318:4318"
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    networks:
+      - lms-network
 
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
@@ -74,24 +108,42 @@ services:
     command: start-dev
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/lms_keycloak
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak123
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      postgres-keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - lms-network
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
     container_name: lms-mailhog
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # UI
+    networks:
+      - lms-network
 
 volumes:
   postgres_data:
+  postgres_keycloak_data:
   rabbitmq_data:
   seq_data:
+
+networks:
+  lms-network:
+    driver: bridge

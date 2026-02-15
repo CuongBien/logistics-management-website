@@ -1,4 +1,4 @@
-# ANTIGRAVITY AGENT RULES
+# AGENT RULES
 
 1. **CONTEXT FIRST**: Before writing code, ALWAYS check `brain/architecture` to ensure compliance with tech stack and conventions.
 2. **NO GUESSWORK**: If a library is not listed in `brain/architecture/01_tech_stack_rules.md`, ask the user before installing.
