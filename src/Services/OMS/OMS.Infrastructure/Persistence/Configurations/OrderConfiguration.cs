@@ -9,28 +9,33 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
     public void Configure(EntityTypeBuilder<Order> builder)
     {
-        builder.HasKey(t => t.Id);
+        builder.ToTable("Orders");
 
-        builder.Property(t => t.CustomerId)
-            .HasMaxLength(200)
+        builder.HasKey(o => o.Id);
+
+        builder.Property(o => o.CustomerId)
+            .HasMaxLength(100)
             .IsRequired();
 
-        builder.OwnsOne(o => o.ShippingAddress, a =>
+        builder.Property(o => o.Status)
+            .HasConversion(
+                v => v.ToString(),
+                v => (OrderStatus)Enum.Parse(typeof(OrderStatus), v));
+
+        builder.OwnsOne(o => o.ShippingAddress, address =>
         {
-            a.Property(p => p.Street).HasMaxLength(100).IsRequired();
-            a.Property(p => p.City).HasMaxLength(50).IsRequired();
-            a.Property(p => p.State).HasMaxLength(50);
-            a.Property(p => p.Country).HasMaxLength(50).IsRequired();
-            a.Property(p => p.ZipCode).HasMaxLength(20).IsRequired();
+            address.Property(a => a.Street).HasMaxLength(200).IsRequired();
+            address.Property(a => a.City).HasMaxLength(100).IsRequired();
+            address.Property(a => a.State).HasMaxLength(100);
+            address.Property(a => a.Country).HasMaxLength(100).IsRequired();
+            address.Property(a => a.ZipCode).HasMaxLength(20).IsRequired();
         });
 
-        builder.Property(t => t.Status)
-            .HasConversion<string>(); // Store enum as string
-            
-        // Configure OrderItems relationship
         builder.HasMany(o => o.Items)
             .WithOne()
-            .HasForeignKey("OrderId")
+            .HasForeignKey(oi => oi.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Ignore(o => o.TotalAmount); // Computed property
     }
 }

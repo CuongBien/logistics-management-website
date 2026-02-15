@@ -19,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingB
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Domain", "BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj", "{721074C4-CA59-4F48-AEF7-0DF2D34F8883}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Messaging", "BuildingBlocks\BuildingBlocks.Messaging\BuildingBlocks.Messaging.csproj", "{D06AE61B-F3E4-498E-AAF9-AFF258D86847}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,6 +50,10 @@ Global
 		{721074C4-CA59-4F48-AEF7-0DF2D34F8883}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{721074C4-CA59-4F48-AEF7-0DF2D34F8883}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{721074C4-CA59-4F48-AEF7-0DF2D34F8883}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D06AE61B-F3E4-498E-AAF9-AFF258D86847}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D06AE61B-F3E4-498E-AAF9-AFF258D86847}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D06AE61B-F3E4-498E-AAF9-AFF258D86847}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D06AE61B-F3E4-498E-AAF9-AFF258D86847}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608} = {CE4F440A-2E80-4EA0-9AD0-D4643428B409}
@@ -56,5 +62,6 @@ Global
 		{BBC2E8E8-D38F-4A44-BE39-ACCF977F9143} = {87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608}
 		{F6EF76F0-7A93-413D-89AE-CC44620A2F03} = {87C5C5F3-1B8E-4BCC-AFAB-9E305BD56608}
 		{721074C4-CA59-4F48-AEF7-0DF2D34F8883} = {E999D80C-4BAC-42CD-BF53-1D9CC3620CA0}
+		{D06AE61B-F3E4-498E-AAF9-AFF258D86847} = {E999D80C-4BAC-42CD-BF53-1D9CC3620CA0}
 	EndGlobalSection
 EndGlobal

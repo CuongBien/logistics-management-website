@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain;
 using MediatR;
 using OMS.Application.Common.Interfaces;
 using OMS.Domain.Entities;
@@ -5,7 +6,7 @@ using OMS.Domain.ValueObjects;
 
 namespace OMS.Application.Commands.CreateOrder;
 
-public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Guid>
+public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
 
@@ -14,7 +15,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Gui
         _context = context;
     }
 
-    public async Task<Guid> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
         var address = new Address(
             request.ShippingAddress.Street,
@@ -23,12 +24,30 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Gui
             request.ShippingAddress.Country,
             request.ShippingAddress.ZipCode);
 
-        var order = Order.Create(request.CustomerId, address);
+        // 1. Create Order Aggregate
+        var orderResult = Order.Create(request.CustomerId, address);
 
+        if (orderResult.IsFailure)
+        {
+            return Result<Guid>.Failure(orderResult.Error);
+        }
+
+        var order = orderResult.Value;
+
+        // 2. Add Items
+        foreach (var itemDto in request.Items)
+        {
+            order.AddItem(
+                itemDto.ProductId, 
+                itemDto.Quantity, 
+                new Money(itemDto.UnitPrice, itemDto.Currency));
+        }
+
+        // 3. Persist
         _context.Orders.Add(order);
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return order.Id;
+        return Result<Guid>.Success(order.Id);
     }
 }
