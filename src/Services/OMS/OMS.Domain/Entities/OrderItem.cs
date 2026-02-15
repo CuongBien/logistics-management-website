@@ -12,6 +12,14 @@ public class OrderItem : Entity<Guid>
 
     internal OrderItem(Guid orderId, string productId, int quantity, Money unitPrice)
     {
+        if (quantity <= 0)
+        {
+             // For Entity constructors, we usually throw exceptions as they shouldn't be in invalid state
+             // Or we rely on Factory/Aggregate to validate.
+             // Let's throw simple ArgumentException for now or use DomainException if exists.
+             throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
+        }
+
         Id = Guid.NewGuid();
         OrderId = orderId;
         ProductId = productId;

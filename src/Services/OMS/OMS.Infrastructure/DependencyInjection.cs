@@ -25,6 +25,13 @@ public static class DependencyInjection
         {
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
+            busConfigurator.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
+            {
+                o.QueryDelay = TimeSpan.FromSeconds(1);
+                o.UsePostgres();
+                o.UseBusOutbox();
+            });
+
             busConfigurator.UsingRabbitMq((context, cfg) =>
             {
                 cfg.Host(configuration["MessageBroker:RabbitMQ:Host"], "/", h =>
