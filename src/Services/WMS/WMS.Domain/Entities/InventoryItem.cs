@@ -11,7 +11,7 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
     public int ReservedQty { get; private set; }
     
     [Timestamp]
-    public byte[] RowVersion { get; private set; } = default!;
+    public uint RowVersion { get; private set; }
 
     public int AvailableQty => QuantityOnHand - ReservedQty;
 
