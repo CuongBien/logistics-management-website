@@ -25,6 +25,8 @@ public static class DependencyInjection
         {
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
+            busConfigurator.AddConsumers(typeof(IApplicationDbContext).Assembly);
+
             busConfigurator.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
             {
                 o.QueryDelay = TimeSpan.FromSeconds(1);

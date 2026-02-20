@@ -22,7 +22,7 @@ public class Order : Entity<Guid>, IAggregateRoot
     // EF Core
     private Order() { }
 
-    public static Result<Order> Create(string customerId, Address shippingAddress, List<OrderItem>? items = null)
+    public static Result<Order> Create(string customerId, Address shippingAddress, List<OrderItemDomainDto>? items = null)
     {
         var order = new Order
         {
@@ -35,9 +35,9 @@ public class Order : Entity<Guid>, IAggregateRoot
 
         if (items != null && items.Any())
         {
-            foreach (var item in items)
+            foreach (var itemDto in items)
             {
-                order._items.Add(item);
+                order.AddItem(itemDto.ProductId, itemDto.Quantity, new Money(itemDto.UnitPrice, itemDto.Currency));
             }
         }
         
@@ -46,7 +46,10 @@ public class Order : Entity<Guid>, IAggregateRoot
         // But usually Order needs items. Let's enforce it if passed, or allow later addition.
         // For now, allow creation without items, but Confirm will check.
 
-        order.AddDomainEvent(new OrderCreatedDomainEvent(order.Id, customerId, order.TotalAmount));
+        // Create Domain Event with Items (reuse the passed DTOs or map from entity items)
+        // Since we added items to _items, we can map from there to ensure consistency
+        var eventItemDtos = order.Items.Select(x => new OrderItemDomainDto(x.ProductId, x.Quantity, x.UnitPrice.Amount, x.UnitPrice.Currency)).ToList();
+        order.AddDomainEvent(new OrderCreatedDomainEvent(order.Id, customerId, order.TotalAmount, eventItemDtos));
 
         return Result<Order>.Success(order);
     }
