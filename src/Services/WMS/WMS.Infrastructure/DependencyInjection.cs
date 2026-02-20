@@ -25,6 +25,8 @@ public static class DependencyInjection
         {
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
+            busConfigurator.AddConsumers(typeof(IApplicationDbContext).Assembly);
+
             // Outbox Pattern for Reliability
             busConfigurator.AddEntityFrameworkOutbox<WMSDbContext>(o =>
             {
