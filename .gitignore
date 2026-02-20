@@ -61,3 +61,5 @@ secrets.json
 # Rider
 .idea/
 *.sln.iml
+
+.cursorrules

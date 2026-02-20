@@ -1,3 +1,6 @@
 namespace BuildingBlocks.Messaging.Events;
 
-public record OrderCreatedIntegrationEvent(Guid OrderId) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
+public record OrderItemDto(string ProductId, int Quantity);
+
+public record OrderCreatedIntegrationEvent(Guid OrderId, IEnumerable<OrderItemDto> Items) 
+    : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);

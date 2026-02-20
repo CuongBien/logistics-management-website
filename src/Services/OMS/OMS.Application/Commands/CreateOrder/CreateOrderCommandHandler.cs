@@ -4,6 +4,8 @@ using OMS.Application.Common.Interfaces;
 using OMS.Domain.Entities;
 using OMS.Domain.ValueObjects;
 
+using OMS.Domain.Events;
+
 namespace OMS.Application.Commands.CreateOrder;
 
 public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Result<Guid>>
@@ -24,8 +26,11 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
             request.ShippingAddress.Country,
             request.ShippingAddress.ZipCode);
 
-        // 1. Create Order Aggregate
-        var orderResult = Order.Create(request.CustomerId, address);
+        // 1. Prepare Items
+        var items = request.Items.Select(x => new OrderItemDomainDto(x.ProductId, x.Quantity, x.UnitPrice, x.Currency)).ToList();
+
+        // 2. Create Order Aggregate with Items
+        var orderResult = Order.Create(request.CustomerId, address, items);
 
         if (orderResult.IsFailure)
         {
@@ -33,15 +38,6 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
         }
 
         var order = orderResult.Value;
-
-        // 2. Add Items
-        foreach (var itemDto in request.Items)
-        {
-            order.AddItem(
-                itemDto.ProductId, 
-                itemDto.Quantity, 
-                new Money(itemDto.UnitPrice, itemDto.Currency));
-        }
 
         // 3. Persist
         _context.Orders.Add(order);
