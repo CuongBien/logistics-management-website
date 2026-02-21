@@ -138,6 +138,82 @@ services:
     networks:
       - lms-network
 
+  oms.api:
+    image: lms-oms-api
+    build:
+      context: .
+      dockerfile: src/Services/OMS/OMS.Api/Dockerfile
+    container_name: lms-oms-api
+    ports:
+      - "5000:8080"
+    environment:
+      - Swagger__ServerBasePath=/api/oms
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_oms_dev;Username=postgres;Password=postgres
+      - MessageBroker__RabbitMQ__Host=rabbitmq
+      - MessageBroker__RabbitMQ__Username=lms
+      - MessageBroker__RabbitMQ__Password=lms123
+      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
+      - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
+      - JwtOptions__Audience=oms-client
+    depends_on:
+      - postgres
+      - rabbitmq
+      - seq
+      - keycloak
+    networks:
+      - lms-network
+
+  wms.api:
+    image: lms-wms-api
+    build:
+      context: .
+      dockerfile: src/Services/WMS/WMS.Api/Dockerfile
+    container_name: lms-wms-api
+    ports:
+      - "5051:8080"
+    environment:
+      - Swagger__ServerBasePath=/api/wms
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_wms_dev;Username=postgres;Password=postgres
+      - MessageBroker__RabbitMQ__Host=rabbitmq
+      - MessageBroker__RabbitMQ__Username=lms
+      - MessageBroker__RabbitMQ__Password=lms123
+      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
+      - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
+      - JwtOptions__Audience=oms-client
+    depends_on:
+      - postgres
+      - rabbitmq
+      - seq
+      - keycloak
+    networks:
+      - lms-network
+
+  gateway.api:
+    image: lms-gateway-api
+    build:
+      context: .
+      dockerfile: src/Services/Gateway/Gateway.Api/Dockerfile
+    container_name: lms-gateway-api
+    ports:
+      - "8000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ReverseProxy__Clusters__oms-cluster__Destinations__oms-destination__Address=http://oms.api:8080
+      - ReverseProxy__Clusters__wms-cluster__Destinations__wms-destination__Address=http://wms.api:8080
+      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
+      - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
+      - JwtOptions__Audience=oms-client
+    depends_on:
+      - oms.api
+      - wms.api
+    networks:
+      - lms-network
+
 volumes:
   postgres_data:
   postgres_keycloak_data:

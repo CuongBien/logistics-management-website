@@ -1,0 +1,15 @@
+D:\Logistics\src\Services\WMS\WMS.Domain\bin\Debug\net8.0\WMS.Domain.deps.json
+D:\Logistics\src\Services\WMS\WMS.Domain\bin\Debug\net8.0\WMS.Domain.dll
+D:\Logistics\src\Services\WMS\WMS.Domain\bin\Debug\net8.0\WMS.Domain.pdb
+D:\Logistics\src\Services\WMS\WMS.Domain\bin\Debug\net8.0\BuildingBlocks.Domain.dll
+D:\Logistics\src\Services\WMS\WMS.Domain\bin\Debug\net8.0\BuildingBlocks.Domain.pdb
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.csproj.AssemblyReference.cache
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.AssemblyInfoInputs.cache
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.AssemblyInfo.cs
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.csproj.CoreCompileInputs.cache
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.csproj.Up2Date
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.dll
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\refint\WMS.Domain.dll
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\WMS.Domain.pdb
+D:\Logistics\src\Services\WMS\WMS.Domain\obj\Debug\net8.0\ref\WMS.Domain.dll
