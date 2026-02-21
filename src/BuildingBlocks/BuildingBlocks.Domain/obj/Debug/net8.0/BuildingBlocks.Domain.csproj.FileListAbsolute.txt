@@ -1,0 +1,12 @@
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\bin\Debug\net8.0\BuildingBlocks.Domain.deps.json
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\bin\Debug\net8.0\BuildingBlocks.Domain.dll
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\bin\Debug\net8.0\BuildingBlocks.Domain.pdb
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\BuildingBlocks.Domain.csproj.AssemblyReference.cache
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\BuildingBlocks.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\BuildingBlocks.Domain.AssemblyInfoInputs.cache
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\BuildingBlocks.Domain.AssemblyInfo.cs
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\BuildingBlocks.Domain.csproj.CoreCompileInputs.cache
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\BuildingBlocks.Domain.dll
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\refint\BuildingBlocks.Domain.dll
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\BuildingBlocks.Domain.pdb
+D:\Logistics\src\BuildingBlocks\BuildingBlocks.Domain\obj\Debug\net8.0\ref\BuildingBlocks.Domain.dll
