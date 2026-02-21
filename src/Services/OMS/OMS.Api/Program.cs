@@ -4,7 +4,10 @@ using OMS.Application;
 using OMS.Infrastructure;
 using OMS.Api.Infrastructure;
 using Serilog;
+using OMS.Api.Infrastructure.Swagger;
 using System.Security.Claims;
+using Microsoft.OpenApi.Models;
+using System.Collections.Generic;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,9 +17,39 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
-{
+{   
+    var basePath = builder.Configuration["Swagger:ServerBasePath"];
+    if (!string.IsNullOrWhiteSpace(basePath))
+        c.AddServer(new OpenApiServer { Url = basePath });
+
     c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter 'Bearer' [space] and then your valid token."
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 // Global Exception Handling
@@ -79,9 +112,10 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
 
+app.UseSwagger();
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
     app.UseSwaggerUI();
 }
 
@@ -93,6 +127,7 @@ app.MapGet("/", () => Results.Redirect("/swagger"));
 app.MapControllers();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
+app.MapGet("/api/health", () => Results.Ok(new { status = "Healthy" }));
 
 // Debug endpoint to see claims (only in development!)
 if (app.Environment.IsDevelopment())

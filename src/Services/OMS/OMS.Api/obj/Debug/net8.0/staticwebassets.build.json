@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "/ueDEF1+8lvkSU7sRvj3ej0y95EYBUSwkQpRQK1cSIY=",
+  "Source": "OMS.Api",
+  "BasePath": "_content/OMS.Api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
