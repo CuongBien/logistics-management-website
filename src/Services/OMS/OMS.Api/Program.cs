@@ -70,10 +70,13 @@ builder.Services.AddAuthentication("Bearer")
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateAudience = true,
             ValidateIssuer = true,
-            NameClaimType = "preferred_username",
-            RoleClaimType = "realm_access.roles"
+            ValidIssuers = new[]
+            {
+                "http://localhost:8080/realms/logistics_realm",
+                "http://keycloak:8080/realms/logistics_realm"
+            },
+            ValidateAudience = true,
         };
 
         options.Events = new JwtBearerEvents

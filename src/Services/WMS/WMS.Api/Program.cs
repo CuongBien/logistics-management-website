@@ -69,8 +69,13 @@ builder.Services.AddAuthentication("Bearer")
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
+            ValidateIssuer = true,
+            ValidIssuers = new[]
+            {
+                "http://localhost:8080/realms/logistics_realm",
+                "http://keycloak:8080/realms/logistics_realm"
+            },
             ValidateAudience = true,
-            ValidateIssuer = true
         };
     });
 

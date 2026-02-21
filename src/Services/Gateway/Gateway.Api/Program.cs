@@ -36,24 +36,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add Authentication
-builder.Services.AddAuthentication("Bearer")
-    .AddJwtBearer("Bearer", options =>
-    {
-        options.Authority = builder.Configuration["JwtOptions:Authority"];
-        options.Audience = builder.Configuration["JwtOptions:Audience"];
-        options.RequireHttpsMetadata = false;
-
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateAudience = true,
-            ValidateIssuer = true
-        };
-    });
-
-// Add Authorization
-builder.Services.AddAuthorization();
-
 var app = builder.Build();
 
 app.UseCors("AllowAll");
@@ -67,9 +49,6 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/wms/v1/swagger.json", "WMS API");
     });
 }
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapReverseProxy();
 

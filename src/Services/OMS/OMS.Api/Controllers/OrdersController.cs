@@ -9,6 +9,7 @@ namespace OMS.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -19,7 +20,6 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    // [Authorize] - Commented out for easier testing if needed, or keep it. Original had it.
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Result<Guid>>> Create(CreateOrderCommand command)
