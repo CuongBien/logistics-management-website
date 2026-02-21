@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\OMS.Api.props" />
-</Project>
