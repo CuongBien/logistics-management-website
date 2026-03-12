@@ -11,7 +11,10 @@ public class OrderHub : Hub
     
     public override async Task OnConnectedAsync()
     {
-        // Optional: log connection
+        var logger = Context.GetHttpContext()?.RequestServices.GetRequiredService<ILogger<OrderHub>>();
+        logger?.LogInformation("SignalR Client Connected! UserIdentifier: {UserIdentifier}, ConnectionId: {ConnectionId}", 
+            Context.UserIdentifier, Context.ConnectionId);
+
         await base.OnConnectedAsync();
     }
 
