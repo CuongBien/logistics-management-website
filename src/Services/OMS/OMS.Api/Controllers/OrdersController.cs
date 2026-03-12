@@ -13,10 +13,12 @@ namespace OMS.Api.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<OrdersController> _logger;
 
-    public OrdersController(IMediator mediator)
+    public OrdersController(IMediator mediator, ILogger<OrdersController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -24,7 +26,16 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Result<Guid>>> Create(CreateOrderCommand command)
     {
-        var result = await _mediator.Send(command);
+        // Extract the user's ID from the JWT token (Keycloak's 'sub' claim)
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                     ?? "Anonymous";
+        
+        _logger.LogInformation("Creating order... Token 'sub' claim (userId) = {UserId}", userId);
+                     
+        // Enforce the user ID as ConsignorId
+        var finalCommand = command with { ConsignorId = userId };
+
+        var result = await _mediator.Send(finalCommand);
 
         if (result.IsFailure)
         {

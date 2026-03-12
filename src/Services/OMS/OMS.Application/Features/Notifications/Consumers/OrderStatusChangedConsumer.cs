@@ -7,6 +7,7 @@ using OMS.Application.Common.Interfaces;
 namespace OMS.Application.Features.Notifications.Consumers;
 
 public class OrderStatusChangedConsumer : 
+    IConsumer<OrderCreatedIntegrationEvent>,
     IConsumer<ShipmentPickedUpIntegrationEvent>,
     IConsumer<ShipmentReceivedIntegrationEvent>,
     IConsumer<RouteDispatchedIntegrationEvent>,
@@ -25,6 +26,18 @@ public class OrderStatusChangedConsumer :
         _notificationService = notificationService;
         _context = context;
         _logger = logger;
+    }
+
+    public async Task Consume(ConsumeContext<OrderCreatedIntegrationEvent> context)
+    {
+        var consignorId = context.Message.ConsignorId;
+        if (string.IsNullOrEmpty(consignorId)) return;
+
+        await _notificationService.SendOrderStatusUpdatedAsync(
+            consignorId, context.Message.OrderId,
+            "Created",
+            $"Đơn hàng mới đã được khởi tạo thành công. Mã vận đơn: {context.Message.WaybillCode}",
+            context.CancellationToken);
     }
 
     public async Task Consume(ConsumeContext<ShipmentPickedUpIntegrationEvent> context)
