@@ -73,9 +73,10 @@ builder.Services.AddAuthentication("Bearer")
             ValidIssuers = new[]
             {
                 "http://localhost:8080/realms/logistics_realm",
+                "http://localhost:18080/realms/logistics_realm",
                 "http://keycloak:8080/realms/logistics_realm"
             },
-            ValidateAudience = true,
+            ValidateAudience = false,
         };
     });
 

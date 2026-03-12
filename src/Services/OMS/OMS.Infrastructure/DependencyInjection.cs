@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using OMS.Application.Common.Interfaces;
 using OMS.Infrastructure.Persistence;
 using MassTransit;
+using OMS.Application.Sagas.OrderFulfillment;
 
 namespace OMS.Infrastructure;
 
@@ -26,6 +27,14 @@ public static class DependencyInjection
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
             busConfigurator.AddConsumers(typeof(IApplicationDbContext).Assembly);
+
+            busConfigurator.AddSagaStateMachine<OrderFulfillmentStateMachine, OrderState>()
+                .EntityFrameworkRepository(r =>
+                {
+                    r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
+                    r.UsePostgres();
+                    r.ExistingDbContext<ApplicationDbContext>();
+                });
 
             busConfigurator.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
             {

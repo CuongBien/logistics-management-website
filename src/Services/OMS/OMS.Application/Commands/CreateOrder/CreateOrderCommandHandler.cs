@@ -4,8 +4,6 @@ using OMS.Application.Common.Interfaces;
 using OMS.Domain.Entities;
 using OMS.Domain.ValueObjects;
 
-using OMS.Domain.Events;
-
 namespace OMS.Application.Commands.CreateOrder;
 
 public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Result<Guid>>
@@ -19,18 +17,27 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
 
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
+        // 1. Build Consignee Value Object
         var address = new Address(
-            request.ShippingAddress.Street,
-            request.ShippingAddress.City,
-            request.ShippingAddress.State,
-            request.ShippingAddress.Country,
-            request.ShippingAddress.ZipCode);
+            request.Consignee.Address.Street,
+            request.Consignee.Address.City,
+            request.Consignee.Address.State,
+            request.Consignee.Address.Country,
+            request.Consignee.Address.ZipCode);
 
-        // 1. Prepare Items
-        var items = request.Items.Select(x => new OrderItemDomainDto(x.ProductId, x.Quantity, x.UnitPrice, x.Currency)).ToList();
+        var consignee = new Consignee(
+            request.Consignee.FullName,
+            request.Consignee.Phone,
+            address);
 
-        // 2. Create Order Aggregate with Items
-        var orderResult = Order.Create(request.CustomerId, address, items);
+        // 2. Create Order Aggregate (auto-generates WaybillCode)
+        var orderResult = Order.Create(
+            request.ConsignorId,
+            consignee,
+            request.CodAmount,
+            request.ShippingFee,
+            request.Weight,
+            request.Note);
 
         if (orderResult.IsFailure)
         {
@@ -39,9 +46,15 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
 
         var order = orderResult.Value;
 
-        // 3. Persist
-        _context.Orders.Add(order);
+        // 3. Auto-confirm (validate → AwaitingPickup)
+        var confirmResult = order.Confirm();
+        if (confirmResult.IsFailure)
+        {
+            return Result<Guid>.Failure(confirmResult.Error);
+        }
 
+        // 4. Persist
+        _context.Orders.Add(order);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(order.Id);
