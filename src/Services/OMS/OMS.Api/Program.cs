@@ -23,6 +23,17 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR(); 
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SignalRDev", policy =>
+    {
+        policy.WithOrigins("null", "http://localhost:5000") // allow file:// testing
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddSwaggerGen(c =>
 {   
     var basePath = builder.Configuration["Swagger:ServerBasePath"];
@@ -141,6 +152,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("SignalRDev");
 app.UseAuthentication();
 app.UseAuthorization();
 
