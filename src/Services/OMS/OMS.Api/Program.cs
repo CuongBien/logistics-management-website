@@ -8,6 +8,7 @@ using OMS.Api.Infrastructure.Swagger;
 using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using System.Collections.Generic;
+using OMS.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,8 +16,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
+// Add Notification Service Implementation
+builder.Services.AddScoped<OMS.Application.Common.Interfaces.INotificationService, OMS.Api.Services.SignalRNotificationService>();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSignalR(); 
 
 builder.Services.AddSwaggerGen(c =>
 {   
@@ -74,9 +79,10 @@ builder.Services.AddAuthentication("Bearer")
             ValidIssuers = new[]
             {
                 "http://localhost:8080/realms/logistics_realm",
+                "http://localhost:18080/realms/logistics_realm",
                 "http://keycloak:8080/realms/logistics_realm"
             },
-            ValidateAudience = true,
+            ValidateAudience = false,
         };
 
         options.Events = new JwtBearerEvents
@@ -106,6 +112,19 @@ builder.Services.AddAuthentication("Bearer")
             {
                 Console.WriteLine("JWT ERROR: " + context.Exception);
                 return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // If the request is for our hub...
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/hubs/order")))
+                {
+                    // Read the token out of the query string
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
             }
         };
     });
@@ -128,6 +147,7 @@ app.UseAuthorization();
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapControllers();
+app.MapHub<OrderHub>("/hubs/order");
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 app.MapGet("/api/health", () => Results.Ok(new { status = "Healthy" }));

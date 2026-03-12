@@ -6,30 +6,31 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 {
     public CreateOrderCommandValidator()
     {
-        RuleFor(v => v.CustomerId)
-            .NotEmpty().WithMessage("Customer info is required.");
+        RuleFor(v => v.ConsignorId)
+            .NotEmpty().WithMessage("Consignor ID is required.");
 
-        RuleFor(v => v.ShippingAddress)
-            .NotNull().WithMessage("Shipping address is required.");
+        RuleFor(v => v.Consignee)
+            .NotNull().WithMessage("Consignee info is required.");
 
-        RuleFor(v => v.ShippingAddress.Street)
+        RuleFor(v => v.Consignee.FullName)
+            .NotEmpty().WithMessage("Consignee name is required.");
+            
+        RuleFor(v => v.Consignee.Phone)
+            .NotEmpty().WithMessage("Consignee phone is required.");
+
+        RuleFor(v => v.Consignee.Address)
+            .NotNull().WithMessage("Consignee address is required.");
+
+        RuleFor(v => v.Consignee.Address.Street)
             .NotEmpty().WithMessage("Street is required.");
             
-        RuleFor(v => v.ShippingAddress.City)
+        RuleFor(v => v.Consignee.Address.City)
             .NotEmpty().WithMessage("City is required.");
-            
-        RuleFor(v => v.ShippingAddress.Country)
-            .NotEmpty().WithMessage("Country is required.");
 
-        RuleFor(v => v.Items)
-            .NotEmpty().WithMessage("Order must contain at least one item.");
+        RuleFor(v => v.CodAmount)
+            .GreaterThanOrEqualTo(0).WithMessage("COD amount cannot be negative.");
 
-        RuleForEach(v => v.Items).ChildRules(item =>
-        {
-            item.RuleFor(i => i.ProductId).NotEmpty().WithMessage("Product ID is required.");
-            item.RuleFor(i => i.Quantity).GreaterThan(0).WithMessage("Quantity must be greater than zero.");
-            item.RuleFor(i => i.UnitPrice).GreaterThanOrEqualTo(0).WithMessage("Unit price cannot be negative.");
-            item.RuleFor(i => i.Currency).NotEmpty().Length(3).WithMessage("Currency code must be 3 characters.");
-        });
+        RuleFor(v => v.Weight)
+            .GreaterThan(0).WithMessage("Weight must be greater than zero.");
     }
 }
