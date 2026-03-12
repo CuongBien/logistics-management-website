@@ -3,6 +3,7 @@ using BuildingBlocks.Domain;
 using Microsoft.EntityFrameworkCore;
 using OMS.Application.Common.Interfaces;
 using OMS.Domain.Entities;
+using OMS.Application.Sagas.OrderFulfillment;
 using MediatR;
 using MassTransit;
 
@@ -20,7 +21,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     }
 
     public DbSet<Order> Orders => Set<Order>();
-    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderState> OrderStates => Set<OrderState>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

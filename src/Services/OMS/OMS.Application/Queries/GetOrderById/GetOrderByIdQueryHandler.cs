@@ -2,8 +2,6 @@ using BuildingBlocks.Domain;
 using MediatR;
 using OMS.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using OMS.Domain.Entities;
-using OMS.Domain.Enums;
 
 namespace OMS.Application.Queries.GetOrderById;
 
@@ -13,18 +11,25 @@ public record GetOrderByIdQuery(Guid Id) : IRequest<Result<OrderDto>>;
 // Response DTOs
 public record OrderDto(
     Guid Id,
-    string CustomerId,
+    string ConsignorId,
+    string WaybillCode,
     string Status,
-    AddressDto ShippingAddress,
+    ConsigneeDto Consignee,
+    decimal CodAmount,
+    decimal ShippingFee,
+    decimal Weight,
+    string? Note,
     DateTime CreatedAt,
-    List<OrderItemDto> Items,
-    decimal TotalAmount
+    // Tracking
+    string? PickupDriverId,
+    string? WarehouseId,
+    string? DeliveryDriverId,
+    string? ProofOfDeliveryUrl,
+    int DeliveryAttempts
 );
 
+public record ConsigneeDto(string FullName, string Phone, AddressDto Address);
 public record AddressDto(string Street, string City, string State, string Country, string ZipCode);
-
-public record OrderItemDto(string ProductId, int Quantity, decimal UnitPrice, string Currency, decimal TotalPrice);
-
 
 // Handler
 public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Result<OrderDto>>
@@ -40,34 +45,37 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Resul
     {
         var order = await _context.Orders
             .AsNoTracking()
-            .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.Id == request.Id, cancellationToken);
 
         if (order == null)
         {
-            // Ideally use DomainErrors.Order.NotFound but we need to reference Domain layer or return string error
             return Result<OrderDto>.Failure(new Error("Order.NotFound", $"Order with Id {request.Id} was not found."));
         }
 
         var dto = new OrderDto(
             order.Id,
-            order.CustomerId,
+            order.ConsignorId,
+            order.WaybillCode,
             order.Status.ToString(),
-            new AddressDto(
-                order.ShippingAddress.Street,
-                order.ShippingAddress.City,
-                order.ShippingAddress.State,
-                order.ShippingAddress.Country,
-                order.ShippingAddress.ZipCode),
+            new ConsigneeDto(
+                order.Consignee.FullName,
+                order.Consignee.Phone,
+                new AddressDto(
+                    order.Consignee.Address.Street,
+                    order.Consignee.Address.City,
+                    order.Consignee.Address.State,
+                    order.Consignee.Address.Country,
+                    order.Consignee.Address.ZipCode)),
+            order.CodAmount,
+            order.ShippingFee,
+            order.Weight,
+            order.Note,
             order.CreatedAt,
-            order.Items.Select(i => new OrderItemDto(
-                i.ProductId,
-                i.Quantity,
-                i.UnitPrice.Amount,
-                i.UnitPrice.Currency,
-                i.Quantity * i.UnitPrice.Amount
-            )).ToList(),
-            order.TotalAmount
+            order.PickupDriverId,
+            order.WarehouseId,
+            order.DeliveryDriverId,
+            order.ProofOfDeliveryUrl,
+            order.DeliveryAttempts
         );
 
         return Result<OrderDto>.Success(dto);

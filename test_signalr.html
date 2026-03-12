@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SignalR Test Client</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+  </head>
+  <body>
+    <h2>SignalR Order Hub Test</h2>
+    <p>Status: <span id="status" style="color:red">Disconnected</span></p>
+    <div>
+      <input
+        id="token"
+        type="text"
+        placeholder="Paste JWT access_token..."
+        style="width:600px"
+      />
+      <button onclick="connect()">Connect</button>
+    </div>
+    <h3>Notifications:</h3>
+    <ul id="messages"></ul>
+
+    <script>
+      let connection;
+      async function connect() {
+        const token = document.getElementById("token").value;
+        connection = new signalR.HubConnectionBuilder()
+          .withUrl("http://localhost:5000/hubs/order", {
+            accessTokenFactory: () => token,
+          })
+          .withAutomaticReconnect()
+          .configureLogging(signalR.LogLevel.Information)
+          .build();
+
+        connection.on("OrderStatusUpdated", (data) => {
+          const li = document.createElement("li");
+          li.textContent = `[${new Date().toLocaleTimeString()}] Order: ${data.orderId} | Status: ${data.status} | ${data.message}`;
+          li.style.color = data.status.includes("Failed") ? "red" : "green";
+          document.getElementById("messages").appendChild(li);
+        });
+
+        connection.onclose(() => {
+          document.getElementById("status").textContent = "Disconnected";
+          document.getElementById("status").style.color = "red";
+        });
+
+        try {
+          await connection.start();
+          document.getElementById("status").textContent = "Connected ✅";
+          document.getElementById("status").style.color = "green";
+        } catch (err) {
+          document.getElementById("status").textContent = "Error: " + err;
+        }
+      }
+    </script>
+  </body>
+</html>

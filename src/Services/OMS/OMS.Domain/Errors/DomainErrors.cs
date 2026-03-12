@@ -8,8 +8,9 @@ public static class DomainErrors
     {
         public static Error NotFound => new("Order.NotFound", "The order was not found.");
         public static Error CannotCancel => new("Order.CannotCancel", "Order cannot be cancelled at this stage.");
-        public static Error EmptyItems => new("Order.EmptyItems", "Order must have at least one item.");
-        public static Error InvalidQuantity => new("Order.InvalidQuantity", "Item quantity must be greater than zero.");
-        public static Error InvalidPrice => new("Order.InvalidPrice", "Item price must be non-negative.");
+        public static Error InvalidTransition(string from, string to) 
+            => new("Order.InvalidTransition", $"Cannot transition from '{from}' to '{to}'.");
+        public static Error InvalidCodAmount => new("Order.InvalidCodAmount", "COD amount must be non-negative.");
+        public static Error InvalidWeight => new("Order.InvalidWeight", "Weight must be greater than zero.");
     }
 }
