@@ -7,6 +7,8 @@ using WMS.Application;
 using WMS.Infrastructure;
 using Microsoft.OpenApi.Models;
 using System.Collections.Generic;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +19,22 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProviderBuilder =>
+    {
+        tracerProviderBuilder
+            .AddSource("MassTransit")
+            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("WMS.Api"))
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                var endpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
+                options.Endpoint = new Uri(endpoint);
+            });
+    });
 
 builder.Services.AddSwaggerGen(options =>
 {   

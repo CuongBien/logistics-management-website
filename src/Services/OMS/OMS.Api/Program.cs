@@ -9,6 +9,8 @@ using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using System.Collections.Generic;
 using OMS.Api.Hubs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,22 @@ builder.Services.AddScoped<OMS.Application.Common.Interfaces.INotificationServic
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR(); 
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProviderBuilder =>
+    {
+        tracerProviderBuilder
+            .AddSource("MassTransit")
+            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("OMS.Api"))
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                var endpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
+                options.Endpoint = new Uri(endpoint);
+            });
+    });
 
 builder.Services.AddCors(options =>
 {
