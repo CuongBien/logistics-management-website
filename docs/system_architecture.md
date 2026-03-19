@@ -188,7 +188,10 @@ D:\Logistics\ (Gốc dự án)
 │   │   │   ├── Ordering.Domain
 │   │   │   └── Ordering.Infrastructure
 │   │   ├── 📂 Warehouse        # Service Kho Bãi, Kệ Khía, Tồn Kho
-│   │   │   └── (...)
+│   │   │   ├── Warehouse.Api
+│   │   │   ├── Warehouse.Application
+│   │   │   ├── Warehouse.Domain
+│   │   │   └── Warehouse.Infrastructure
 │   │
 │   └── LMS.sln                 # File chụm toàn bộ các mảng code vào Visual Studio
 │
