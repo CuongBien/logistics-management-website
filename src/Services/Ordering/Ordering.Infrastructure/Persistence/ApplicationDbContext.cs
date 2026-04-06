@@ -21,7 +21,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     }
 
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderState> OrderStates => Set<OrderState>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
