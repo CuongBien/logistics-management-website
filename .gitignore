@@ -53,7 +53,7 @@ nCrunchTemp_*
 
 # Default appsettings.Development.json is often ignored in real projects to avoid committing secrets
 # But for this onboarding task, we commit it as a template. To ignore it, uncomment below:
-# **/appsettings.Development.json
+**/appsettings.Development.json
 
 # Secrets
 secrets.json
@@ -63,3 +63,7 @@ secrets.json
 *.sln.iml
 
 .cursorrules
+
+# Application logs
+seq_logs.json
+*.log

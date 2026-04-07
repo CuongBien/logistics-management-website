@@ -23,5 +23,12 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
             .WithOne(z => z.Block)
             .HasForeignKey(z => z.BlockId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Seed Data
+        builder.HasData(new {
+            Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            WarehouseId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            BlockCode = "BLK-A"
+        });
     }
 }
