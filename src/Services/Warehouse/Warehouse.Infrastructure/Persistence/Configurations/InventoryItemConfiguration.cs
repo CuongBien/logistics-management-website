@@ -8,16 +8,10 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
 {
     public void Configure(EntityTypeBuilder<InventoryItem> builder)
     {
-        builder.HasKey(x => x.Id);
+        builder.HasKey(x => x.Sku);
 
-        builder.HasIndex(x => x.Sku)
-            .IsUnique();
-
-        builder.Property(x => x.Sku)
-            .HasMaxLength(50)
-            .IsRequired();
-
-        builder.Property(x => x.RowVersion)
-            .IsRowVersion();
+        builder.Property(x => x.Sku).IsRequired();
+        builder.Property(x => x.Quantity).IsRequired();
+        builder.Property(x => x.Version).IsRowVersion();
     }
 }
