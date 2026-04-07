@@ -12,7 +12,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     {
     }
 
-    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<Domain.Entities.Warehouse> Warehouses => Set<Domain.Entities.Warehouse>();
     public DbSet<Block> Blocks => Set<Block>();
     public DbSet<Zone> Zones => Set<Zone>();
     public DbSet<Bin> Bins => Set<Bin>();
