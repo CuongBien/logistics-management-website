@@ -19,5 +19,12 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Domain.Entities.W
             .WithOne(b => b.Warehouse)
             .HasForeignKey(b => b.WarehouseId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Seed Data
+        builder.HasData(new {
+            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            Name = "Hanoi Central Warehouse",
+            LocationText = "Hanoi, Vietnam"
+        });
     }
 }
