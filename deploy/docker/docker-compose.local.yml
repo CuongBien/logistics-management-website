@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # Main Application Database
   postgres:
@@ -139,16 +137,16 @@ services:
     networks:
       - lms-network
 
-  oms.api:
-    image: lms-oms-api
+  ordering.api:
+    image: lms-ordering-api
     build:
-      context: .
-      dockerfile: src/Services/OMS/OMS.Api/Dockerfile
-    container_name: lms-oms-api
+      context: ../../
+      dockerfile: src/Services/Ordering/Ordering.Api/Dockerfile
+    container_name: lms-ordering-api
     ports:
       - "5000:8080"
     environment:
-      - Swagger__ServerBasePath=/api/oms
+      - Swagger__ServerBasePath=/api/ordering
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_oms_dev;Username=postgres;Password=postgres
       - MessageBroker__RabbitMQ__Host=rabbitmq
@@ -166,16 +164,16 @@ services:
     networks:
       - lms-network
 
-  wms.api:
-    image: lms-wms-api
+  warehouse.api:
+    image: lms-warehouse-api
     build:
-      context: .
-      dockerfile: src/Services/WMS/WMS.Api/Dockerfile
-    container_name: lms-wms-api
+      context: ../../
+      dockerfile: src/Services/Warehouse/Warehouse.Api/Dockerfile
+    container_name: lms-warehouse-api
     ports:
       - "5051:8080"
     environment:
-      - Swagger__ServerBasePath=/api/wms
+      - Swagger__ServerBasePath=/api/warehouse
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_wms_dev;Username=postgres;Password=postgres
       - MessageBroker__RabbitMQ__Host=rabbitmq
@@ -193,25 +191,25 @@ services:
     networks:
       - lms-network
 
-  gateway.api:
-    image: lms-gateway-api
+  web.bff.api:
+    image: lms-web-bff-api
     build:
-      context: .
-      dockerfile: src/Services/Gateway/Gateway.Api/Dockerfile
-    container_name: lms-gateway-api
+      context: ../../
+      dockerfile: src/ApiGateways/Web.Bff.Logistics/Web.Bff.Logistics.Api/Dockerfile
+    container_name: lms-web-bff-api
     ports:
       - "8000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ReverseProxy__Clusters__oms-cluster__Destinations__oms-destination__Address=http://oms.api:8080
-      - ReverseProxy__Clusters__wms-cluster__Destinations__wms-destination__Address=http://wms.api:8080
+      - ReverseProxy__Clusters__oms-cluster__Destinations__oms-destination__Address=http://ordering.api:8080
+      - ReverseProxy__Clusters__wms-cluster__Destinations__wms-destination__Address=http://warehouse.api:8080
       - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
       - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
       - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
       - JwtOptions__Audience=oms-client
     depends_on:
-      - oms.api
-      - wms.api
+      - ordering.api
+      - warehouse.api
     networks:
       - lms-network
 
