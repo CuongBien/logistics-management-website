@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models;
 using System.Collections.Generic;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,5 +120,23 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 app.MapGet("/api/health", () => Results.Ok(new { status = "Healthy" }));
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<Warehouse.Infrastructure.Persistence.WMSDbContext>();
+        if (context.Database.IsNpgsql())
+        {
+            context.Database.Migrate();
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
 
 app.Run();

@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using Ordering.Api.Hubs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -194,6 +195,24 @@ if (app.Environment.IsDevelopment())
             claims = user.Claims.Select(c => new { c.Type, c.Value }).ToList()
         });
     }).RequireAuthorization();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<Ordering.Infrastructure.Persistence.ApplicationDbContext>();
+        if (context.Database.IsNpgsql())
+        {
+            context.Database.Migrate();
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
 }
 
 app.Run();
