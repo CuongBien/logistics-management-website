@@ -4,9 +4,9 @@ using Warehouse.Domain.Entities;
 
 namespace Warehouse.Infrastructure.Persistence.Configurations;
 
-public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
+public class WarehouseConfiguration : IEntityTypeConfiguration<Domain.Entities.Warehouse>
 {
-    public void Configure(EntityTypeBuilder<Warehouse> builder)
+    public void Configure(EntityTypeBuilder<Domain.Entities.Warehouse> builder)
     {
         builder.ToTable("Warehouses");
 

@@ -5,7 +5,7 @@ namespace Warehouse.Domain.Entities;
 public class InboundItem : Entity<Guid>
 {
     public Guid ReceiptId { get; private set; }
-    public Guid Sku { get; private set; }
+    public string Sku { get; private set; } = default!;
     public int Quantity { get; private set; }
     public Guid? BinId { get; private set; }
 
@@ -16,7 +16,7 @@ public class InboundItem : Entity<Guid>
     // EF Core
     private InboundItem() { }
 
-    public InboundItem(Guid receiptId, Guid sku, int quantity)
+    public InboundItem(Guid receiptId, string sku, int quantity)
     {
         Id = Guid.NewGuid();
         ReceiptId = receiptId;
