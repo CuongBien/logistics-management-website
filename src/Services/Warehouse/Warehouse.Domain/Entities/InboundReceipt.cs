@@ -2,11 +2,17 @@ using Logistics.Core;
 
 namespace Warehouse.Domain.Entities;
 
+public enum InboundReceiptStatus
+{
+    Pending = 0,
+    Received = 1
+}
+
 public class InboundReceipt : Entity<Guid>, IAggregateRoot
 {
     public Guid OrderId { get; private set; }
-    public int Status { get; private set; } // 0=Pending, 1=Received
-    public DateTime ReceivedAt { get; private set; }
+    public InboundReceiptStatus Status { get; private set; }
+    public DateTime? ReceivedAt { get; private set; }
 
     // Navigation
     private readonly List<InboundItem> _items = new();
@@ -19,12 +25,12 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot
     {
         Id = Guid.NewGuid();
         OrderId = orderId;
-        Status = 0; // Pending
+        Status = InboundReceiptStatus.Pending;
     }
 
     public void MarkReceived()
     {
-        Status = 1;
+        Status = InboundReceiptStatus.Received;
         ReceivedAt = DateTime.UtcNow;
     }
 

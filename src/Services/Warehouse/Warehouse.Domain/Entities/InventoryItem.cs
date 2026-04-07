@@ -8,7 +8,10 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
 {
     public Guid Sku { get; private set; }
     public int Quantity { get; private set; }
-    public uint Version { get; private set; }
+    public int Version { get; private set; }
+
+    // EF Core
+    private InventoryItem() { }
 
     public static InventoryItem Create(Guid sku, int initialQty)
     {
