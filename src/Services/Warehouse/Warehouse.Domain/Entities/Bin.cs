@@ -7,7 +7,7 @@ public class Bin : Entity<Guid>
     public Guid ZoneId { get; private set; }
     public string BinCode { get; private set; } = default!;
     public string Status { get; private set; } = default!;
-    public uint Version { get; private set; }
+    public int Version { get; private set; }
 
     // Navigation
     public Zone Zone { get; private set; } = default!;
