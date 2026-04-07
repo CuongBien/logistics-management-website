@@ -20,6 +20,10 @@ public class Order : Entity<Guid>, IAggregateRoot
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastModifiedAt { get; private set; }
 
+    // Navigation
+    private readonly List<OrderItem> _items = new();
+    public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
     // Tracking fields populated by human actions
     public string? PickupDriverId { get; private set; }
     public string? WarehouseId { get; private set; }
