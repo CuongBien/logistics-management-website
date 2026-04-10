@@ -63,3 +63,8 @@ secrets.json
 *.sln.iml
 
 .cursorrules
+
+# violet's files
+/note/ 
+/tools/
+.obsidian/
