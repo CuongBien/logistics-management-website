@@ -67,3 +67,7 @@ secrets.json
 # Application logs
 seq_logs.json
 *.log
+# violet's files
+/note/ 
+/tools/
+.obsidian/
