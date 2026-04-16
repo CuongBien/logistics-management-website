@@ -88,7 +88,7 @@ Local Postgres exposed on port **56432** (not the default 5432).
 - Saga state stored in DB with **Pessimistic concurrency** (`ConcurrencyMode.Pessimistic`)
 
 ### Outbox Pattern
-- Configured in `Ordering.Infrastructure/DependencyInjection.cs`
+- Configured in `Ordering.Infrastructure/DependencyInjection.cs` and `Warehouse.Infrastructure/DependencyInjection.cs`
 - MassTransit hooks into EF Core via `UseBusOutbox()` - intercepts `SaveChanges()` transparently
 - **Use `IPublishEndpoint.Publish()` normally** - do NOT avoid it. The bus outbox intercepts at `SaveChanges()` and writes to the outbox table instead of sending directly over the network
 - This prevents dual-write failures (DB commit + MQ publish must be atomic)
