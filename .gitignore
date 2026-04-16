@@ -71,3 +71,6 @@ seq_logs.json
 /note/ 
 /tools/
 .obsidian/
+
+.gemini/
+gha-creds-*.json
