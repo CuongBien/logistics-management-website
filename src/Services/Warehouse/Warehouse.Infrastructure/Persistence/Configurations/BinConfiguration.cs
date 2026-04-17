@@ -14,6 +14,7 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
 
         builder.Property(b => b.BinCode).HasMaxLength(50).IsRequired();
         builder.Property(b => b.Status).HasMaxLength(20).IsRequired();
+        builder.Property(b => b.CurrentOrderId).IsRequired(false);
         builder.Property(b => b.Version).IsConcurrencyToken();
 
         builder.HasOne(b => b.Zone)
