@@ -19,10 +19,6 @@ public record ShipmentReceivedIntegrationEvent(
     string WarehouseId, 
     string ReceivedBy) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
 
-public record ShipmentSortedIntegrationEvent(
-    Guid OrderId, 
-    string DestinationHubId) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
-
 public record RouteDispatchedIntegrationEvent(
     Guid OrderId, 
     string DriverId, 
