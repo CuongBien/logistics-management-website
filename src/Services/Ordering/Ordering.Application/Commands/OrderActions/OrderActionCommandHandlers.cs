@@ -24,43 +24,6 @@ public class PickupOrderCommandHandler : IRequestHandler<PickupOrderCommand, Res
     }
 }
 
-public class ReceiveOrderCommandHandler : IRequestHandler<ReceiveOrderCommand, Result>
-{
-    private readonly IApplicationDbContext _context;
-
-    public ReceiveOrderCommandHandler(IApplicationDbContext context) => _context = context;
-
-    public async Task<Result> Handle(ReceiveOrderCommand request, CancellationToken cancellationToken)
-    {
-        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == request.OrderId, cancellationToken);
-        if (order is null) return Result.Failure(new Error("Order.NotFound", "Order was not found."));
-
-        var result = order.MarkInWarehouse(request.WarehouseId, request.ReceivedBy);
-        if (result.IsFailure) return result;
-
-        await _context.SaveChangesAsync(cancellationToken);
-        return Result.Success();
-    }
-}
-
-public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
-{
-    private readonly IApplicationDbContext _context;
-
-    public SortOrderCommandHandler(IApplicationDbContext context) => _context = context;
-
-    public async Task<Result> Handle(SortOrderCommand request, CancellationToken cancellationToken)
-    {
-        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == request.OrderId, cancellationToken);
-        if (order is null) return Result.Failure(new Error("Order.NotFound", "Order was not found."));
-
-        var result = order.MarkSorted(request.DestinationHubId);
-        if (result.IsFailure) return result;
-
-        await _context.SaveChangesAsync(cancellationToken);
-        return Result.Success();
-    }
-}
 
 public class DispatchOrderCommandHandler : IRequestHandler<DispatchOrderCommand, Result>
 {

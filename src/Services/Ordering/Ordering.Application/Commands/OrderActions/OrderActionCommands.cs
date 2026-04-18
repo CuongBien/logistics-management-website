@@ -7,10 +7,6 @@ namespace Ordering.Application.Commands.OrderActions;
 
 public record PickupOrderCommand(Guid OrderId, string DriverId) : IRequest<Result>;
 
-public record ReceiveOrderCommand(Guid OrderId, string WarehouseId, string ReceivedBy) : IRequest<Result>;
-
-public record SortOrderCommand(Guid OrderId, string DestinationHubId) : IRequest<Result>;
-
 public record DispatchOrderCommand(Guid OrderId, string DriverId, string RouteId) : IRequest<Result>;
 
 public record DeliverOrderCommand(Guid OrderId, string ProofOfDeliveryUrl) : IRequest<Result>;

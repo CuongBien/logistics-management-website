@@ -26,26 +26,6 @@ public class OrderActionsController : ControllerBase
     }
 
     /// <summary>
-    /// 👤 Nhân viên kho scan → Nhận kiện vào kho
-    /// </summary>
-    [HttpPut("receive")]
-    public async Task<ActionResult<Result>> Receive(Guid orderId, [FromBody] ReceiveRequest request)
-    {
-        var result = await _mediator.Send(new ReceiveOrderCommand(orderId, request.WarehouseId, request.ReceivedBy));
-        return result.IsFailure ? BadRequest(result) : Ok(result);
-    }
-
-    /// <summary>
-    /// 👤 Nhân viên phân loại xong
-    /// </summary>
-    [HttpPut("sort")]
-    public async Task<ActionResult<Result>> Sort(Guid orderId, [FromBody] SortRequest request)
-    {
-        var result = await _mediator.Send(new SortOrderCommand(orderId, request.DestinationHubId));
-        return result.IsFailure ? BadRequest(result) : Ok(result);
-    }
-
-    /// <summary>
     /// 👤 Quản lý duyệt tuyến + assign tài xế
     /// </summary>
     [HttpPut("dispatch")]
@@ -78,8 +58,6 @@ public class OrderActionsController : ControllerBase
 
 // --- Request DTOs ---
 public record PickupRequest(string DriverId);
-public record ReceiveRequest(string WarehouseId, string ReceivedBy);
-public record SortRequest(string DestinationHubId);
 public record DispatchRequest(string DriverId, string RouteId);
 public record DeliverRequest(string ProofOfDeliveryUrl);
 public record FailRequest(string Reason);
