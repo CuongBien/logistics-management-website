@@ -4,6 +4,8 @@ using Logistics.Core;
 
 namespace Warehouse.Api.Controllers;
 
+[ApiController]
+[Tags("Outbound")]
 [Route("api/outbound")]
 public class OutboundController : ApiControllerBase
 {

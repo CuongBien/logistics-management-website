@@ -12,7 +12,8 @@ public class OrderStatusChangedConsumer :
     IConsumer<ShipmentReceivedIntegrationEvent>,
     IConsumer<RouteDispatchedIntegrationEvent>,
     IConsumer<DeliveryCompletedIntegrationEvent>,
-    IConsumer<DeliveryFailedIntegrationEvent>
+    IConsumer<DeliveryFailedIntegrationEvent>,
+    IConsumer<ShipmentSortedIntegrationEvent>
 {
     private readonly INotificationService _notificationService;
     private readonly IApplicationDbContext _context;
@@ -73,6 +74,18 @@ public class OrderStatusChangedConsumer :
             consignorId, context.Message.OrderId,
             "Dispatched",
             $"Kiện hàng đang được giao bởi tài xế {context.Message.DriverId}.",
+            context.CancellationToken);
+    }
+
+    public async Task Consume(ConsumeContext<ShipmentSortedIntegrationEvent> context)
+    {
+        var consignorId = await GetConsignorIdAsync(context.Message.OrderId, context.CancellationToken);
+        if (string.IsNullOrEmpty(consignorId)) return;
+
+        await _notificationService.SendOrderStatusUpdatedAsync(
+            consignorId, context.Message.OrderId,
+            "InTransit",
+            $"Kiện hàng đã được dỡ khỏi kho và chuyển trạng thái Đang Luân Chuyển.",
             context.CancellationToken);
     }
 
