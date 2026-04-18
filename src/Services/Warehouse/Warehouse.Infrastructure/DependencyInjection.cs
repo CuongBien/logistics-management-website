@@ -25,14 +25,18 @@ public static class DependencyInjection
         {
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
-            busConfigurator.AddConsumers(typeof(IApplicationDbContext).Assembly);
-
-            // Outbox Pattern for Reliability
+            // Outbox Pattern for Reliability (use the application's DbContext)
             busConfigurator.AddEntityFrameworkOutbox<WMSDbContext>(o =>
             {
                 o.QueryDelay = TimeSpan.FromSeconds(1);
                 o.UsePostgres();
                 o.UseBusOutbox();
+
+                // Ensure MassTransit uses the same DbContext configuration
+                o.UseDbContext< WMSDbContext>((provider, builder) =>
+                {
+                    builder.UseNpgsql(connectionString);
+                });
             });
 
             busConfigurator.UsingRabbitMq((context, cfg) =>
@@ -44,7 +48,7 @@ public static class DependencyInjection
                     h.Password(configuration["MessageBroker:RabbitMQ:Password"]);
                 });
 
-                cfg.ConfigureEndpoints(context);
+                // Do not configure consumers/endpoints here - this service only publishes (inbound publishing only)
             });
         });
 
