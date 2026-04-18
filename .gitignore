@@ -57,7 +57,7 @@ nCrunchTemp_*
 
 # Secrets
 secrets.json
-
+local_credentials.txt
 # Rider
 .idea/
 *.sln.iml
