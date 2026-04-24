@@ -36,7 +36,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         // 3. Publish Integration Event (Transactional Outbox will handle persistence)
         await _publishEndpoint.Publish(new ShipmentSortedIntegrationEvent(
             request.OrderId,
-            request.DestinationHubId.ToString(),
+            request.DestinationWarehouseId.ToString(),
             DateTime.UtcNow), cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);

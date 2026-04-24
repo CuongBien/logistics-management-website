@@ -40,7 +40,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.Note).HasMaxLength(500);
         builder.Property(o => o.PickupDriverId).HasMaxLength(100);
         builder.Property(o => o.WarehouseId).HasMaxLength(100);
-        builder.Property(o => o.DestinationHubId).HasMaxLength(100);
+        builder.Property(o => o.DestinationWarehouseId).HasMaxLength(100);
         builder.Property(o => o.DeliveryDriverId).HasMaxLength(100);
         builder.Property(o => o.RouteId).HasMaxLength(100);
         builder.Property(o => o.ProofOfDeliveryUrl).HasMaxLength(500);

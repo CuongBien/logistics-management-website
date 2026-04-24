@@ -2,5 +2,5 @@ namespace EventBus.Messages.Events;
 
 public record ShipmentSortedIntegrationEvent(
     Guid OrderId,
-    string DestinationHubId,
+    string DestinationWarehouseId,
     DateTime SortedAt) : IntegrationEvent(Guid.NewGuid(), SortedAt);
