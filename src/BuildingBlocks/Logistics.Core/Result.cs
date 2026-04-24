@@ -4,12 +4,12 @@ namespace Logistics.Core;
 
 public class Result<T>
 {
-    public T Value { get; }
+    public T? Value { get; }
     public Error Error { get; }
     public bool IsSuccess => Error == Error.None;
     public bool IsFailure => !IsSuccess;
 
-    protected Result(T value, Error error)
+    protected Result(T? value, Error error)
     {
         // Enforce invariants?
         /*
