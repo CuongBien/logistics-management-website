@@ -20,7 +20,12 @@ public class Consignee : ValueObject
     }
 
     // EF Core
-    private Consignee() { }
+    private Consignee() 
+    { 
+        FullName = default!;
+        Phone = default!;
+        Address = default!;
+    }
 
     protected override IEnumerable<object> GetEqualityComponents()
     {
