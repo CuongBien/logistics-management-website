@@ -67,3 +67,8 @@ local_credentials.txt
 # Application logs
 seq_logs.json
 *.log
+
+git
+main
+
+tests/

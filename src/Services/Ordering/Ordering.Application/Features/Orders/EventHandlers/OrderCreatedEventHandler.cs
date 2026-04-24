@@ -81,8 +81,8 @@ public class OrderSortedEventHandler : INotificationHandler<OrderSortedDomainEve
 
     public async Task Handle(OrderSortedDomainEvent notification, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("👤 Order {OrderId} sorted to Hub {HubId}", notification.OrderId, notification.DestinationHubId);
-        await _publishEndpoint.Publish(new ShipmentSortedIntegrationEvent(notification.OrderId, notification.DestinationHubId, DateTime.UtcNow), cancellationToken);
+        _logger.LogInformation("👤 Order {OrderId} sorted to Warehouse {WarehouseId}", notification.OrderId, notification.DestinationWarehouseId);
+        await _publishEndpoint.Publish(new ShipmentSortedIntegrationEvent(notification.OrderId, notification.DestinationWarehouseId, DateTime.UtcNow), cancellationToken);
     }
 }
 

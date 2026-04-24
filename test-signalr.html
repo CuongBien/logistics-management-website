@@ -23,6 +23,7 @@
 <div class="container">
     <h2>📡 Live Tracking (SignalR)</h2>
     <p>Nhập <b>Access Token (JWT)</b> của bạn từ Swagger vào đây để kết nối với Notification Hub.</p>
+    <p style="color:#ff9800; font-size:0.9em;">⚠️ <b>Quan trọng:</b> Khi tạo Order qua Postman, trường <code>consignorId</code> phải bằng với <b>sub</b> trong JWT của bạn. Decode token tại <a href="https://jwt.io" target="_blank" style="color:#4fc3f7">jwt.io</a> để lấy giá trị <code>sub</code>.</p>
     
     <label>Bearer Token:</label>
     <input type="text" id="tokenInput" placeholder="eyJhbGciOiJSUzI1NiIsInR5c... (Paste JWT Token here)">
@@ -59,16 +60,16 @@
             .withAutomaticReconnect()
             .build();
 
-        // Đăng ký Listener chờ tin nhắn từ Server 
-        // Phải trùng với tên method: "ReceiveOrderStatusUpdate" mà Backend bắn ra
-        connection.on("ReceiveOrderStatusUpdate", (orderId, newStatus, message) => {
+        // Đăng ký Listener — Tên phải CHÍNH XÁC với tên method backend gọi SendAsync()
+        // Backend: _hubContext.Clients.User(userId).SendAsync("OrderStatusUpdated", ...)
+        connection.on("OrderStatusUpdated", (data) => {
             const time = new Date().toLocaleTimeString();
             const logHtml = `
                 <div class="log-entry">
                     <span class="time">[${time}]</span> 
-                    📦 Đơn hàng <b>${orderId}</b>: <br/>
-                    Trạng thái: <span class="status">${newStatus}</span> <br/>
-                    Thông điệp: <i>${message}</i>
+                    📦 Đơn hàng <b>${data.orderId}</b>: <br/>
+                    Trạng thái: <span class="status">${data.status}</span> <br/>
+                    Thông điệp: <i>${data.message}</i>
                 </div>
             `;
             const logsDiv = document.getElementById("logs");

@@ -27,7 +27,7 @@ public record OrderReceivedInWarehouseDomainEvent(Guid OrderId, string Warehouse
     public DateTime OccurredOn => DateTime.UtcNow;
 }
 
-public record OrderSortedDomainEvent(Guid OrderId, string DestinationHubId) : IDomainEvent
+public record OrderSortedDomainEvent(Guid OrderId, string DestinationWarehouseId) : IDomainEvent
 {
     public Guid EventId => Guid.NewGuid();
     public DateTime OccurredOn => DateTime.UtcNow;

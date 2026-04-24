@@ -16,7 +16,7 @@ public class OrderState : SagaStateMachineInstance
     // Tracking — populated by human actions
     public string? PickupDriverId { get; set; }
     public string? WarehouseId { get; set; }
-    public string? DestinationHubId { get; set; }
+    public string? DestinationWarehouseId { get; set; }
     public string? DeliveryDriverId { get; set; }
     public string? RouteId { get; set; }
     public string? ProofOfDeliveryUrl { get; set; }
