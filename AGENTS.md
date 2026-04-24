@@ -14,7 +14,11 @@ Enterprise Logistics Management System (LMS) - an event-driven microservices pla
 | Ordering Service | `src/Services/Ordering/Ordering.Api` | 5000 | 5000 |
 | Warehouse Service | `src/Services/Warehouse/Warehouse.Api` | 5051 | 5051 |
 
-Swagger endpoints via gateway: `http://localhost:5200/api/ordering/swagger` and `http://localhost:5200/api/warehouse/swagger`
+Swagger endpoints via gateway: `http://localhost:5200/swagger/oms/v1/swagger.json` and `http://localhost:5200/swagger/wms/v1/swagger.json`
+
+**API Gateway Routes:**
+- Ordering API: `http://localhost:5200/api/oms/{**path}` → forwards to `http://localhost:5000/`
+- Warehouse API: `http://localhost:5200/api/wms/{**path}` → forwards to `http://localhost:5051/`
 
 ## How to Run
 

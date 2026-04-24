@@ -24,7 +24,14 @@ builder.Services.AddScoped<Ordering.Application.Common.Interfaces.INotificationS
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSignalR(); 
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+})
+.AddHubOptions<OrderHub>(options =>
+{
+    options.EnableDetailedErrors = true;
+}); 
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProviderBuilder =>
@@ -122,6 +129,15 @@ builder.Services.AddAuthentication("Bearer")
                 var claimsIdentity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
                 if (claimsIdentity != null)
                 {
+                    // Map "sub" claim to NameIdentifier for SignalR user identification
+                    var subClaim = claimsIdentity.FindFirst("sub");
+                    if (subClaim != null)
+                    {
+                        claimsIdentity.AddClaim(new System.Security.Claims.Claim(
+                            System.Security.Claims.ClaimTypes.NameIdentifier, 
+                            subClaim.Value));
+                    }
+                    
                     // Map realm_access roles
                     var realmAccess = claimsIdentity.FindFirst("realm_access");
                     if (realmAccess != null)

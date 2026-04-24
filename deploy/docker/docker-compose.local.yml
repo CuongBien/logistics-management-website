@@ -148,7 +148,7 @@ services:
     ports:
       - "5000:8080"
     environment:
-      - Swagger__ServerBasePath=/api/ordering
+      - Swagger__ServerBasePath=/api/oms
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_oms_dev;Username=postgres;Password=postgres
       - MessageBroker__RabbitMQ__Host=rabbitmq
@@ -175,7 +175,7 @@ services:
     ports:
       - "5051:8080"
     environment:
-      - Swagger__ServerBasePath=/api/warehouse
+      - Swagger__ServerBasePath=/api/wms
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_wms_dev;Username=postgres;Password=postgres
       - MessageBroker__RabbitMQ__Host=rabbitmq
