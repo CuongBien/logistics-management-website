@@ -1,7 +1,13 @@
-﻿using System.Linq;
+using Logistics.Core;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Warehouse.Application.Common.Interfaces;
+using Warehouse.Domain.Entities;
+using EventBus.Messages.Events;
 
-public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundItemCommand>
+namespace Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
+
+public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundItemCommand, Result>
 {
     private readonly IApplicationDbContext _context;
     private readonly MassTransit.IPublishEndpoint _publishEndpoint;
@@ -12,49 +18,47 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task<Unit> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
     {
         // 1. Load InboundReceipt by ReceiptId
         var receipt = await _context.InboundReceipts
-            .Include(r => r.Items)
             .FirstOrDefaultAsync(r => r.Id == request.ReceiptId, cancellationToken);
+            
         if (receipt == null)
-            throw new NotFoundException($"InboundReceipt with Id {request.ReceiptId} not found.");
-        // 2. Validate OrderId belongs to this receipt
-        if (!receipt.OrderIds.Contains(request.OrderId))
-            throw new ValidationException($"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}.");
-        // 3. Load Bin by BinCode
-        var bin = await _context.Bins.FirstOrDefaultAsync(b => b.Code == request.BinCode, cancellationToken);
-        if (bin == null)
-            throw new NotFoundException($"Bin with Code {request.BinCode} not found.");
-        // 4. Mark Bin.Status = Occupied
-        bin.Status = BinStatus.Occupied;
-        // 5. Create new InboundItem with BinId, OrderId, ScannedBy, ScannedAt
-        if (receipt.Items.Any(i => i.OrderId == request.OrderId))
-            throw new ValidationException($"Order {request.OrderId} already scanned.");
-        var inboundItem = new InboundItem
-        {
-            Id = Guid.NewGuid(),
-            BinId = bin.Id,
-            OrderId = request.OrderId,
-            ScannedBy = request.ScannedBy,
-            ScannedAt = DateTime.UtcNow
-        };
-        // 6. Add InboundItem to InboundReceipt
-        receipt.Items.Add(inboundItem);
-        // 7. Save changes using IApplicationDbContext
-        await _context.SaveChangesAsync(cancellationToken);
+            return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
-        // 8. Publish ShipmentReceivedIntegrationEvent (will be recorded in Outbox)
-        var integrationEvent = new Warehouse.Application.Features.Inbound.Events.ShipmentReceivedIntegrationEvent(
-            receipt.Id,
+        // 2. Validate OrderId belongs to this receipt
+        if (receipt.OrderId != request.OrderId)
+            return Result.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));
+
+        // 3. Load Bin by BinCode
+        var bin = await _context.Bins
+            .Include(b => b.Zone)
+            .ThenInclude(z => z.Block)
+            .FirstOrDefaultAsync(b => b.BinCode == request.BinCode, cancellationToken);
+        if (bin == null)
+            return Result.Failure(new Error("Bin.NotFound", $"Bin with Code {request.BinCode} not found."));
+        if (bin.Zone == null || bin.Zone.Block == null)
+            return Result.Failure(new Error("Bin.InvalidHierarchy", $"Bin with Code {request.BinCode} is missing zone/block hierarchy."));
+
+        // 4. Mark Bin as Occupied
+        bin.AssignOrder(request.OrderId);
+        
+        // Mark receipt as received.
+        receipt.MarkReceived();
+
+        // 5. Publish integration event first so EF outbox can persist it in the same SaveChanges.
+        var integrationEvent = new ShipmentReceivedIntegrationEvent(
             request.OrderId,
-            request.BinCode,
-            inboundItem.ScannedAt
+            bin.Zone.Block.WarehouseId.ToString(),
+            request.ScannedBy
         );
 
-        await _publishEndpoint.Publish<Warehouse.Application.Features.Inbound.Events.ShipmentReceivedIntegrationEvent>(integrationEvent, cancellationToken);
+        await _publishEndpoint.Publish(integrationEvent, cancellationToken);
 
-        return Unit.Value;
+        // 6. Save entity + outbox message atomically.
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
     }
 }

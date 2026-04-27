@@ -32,11 +32,6 @@ public static class DependencyInjection
                 o.UsePostgres();
                 o.UseBusOutbox();
 
-                // Ensure MassTransit uses the same DbContext configuration
-                o.UseDbContext< WMSDbContext>((provider, builder) =>
-                {
-                    builder.UseNpgsql(connectionString);
-                });
             });
 
             busConfigurator.UsingRabbitMq((context, cfg) =>

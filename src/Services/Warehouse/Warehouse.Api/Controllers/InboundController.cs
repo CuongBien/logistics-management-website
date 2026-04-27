@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveReceipt;
+using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
+using Warehouse.Api.Controllers.Requests;
 
 namespace Warehouse.Api.Controllers;
 
@@ -20,15 +22,22 @@ public class InboundController : ApiControllerBase
     }
 
     /// <summary>
-    /// Nhân viên kho scan → Xác nhận hàng đã vào kho (Pending → Received)
+    /// Nhân viên kho scan item → Gán vào Bin cụ thể và sinh InboundItem
     /// </summary>
     [HttpPut("receipts/{receiptId:guid}/receive")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Receive(Guid receiptId)
+    public async Task<ActionResult> Receive(Guid receiptId, [FromBody] ReceiveInboundItemRequest request)
     {
-        var result = await Mediator.Send(new ReceiveInboundReceiptCommand(receiptId));
+        var command = new ReceiveInboundItemCommand(
+            receiptId,
+            request.OrderId,
+            request.BinCode,
+            request.ScannedBy
+        );
+
+        var result = await Mediator.Send(command);
         return ToActionResult(result);
     }
 }
