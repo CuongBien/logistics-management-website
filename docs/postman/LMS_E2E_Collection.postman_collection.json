@@ -41,7 +41,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const id = pm.response.json();",
+              "const body = pm.response.json();",
+              "const id = body.value || body;",
               "pm.collectionVariables.set('orderId', id);",
               "console.log('✅ orderId saved:', id);"
             ]
@@ -55,6 +56,35 @@
         "body": {
           "mode": "raw",
           "raw": "{\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 1b – Pickup hàng (Ordering)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "console.log('✅ Order moved to PickedUp');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/pickup",
+          "host": ["{{oms_url}}"],
+          "path": ["api", "orders", "{{orderId}}", "actions", "pickup"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"driverId\": \"driver_01\"\n}"
         }
       },
       "response": []
@@ -95,6 +125,11 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const orderId = pm.collectionVariables.get('orderId');",
+              "const receiptId = pm.collectionVariables.get('receiptId');",
+              "pm.test('orderId variable exists', () => pm.expect(orderId).to.be.a('string').and.not.empty);",
+              "pm.test('receiptId variable exists', () => pm.expect(receiptId).to.be.a('string').and.not.empty);",
+              "console.log('🔎 STEP2b orderId=', orderId, 'receiptId=', receiptId);",
               "console.log('✅ InboundReceipt marked as Received');"
             ]
           }
@@ -102,22 +137,16 @@
       ],
       "request": {
         "method": "PUT",
-        "header": [],
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
         "url": {
           "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/receive",
           "host": ["{{wms_url}}"],
           "path": ["api", "inbound", "receipts", "{{receiptId}}", "receive"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"staff_01\"\n}"
         }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 2c – [Manual] Fake hàng lên kệ (SQL via docker exec)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": { "raw": "http://localhost", "host": ["localhost"] },
-        "description": "BƯỚC THỦ CÔNG – Chạy lệnh này trong Terminal trước khi qua Step 3:\n\ndocker exec -it lms-postgres psql -U postgres -d lms_wms_dev -c \"UPDATE \\\"Bins\\\" SET \\\"CurrentOrderId\\\" = '{{orderId}}' WHERE \\\"Id\\\" = '44444444-4444-4444-4444-444444444444';\"\n\nLệnh này gán hàng của đơn {{orderId}} lên kệ BIN-A1-01."
       },
       "response": []
     },
@@ -129,7 +158,11 @@
           "script": {
             "type": "text/javascript",
             "exec": [
+              "const req = JSON.parse(pm.request.body.raw);",
+              "const expectedOrderId = pm.collectionVariables.get('orderId');",
+              "pm.test('Sort uses current orderId', () => pm.expect(req.orderId).to.eql(expectedOrderId));",
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "console.log('🔎 STEP3 request orderId=', req.orderId, 'expected=', expectedOrderId);",
               "console.log('✅ Order sorted! ShipmentSortedIntegrationEvent published → Saga → AwaitingDispatch');"
             ]
           }
@@ -156,7 +189,9 @@
             "exec": [
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
               "const body = pm.response.json();",
-              "console.log('📦 Order status:', JSON.stringify(body, null, 2));"
+              "const status = body.value?.status;",
+              "console.log('📦 Order status:', status);",
+              "pm.test('Order status is AwaitingDispatch', () => pm.expect(status).to.eql('AwaitingDispatch'));"
             ]
           }
         }
