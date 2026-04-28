@@ -9,9 +9,11 @@ using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using System.Collections.Generic;
 using Ordering.Api.Hubs;
+using Ordering.Api.Infrastructure.SignalR;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +26,8 @@ builder.Services.AddScoped<Ordering.Application.Common.Interfaces.INotificationS
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSignalR(); 
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProviderBuilder =>
