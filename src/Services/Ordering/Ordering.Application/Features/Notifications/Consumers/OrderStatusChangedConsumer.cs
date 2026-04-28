@@ -56,10 +56,11 @@ public class OrderStatusChangedConsumer :
 
     public async Task Consume(ConsumeContext<ShipmentReceivedIntegrationEvent> context)
     {
-        await SyncOrderReceivedStatusAsync(
+        var isStatusSynchronized = await SyncOrderReceivedStatusAsync(
             context.Message.OrderId,
             context.Message.WarehouseId,
             context.CancellationToken);
+        if (!isStatusSynchronized) return;
 
         var consignorId = await GetConsignorIdAsync(context.Message.OrderId, context.CancellationToken);
         if (string.IsNullOrEmpty(consignorId)) return;
@@ -85,18 +86,19 @@ public class OrderStatusChangedConsumer :
 
     public async Task Consume(ConsumeContext<ShipmentSortedIntegrationEvent> context)
     {
-        await SyncOrderSortedStatusAsync(
+        var isStatusSynchronized = await SyncOrderSortedStatusAsync(
             context.Message.OrderId,
             context.Message.DestinationWarehouseId,
             context.CancellationToken);
+        if (!isStatusSynchronized) return;
 
         var consignorId = await GetConsignorIdAsync(context.Message.OrderId, context.CancellationToken);
         if (string.IsNullOrEmpty(consignorId)) return;
 
         await _notificationService.SendOrderStatusUpdatedAsync(
             consignorId, context.Message.OrderId,
-            "InTransit",
-            $"Kiện hàng đã được dỡ khỏi kho và chuyển trạng thái Đang Luân Chuyển.",
+            "AwaitingDispatch",
+            $"Kiện hàng đã được phân loại và chuyển trạng thái Chờ Điều Phối.",
             context.CancellationToken);
     }
 
@@ -140,7 +142,7 @@ public class OrderStatusChangedConsumer :
         return order?.ConsignorId ?? string.Empty;
     }
 
-    private async Task SyncOrderReceivedStatusAsync(Guid orderId, string warehouseId, CancellationToken cancellationToken)
+    private async Task<bool> SyncOrderReceivedStatusAsync(Guid orderId, string warehouseId, CancellationToken cancellationToken)
     {
         var order = await _context.Orders
             .FirstOrDefaultAsync(x => x.Id == orderId, cancellationToken);
@@ -148,19 +150,19 @@ public class OrderStatusChangedConsumer :
         if (order == null)
         {
             _logger.LogWarning("Cannot sync ShipmentReceived: Order {OrderId} not found", orderId);
-            return;
+            return false;
         }
 
         if (order.Status == OrderStatus.InWarehouse || order.Status == OrderStatus.AwaitingDispatch)
         {
             _logger.LogInformation("Skip ShipmentReceived sync for Order {OrderId} because status is {Status}", orderId, order.Status);
-            return;
+            return false;
         }
 
         if (order.Status != OrderStatus.PickedUp)
         {
             _logger.LogWarning("Cannot sync ShipmentReceived for Order {OrderId}. Expected PickedUp but got {Status}", orderId, order.Status);
-            return;
+            return false;
         }
 
         var result = order.MarkInWarehouse(warehouseId, "integration-event");
@@ -168,7 +170,7 @@ public class OrderStatusChangedConsumer :
         {
             _logger.LogWarning("ShipmentReceived sync failed for Order {OrderId}. Error: {ErrorCode} - {ErrorMessage}",
                 orderId, result.Error.Code, result.Error.Message);
-            return;
+            return false;
         }
 
         // Prevent event-loop: this sync is triggered by an integration event,
@@ -176,9 +178,10 @@ public class OrderStatusChangedConsumer :
         order.ClearDomainEvents();
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("ShipmentReceived sync applied for Order {OrderId}", orderId);
+        return true;
     }
 
-    private async Task SyncOrderSortedStatusAsync(Guid orderId, string destinationWarehouseId, CancellationToken cancellationToken)
+    private async Task<bool> SyncOrderSortedStatusAsync(Guid orderId, string destinationWarehouseId, CancellationToken cancellationToken)
     {
         var order = await _context.Orders
             .FirstOrDefaultAsync(x => x.Id == orderId, cancellationToken);
@@ -186,19 +189,19 @@ public class OrderStatusChangedConsumer :
         if (order == null)
         {
             _logger.LogWarning("Cannot sync ShipmentSorted: Order {OrderId} not found", orderId);
-            return;
+            return false;
         }
 
         if (order.Status == OrderStatus.AwaitingDispatch || order.Status == OrderStatus.Dispatched)
         {
             _logger.LogInformation("Skip ShipmentSorted sync for Order {OrderId} because status is {Status}", orderId, order.Status);
-            return;
+            return false;
         }
 
         if (order.Status != OrderStatus.InWarehouse)
         {
             _logger.LogWarning("Cannot sync ShipmentSorted for Order {OrderId}. Expected InWarehouse but got {Status}", orderId, order.Status);
-            return;
+            return false;
         }
 
         var result = order.MarkSorted(destinationWarehouseId);
@@ -206,7 +209,7 @@ public class OrderStatusChangedConsumer :
         {
             _logger.LogWarning("ShipmentSorted sync failed for Order {OrderId}. Error: {ErrorCode} - {ErrorMessage}",
                 orderId, result.Error.Code, result.Error.Message);
-            return;
+            return false;
         }
 
         // Prevent event-loop: this sync is triggered by an integration event,
@@ -214,5 +217,6 @@ public class OrderStatusChangedConsumer :
         order.ClearDomainEvents();
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("ShipmentSorted sync applied for Order {OrderId}", orderId);
+        return true;
     }
 }
