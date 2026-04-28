@@ -158,6 +158,8 @@ services:
       - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
       - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
       - JwtOptions__Audience=oms-client
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
       - postgres
       - rabbitmq
@@ -185,6 +187,8 @@ services:
       - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
       - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
       - JwtOptions__Audience=oms-client
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
       - postgres
       - rabbitmq
