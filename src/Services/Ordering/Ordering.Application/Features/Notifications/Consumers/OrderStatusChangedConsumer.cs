@@ -171,6 +171,9 @@ public class OrderStatusChangedConsumer :
             return;
         }
 
+        // Prevent event-loop: this sync is triggered by an integration event,
+        // so we should not emit OrderReceivedInWarehouseDomainEvent again.
+        order.ClearDomainEvents();
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("ShipmentReceived sync applied for Order {OrderId}", orderId);
     }
@@ -206,6 +209,9 @@ public class OrderStatusChangedConsumer :
             return;
         }
 
+        // Prevent event-loop: this sync is triggered by an integration event,
+        // so we should not emit OrderSortedDomainEvent again.
+        order.ClearDomainEvents();
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("ShipmentSorted sync applied for Order {OrderId}", orderId);
     }
