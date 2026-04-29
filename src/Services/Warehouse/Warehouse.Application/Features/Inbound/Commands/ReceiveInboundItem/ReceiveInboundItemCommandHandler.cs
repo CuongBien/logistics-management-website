@@ -20,6 +20,15 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
     public async Task<Result> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
     {
+        var skuExists = await _context.ErpSkuMirrors
+            .AnyAsync(x => x.TenantId == request.TenantId && x.SkuCode == request.SkuCode && x.Status == "active", cancellationToken);
+        if (!skuExists)
+        {
+            return Result.Failure(new Error(
+                "ErpSkuMirror.MissingMapping",
+                $"Cannot receive inbound item because SKU '{request.SkuCode}' is not mapped for tenant '{request.TenantId}'."));
+        }
+
         // 1. Load InboundReceipt by ReceiptId
         var receipt = await _context.InboundReceipts
             .FirstOrDefaultAsync(r => r.Id == request.ReceiptId, cancellationToken);

@@ -4,12 +4,14 @@ using MediatR;
 namespace Ordering.Application.Commands.CreateOrder;
 
 public record CreateOrderCommand(
+    string TenantId,
     string ConsignorId, 
+    IReadOnlyCollection<string> SkuCodes,
     ConsigneeDto Consignee, 
     decimal CodAmount,
     decimal ShippingFee,
     decimal Weight,
-    string? Note = null) : IRequest<Result<Guid>>;
+    string? Note) : IRequest<Result<Guid>>;
 
 public record ConsigneeDto(string FullName, string Phone, AddressDto Address);
 
