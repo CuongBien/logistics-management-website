@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 
 namespace Ordering.Api.Hubs;
 
@@ -12,8 +13,11 @@ public class OrderHub : Hub
     public override async Task OnConnectedAsync()
     {
         var logger = Context.GetHttpContext()?.RequestServices.GetRequiredService<ILogger<OrderHub>>();
-        logger?.LogInformation("SignalR Client Connected! UserIdentifier: {UserIdentifier}, ConnectionId: {ConnectionId}", 
-            Context.UserIdentifier, Context.ConnectionId);
+        var sub = Context.User?.FindFirst("sub")?.Value;
+        var nameIdentifier = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        logger?.LogInformation(
+            "SignalR Client Connected! UserIdentifier: {UserIdentifier}, sub: {Sub}, nameIdentifier: {NameIdentifier}, ConnectionId: {ConnectionId}",
+            Context.UserIdentifier, sub, nameIdentifier, Context.ConnectionId);
 
         await base.OnConnectedAsync();
     }

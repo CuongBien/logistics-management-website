@@ -27,7 +27,7 @@ public class Order : Entity<Guid>, IAggregateRoot
     // Tracking fields populated by human actions
     public string? PickupDriverId { get; private set; }
     public string? WarehouseId { get; private set; }
-    public string? DestinationHubId { get; private set; }
+    public string? DestinationWarehouseId { get; private set; }
     public string? DeliveryDriverId { get; private set; }
     public string? RouteId { get; private set; }
     public string? ProofOfDeliveryUrl { get; private set; }
@@ -125,16 +125,16 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// <summary>
     /// 👤 Nhân viên phân loại xong → Sẵn sàng dispatch
     /// </summary>
-    public Result MarkSorted(string destinationHubId)
+    public Result MarkSorted(string destinationWarehouseId)
     {
         if (Status != OrderStatus.InWarehouse)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.AwaitingDispatch)));
 
-        DestinationHubId = destinationHubId;
+        DestinationWarehouseId = destinationWarehouseId;
         Status = OrderStatus.AwaitingDispatch;
         LastModifiedAt = DateTime.UtcNow;
 
-        AddDomainEvent(new OrderSortedDomainEvent(Id, destinationHubId));
+        AddDomainEvent(new OrderSortedDomainEvent(Id, destinationWarehouseId));
         return Result.Success();
     }
 

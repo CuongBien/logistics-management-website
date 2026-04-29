@@ -86,9 +86,9 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
             When(ShipmentSorted)
                 .Then(context =>
                 {
-                    logger.LogInformation("Saga: 👤 Order {OrderId} sorted to Hub {Hub}", 
-                        context.Message.OrderId, context.Message.DestinationHubId);
-                    context.Saga.DestinationHubId = context.Message.DestinationHubId;
+                    logger.LogInformation("Saga: 👤 Order {OrderId} sorted to Warehouse {WH}", 
+                        context.Message.OrderId, context.Message.DestinationWarehouseId);
+                    context.Saga.DestinationWarehouseId = context.Message.DestinationWarehouseId;
                 })
                 .TransitionTo(AwaitingDispatch)
         );

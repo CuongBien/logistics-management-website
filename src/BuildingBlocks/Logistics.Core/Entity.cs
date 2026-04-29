@@ -10,7 +10,7 @@ public interface IEntity
 
 public abstract class Entity<TId> : IEntity
 {
-    public TId Id { get; protected set; }
+    public TId Id { get; protected set; } = default!;
 
     private readonly List<IDomainEvent> _domainEvents = new();
 

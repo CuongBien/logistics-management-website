@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalR Tester - Logistics Flow</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #fff; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        input[type="text"] { width: 100%; padding: 10px; margin-bottom: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px;}
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        button:hover { background: #0056b3; }
+        .log-box { margin-top: 20px; background: #1e1e1e; padding: 15px; border-left: 5px solid #007bff; height: 400px; overflow-y: auto; border-radius: 4px; }
+        .log-entry { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        .time { color: #888; font-size: 0.85em; }
+        .status { font-weight: bold; color: #4CAF50; }
+    </style>
+    <!-- Thư viện SignalR qua CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>📡 Live Tracking (SignalR)</h2>
+    <p>Nhập <b>Access Token (JWT)</b> của bạn từ Swagger vào đây để kết nối với Notification Hub.</p>
+    <p style="color:#ff9800; font-size:0.9em;">⚠️ <b>Quan trọng:</b> Khi tạo Order qua Postman, trường <code>consignorId</code> phải bằng với <b>sub</b> trong JWT của bạn. Decode token tại <a href="https://jwt.io" target="_blank" style="color:#4fc3f7">jwt.io</a> để lấy giá trị <code>sub</code>.</p>
+    
+    <label>Client Name (A/B):</label>
+    <input type="text" id="clientNameInput" placeholder="A" value="A">
+
+    <label>Bearer Token:</label>
+    <input type="text" id="tokenInput" placeholder="eyJhbGciOiJSUzI1NiIsInR5c... (Paste JWT Token here)">
+    
+    <button id="connectBtn" onclick="connect()">Connect to SignalR</button>
+    <button id="disconnectBtn" onclick="disconnect()" style="background:#9c27b0">Disconnect</button>
+    <button onclick="document.getElementById('logs').innerHTML=''" style="background:#555">Clear</button>
+    
+    <h3 id="statusText" style="color: #ff9800;">Disconnected</h3>
+    
+    <div class="log-box" id="logs">
+        <div style="color: #888;">// Log các sự kiện chuyển trạng thái đơn hàng sẽ hiển thị ở đây (Real-time)...</div>
+    </div>
+</div>
+
+<script>
+    let connection = null;
+
+    function addLog(html) {
+        const logsDiv = document.getElementById("logs");
+        logsDiv.innerHTML = html + logsDiv.innerHTML;
+    }
+
+    function getClientName() {
+        const clientName = document.getElementById("clientNameInput").value.trim();
+        return clientName || "Unknown";
+    }
+
+    async function connect() {
+        const token = document.getElementById("tokenInput").value.trim();
+        const clientName = getClientName();
+        if(!token) {
+            alert("Vui lòng nhập JWT Token trước nhé!");
+            return;
+        }
+
+        if (connection) {
+            await disconnect();
+        }
+
+        document.getElementById("statusText").innerText = "Connecting...";
+        document.getElementById("statusText").style.color = "yellow";
+
+        // Khởi tạo kết nối tới Ordering API Hub
+        connection = new signalR.HubConnectionBuilder()
+            .withUrl("http://localhost:5000/hubs/order", {
+                accessTokenFactory: () => token // Gửi token lên để xác thực [Authorize]
+            })
+            .configureLogging(signalR.LogLevel.Information)
+            .withAutomaticReconnect()
+            .build();
+
+        // Đăng ký Listener — Tên phải CHÍNH XÁC với tên method backend gọi SendAsync()
+        // Backend: _hubContext.Clients.User(userId).SendAsync("OrderStatusUpdated", ...)
+        connection.on("OrderStatusUpdated", (data) => {
+            const time = new Date().toLocaleTimeString();
+            const logHtml = `
+                <div class="log-entry">
+                    <span class="time">[${time}]</span> 
+                    👤 Client <b>${clientName}</b><br/>
+                    📦 Đơn hàng <b>${data.orderId}</b>: <br/>
+                    Trạng thái: <span class="status">${data.status}</span> <br/>
+                    Thông điệp: <i>${data.message}</i><br/>
+                    Raw: <code>${JSON.stringify(data)}</code>
+                </div>
+            `;
+            addLog(logHtml);
+        });
+
+        connection.onreconnecting((err) => {
+            const time = new Date().toLocaleTimeString();
+            addLog(`<div class="log-entry"><span class="time">[${time}]</span> ⚠️ Client <b>${clientName}</b> reconnecting... ${err ? err.message : ""}</div>`);
+        });
+
+        connection.onreconnected((connectionId) => {
+            const time = new Date().toLocaleTimeString();
+            addLog(`<div class="log-entry"><span class="time">[${time}]</span> ✅ Client <b>${clientName}</b> reconnected. connectionId=<b>${connectionId}</b></div>`);
+        });
+
+        connection.onclose((err) => {
+            const time = new Date().toLocaleTimeString();
+            addLog(`<div class="log-entry"><span class="time">[${time}]</span> ❌ Client <b>${clientName}</b> disconnected. ${err ? err.message : ""}</div>`);
+            document.getElementById("statusText").innerText = "Disconnected";
+            document.getElementById("statusText").style.color = "#ff9800";
+            document.getElementById("connectBtn").disabled = false;
+            document.getElementById("connectBtn").style.background = "#007bff";
+            document.getElementById("connectBtn").innerText = "Connect to SignalR";
+        });
+
+        try {
+            await connection.start();
+            document.getElementById("statusText").innerText = "✅ Connected Successfully!";
+            document.getElementById("statusText").style.color = "#4CAF50";
+            document.getElementById("connectBtn").disabled = true;
+            document.getElementById("connectBtn").style.background = "#4CAF50";
+            document.getElementById("connectBtn").innerText = "Listening...";
+            const time = new Date().toLocaleTimeString();
+            addLog(`<div class="log-entry"><span class="time">[${time}]</span> 🔌 Client <b>${clientName}</b> connected. connectionId=<b>${connection.connectionId}</b></div>`);
+        } catch (err) {
+            console.error(err);
+            document.getElementById("statusText").innerText = "❌ Connection Failed! Check Console (F12).";
+            document.getElementById("statusText").style.color = "#f44336";
+        }
+    }
+
+    async function disconnect() {
+        if (!connection) return;
+        await connection.stop();
+        connection = null;
+    }
+</script>
+
+</body>
+</html>

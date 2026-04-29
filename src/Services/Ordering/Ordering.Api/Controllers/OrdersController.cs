@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Ordering.Application.Commands.CreateOrder;
 using Ordering.Application.Queries.GetOrderById;
 using Logistics.Core;
+using System.Security.Claims;
 
 namespace Ordering.Api.Controllers;
 
@@ -26,9 +27,10 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Result<Guid>>> Create(CreateOrderCommand command)
     {
-        // Extract the user's ID from the JWT token (Keycloak's 'sub' claim)
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
-                     ?? "Anonymous";
+        // Keep ConsignorId aligned with SignalR user targeting key (prefer sub claim).
+        var userId = User.FindFirst("sub")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? "Anonymous";
         
         _logger.LogInformation("Creating order... Token 'sub' claim (userId) = {UserId}", userId);
                      

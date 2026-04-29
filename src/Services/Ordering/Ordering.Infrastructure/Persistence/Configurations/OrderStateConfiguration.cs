@@ -15,7 +15,7 @@ public class OrderStateConfiguration : IEntityTypeConfiguration<OrderState>
         entity.Property(x => x.CodAmount).HasColumnType("decimal(18,2)");
         entity.Property(x => x.PickupDriverId).HasMaxLength(100);
         entity.Property(x => x.WarehouseId).HasMaxLength(100);
-        entity.Property(x => x.DestinationHubId).HasMaxLength(100);
+        entity.Property(x => x.DestinationWarehouseId).HasMaxLength(100);
         entity.Property(x => x.DeliveryDriverId).HasMaxLength(100);
         entity.Property(x => x.RouteId).HasMaxLength(100);
         entity.Property(x => x.ProofOfDeliveryUrl).HasMaxLength(500);
