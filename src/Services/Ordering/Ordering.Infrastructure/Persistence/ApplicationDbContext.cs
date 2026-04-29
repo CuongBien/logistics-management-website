@@ -22,6 +22,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<ErpSkuMirror> ErpSkuMirrors => Set<ErpSkuMirror>();
+    public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
+    public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
     public DbSet<Ordering.Application.Sagas.OrderFulfillment.OrderState> OrderStates => Set<Ordering.Application.Sagas.OrderFulfillment.OrderState>();
 
     protected override void OnModelCreating(ModelBuilder builder)

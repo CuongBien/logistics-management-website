@@ -16,6 +16,18 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.ConsignorId)
             .HasMaxLength(100)
             .IsRequired();
+        
+        builder.Property(o => o.TenantId)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(o => o.CustomerIdInternal)
+            .HasColumnName("CustomerId")
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(o => o.ExternalReference)
+            .HasMaxLength(100);
 
         builder.Property(o => o.WaybillCode)
             .HasMaxLength(50)
@@ -69,5 +81,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         // Ignore computed properties
         builder.Ignore(o => o.CustomerId);
+        builder.HasIndex(o => new { o.TenantId, o.CustomerIdInternal });
+        builder.HasIndex(o => o.ExternalReference);
     }
 }

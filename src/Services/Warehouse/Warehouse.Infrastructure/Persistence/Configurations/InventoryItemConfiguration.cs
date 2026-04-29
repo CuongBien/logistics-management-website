@@ -10,7 +10,9 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
     {
         builder.HasKey(x => x.Id);
 
-        builder.HasIndex(x => x.Sku).IsUnique();
+        builder.Property(x => x.TenantId).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.CustomerId).HasMaxLength(100).IsRequired();
+        builder.HasIndex(x => new { x.TenantId, x.CustomerId, x.Sku }).IsUnique();
         builder.Property(x => x.Sku).IsRequired().HasMaxLength(100);
 
         builder.Property(x => x.QuantityOnHand).IsRequired();

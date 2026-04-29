@@ -8,7 +8,10 @@ namespace Ordering.Domain.Entities;
 
 public class Order : Entity<Guid>, IAggregateRoot
 {
+    public string TenantId { get; private set; } = default!;
+    public string CustomerIdInternal { get; private set; } = default!;
     public string ConsignorId { get; private set; } = default!;  // Người gửi (Shop/Vendor)
+    public string? ExternalReference { get; private set; }
     public Consignee Consignee { get; private set; } = default!;  // Người nhận
     public string WaybillCode { get; private set; } = default!;   // Mã vận đơn (auto-gen)
     public OrderStatus Status { get; private set; }
@@ -44,6 +47,7 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// Factory: Consignor tạo đơn gửi hàng
     /// </summary>
     public static Result<Order> Create(
+        string tenantId,
         string consignorId,
         Consignee consignee,
         decimal codAmount,
@@ -59,6 +63,8 @@ public class Order : Entity<Guid>, IAggregateRoot
         var order = new Order
         {
             Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            CustomerIdInternal = consignorId,
             ConsignorId = consignorId,
             Consignee = consignee,
             WaybillCode = GenerateWaybillCode(),
@@ -205,6 +211,11 @@ public class Order : Entity<Guid>, IAggregateRoot
     }
 
     // --- Helpers ---
+
+    public void SetExternalReference(string externalReference)
+    {
+        ExternalReference = externalReference;
+    }
 
     private static string GenerateWaybillCode()
     {
