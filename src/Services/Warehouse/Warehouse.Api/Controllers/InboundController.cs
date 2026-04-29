@@ -33,6 +33,8 @@ public class InboundController : ApiControllerBase
         var command = new ReceiveInboundItemCommand(
             receiptId,
             request.OrderId,
+            request.TenantId,
+            request.SkuCode,
             request.BinCode,
             request.ScannedBy
         );

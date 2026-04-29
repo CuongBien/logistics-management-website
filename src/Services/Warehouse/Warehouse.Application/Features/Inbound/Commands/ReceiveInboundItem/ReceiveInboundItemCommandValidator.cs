@@ -12,6 +12,12 @@ public class ReceiveInboundItemCommandValidator : AbstractValidator<ReceiveInbou
         RuleFor(x => x.OrderId)
             .NotEmpty().WithMessage("OrderId must not be empty.");
 
+        RuleFor(x => x.TenantId)
+            .NotEmpty().WithMessage("TenantId must not be empty.");
+
+        RuleFor(x => x.SkuCode)
+            .NotEmpty().WithMessage("SkuCode must not be empty.");
+
         RuleFor(x => x.BinCode)
             .NotEmpty().WithMessage("BinCode must not be empty.");
 

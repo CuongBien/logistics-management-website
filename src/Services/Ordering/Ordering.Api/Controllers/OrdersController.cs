@@ -31,11 +31,19 @@ public class OrdersController : ControllerBase
         var userId = User.FindFirst("sub")?.Value
             ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? "Anonymous";
+        var tenantId = User.FindFirst("tenant_id")?.Value
+            ?? User.FindFirst("tenant")?.Value
+            ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            return BadRequest(Result<Guid>.Failure(new Error("Tenant.MissingClaim", "Missing tenant claim in access token.")));
+        }
         
-        _logger.LogInformation("Creating order... Token 'sub' claim (userId) = {UserId}", userId);
+        _logger.LogInformation("Creating order... userId={UserId}, tenantId={TenantId}", userId, tenantId);
                      
-        // Enforce the user ID as ConsignorId
-        var finalCommand = command with { ConsignorId = userId };
+        // Enforce claims as trusted source for tenancy and consignor.
+        var finalCommand = command with { ConsignorId = userId, TenantId = tenantId };
 
         var result = await _mediator.Send(finalCommand);
 
