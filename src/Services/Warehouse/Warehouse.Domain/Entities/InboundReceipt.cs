@@ -10,6 +10,9 @@ public enum InboundReceiptStatus
 
 public class InboundReceipt : Entity<Guid>, IAggregateRoot
 {
+    public string TenantId { get; private set; } = default!;
+    public string CustomerId { get; private set; } = default!;
+    public string? SourceShipmentNo { get; private set; }
     public Guid OrderId { get; private set; }
     public InboundReceiptStatus Status { get; private set; }
     public DateTime? ReceivedAt { get; private set; }
@@ -21,10 +24,13 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot
     // EF Core
     private InboundReceipt() { }
 
-    public InboundReceipt(Guid orderId)
+    public InboundReceipt(Guid orderId, string tenantId, string customerId, string? sourceShipmentNo)
     {
         Id = Guid.NewGuid();
         OrderId = orderId;
+        TenantId = tenantId;
+        CustomerId = customerId;
+        SourceShipmentNo = sourceShipmentNo;
         Status = InboundReceiptStatus.Pending;
     }
 

@@ -12,10 +12,13 @@ public class InboundItemConfiguration : IEntityTypeConfiguration<InboundItem>
 
         builder.HasKey(ii => ii.Id);
 
+        builder.Property(ii => ii.TenantId).HasMaxLength(100).IsRequired();
+        builder.Property(ii => ii.CustomerId).HasMaxLength(100).IsRequired();
         builder.Property(ii => ii.ReceiptId).IsRequired();
         builder.Property(ii => ii.Sku).IsRequired();
         builder.Property(ii => ii.Quantity).IsRequired();
         builder.Property(ii => ii.BinId);
+        builder.HasIndex(ii => new { ii.TenantId, ii.CustomerId, ii.Sku });
 
         builder.HasOne(ii => ii.Receipt)
             .WithMany(ir => ir.Items)

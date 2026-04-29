@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using MassTransit;
 using Warehouse.Application.Common.Interfaces;
@@ -20,6 +19,9 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<InboundReceipt> InboundReceipts => Set<InboundReceipt>();
     public DbSet<InboundItem> InboundItems => Set<InboundItem>();
+    public DbSet<ErpSkuMirror> ErpSkuMirrors => Set<ErpSkuMirror>();
+    public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
+    public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
