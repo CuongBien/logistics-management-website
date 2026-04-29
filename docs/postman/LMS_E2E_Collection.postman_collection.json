@@ -206,6 +206,36 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "STEP QA – Invalid receive endpoint on Ordering returns 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+              "console.log('✅ QA check passed: POST /actions/receive returned 404 as expected');",
+              "console.log('QA response body:', pm.response.text());"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/receive",
+          "host": ["{{oms_url}}"],
+          "path": ["api", "orders", "{{orderId}}", "actions", "receive"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "response": []
     }
   ]
 }
