@@ -7,7 +7,7 @@ using Ordering.Application.Commands.OrderActions;
 namespace Ordering.Api.Controllers;
 
 [ApiController]
-[Route("[controller]/{orderId}/actions")]
+[Route("api/orders/{orderId}/actions")]
 [Authorize]
 public class OrderActionsController : ControllerBase
 {

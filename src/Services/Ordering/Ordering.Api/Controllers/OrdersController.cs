@@ -8,7 +8,7 @@ using Logistics.Core;
 namespace Ordering.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 [Authorize]
 public class OrdersController : ControllerBase
 {

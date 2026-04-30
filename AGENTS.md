@@ -17,8 +17,8 @@ Enterprise Logistics Management System (LMS) - an event-driven microservices pla
 Swagger endpoints via gateway: `http://localhost:5200/swagger/oms/v1/swagger.json` and `http://localhost:5200/swagger/wms/v1/swagger.json`
 
 **API Gateway Routes:**
-- Ordering API: `http://localhost:5200/api/oms/{**path}` → forwards to `http://localhost:5000/`
-- Warehouse API: `http://localhost:5200/api/wms/{**path}` → forwards to `http://localhost:5051/`
+- Ordering API: `http://localhost:5200/api/ordering/{**path}` → forwards to `http://localhost:5000/`
+- Warehouse API: `http://localhost:5200/api/warehouse/{**path}` → forwards to `http://localhost:5051/`
 
 ## How to Run
 
@@ -110,6 +110,7 @@ Local Postgres exposed on port **56432** (not the default 5432).
 ### SignalR Real-time
 - `Ordering.Api/Hubs/OrderHub.cs` - hub for order notifications
 - SignalR auth via query string token (`?access_token=...`)
+- Identifies users by `sub` claim (via `SubClaimUserIdProvider`), which must match the Order's `ConsignorId`.
 - Allowed origins include `null` (file:// testing) and `http://localhost:5000`
 
 ### JWT / Keycloak Auth
@@ -121,8 +122,13 @@ Local Postgres exposed on port **56432** (not the default 5432).
 - `realm_access.roles` from Keycloak mapped to `ClaimTypes.Role`
 - Audience: `oms-client`
 
+### ERP Integration
+- Background worker `ErpSyncWorker` continuously synchronizes Master Data from external ERP.
+- Data is mirrored into `ErpSkuMirror` and `ErpWarehouseMirror` to decouple WMS/OMS logic from external ERP downtime.
+
 ## Common Mistakes to Avoid
 
+- **Strict Domain Boundaries:** Do not mix Warehouse operations (like Sort, Receive) into Ordering controllers. OMS manages fulfillment tracking; WMS manages physical inventory/bins.
 - **Do not assume one database.** Each service owns its own schema (`lms_oms_dev` vs `lms_wms_dev`). Cross-service references use UUIDs only (no FK).
 - **Do not publish events directly to RabbitMQ.** Use the Outbox pattern via MassTransit's bus outbox. Use `IPublishEndpoint.Publish()` normally - the outbox handles the rest transparently at `SaveChanges()`.
 - **Do not change Saga correlation IDs.** The `CorrelationId` on `OrderState` must always match the `OrderId`.
