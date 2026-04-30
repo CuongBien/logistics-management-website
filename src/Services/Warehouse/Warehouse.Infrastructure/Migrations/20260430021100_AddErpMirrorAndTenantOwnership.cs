@@ -1,10 +1,13 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Warehouse.Infrastructure.Migrations
 {
+    [DbContext(typeof(Persistence.WMSDbContext))]
+    [Migration("20260430021100_AddErpMirrorAndTenantOwnership")]
     public partial class AddErpMirrorAndTenantOwnership : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

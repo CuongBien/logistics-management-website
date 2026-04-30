@@ -160,6 +160,11 @@ services:
       - JwtOptions__Audience=oms-client
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - ErpSync__BaseUrl=http://host.docker.internal:5009/api
+      - ErpSync__ApiKey=dev-key
+      - ErpSync__BatchSize=100
+      - ErpSync__SyncIntervalSeconds=20
+      - ErpSync__TenantIds__0=default-tenant
     depends_on:
       - postgres
       - rabbitmq
@@ -189,6 +194,11 @@ services:
       - JwtOptions__Audience=oms-client
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - ErpSync__BaseUrl=http://host.docker.internal:5009/api
+      - ErpSync__ApiKey=dev-key
+      - ErpSync__BatchSize=100
+      - ErpSync__SyncIntervalSeconds=20
+      - ErpSync__TenantIds__0=default-tenant
     depends_on:
       - postgres
       - rabbitmq
