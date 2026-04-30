@@ -12,5 +12,11 @@ public class CreateInventoryItemValidator : AbstractValidator<CreateInventoryIte
 
         RuleFor(v => v.Quantity)
             .GreaterThanOrEqualTo(0).WithMessage("Initial quantity cannot be negative.");
+
+        RuleFor(v => v.TenantId)
+            .NotEmpty().WithMessage("TenantId is required.");
+
+        RuleFor(v => v.CustomerId)
+            .NotEmpty().WithMessage("CustomerId is required.");
     }
 }
