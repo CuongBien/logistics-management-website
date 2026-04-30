@@ -29,10 +29,24 @@ public class ErpSyncWorker : BackgroundService
         {
             foreach (var tenantId in _options.TenantIds)
             {
-                await SyncTenantAsync(tenantId, stoppingToken);
+                try
+                {
+                    await SyncTenantAsync(tenantId, stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "ERP sync failed for tenant {TenantId}", tenantId);
+                }
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(_options.SyncIntervalSeconds), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_options.SyncIntervalSeconds), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 

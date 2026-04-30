@@ -73,3 +73,7 @@ main
 
 plans/
 tests/
+!src/Tests/
+!src/Tests/**
+src/Tests/**/bin/
+src/Tests/**/obj/
