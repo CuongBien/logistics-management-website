@@ -31,6 +31,17 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             return Result.Failure(new Error("Customer.Missing", "CustomerId is required for sorting operation."));
         }
 
+        var hasWarehouseScope = await _context.OperatorProfiles
+            .Where(x => x.TenantId == request.TenantId && x.OperatorSub == request.CustomerId && x.IsActive)
+            .SelectMany(x => x.WarehouseScopes)
+            .AnyAsync(x => x.WarehouseId == request.DestinationWarehouseId, cancellationToken);
+        if (!hasWarehouseScope)
+        {
+            return Result.Failure(new Error(
+                "Operator.ForbiddenWarehouseScope",
+                $"Operator '{request.CustomerId}' is not allowed to sort into warehouse '{request.DestinationWarehouseId}'."));
+        }
+
         // 1. Tìm Bin đang chứa OrderId
         var bin = await _context.Bins
             .FirstOrDefaultAsync(b => b.CurrentOrderId == request.OrderId, cancellationToken);

@@ -40,9 +40,14 @@ public class InboundController : ApiControllerBase
     public async Task<ActionResult> Receive(Guid receiptId, [FromBody] ReceiveInboundItemRequest request)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         if (string.IsNullOrWhiteSpace(tenantId))
         {
             return BadRequest(new { Code = "Tenant.MissingClaim", Message = "Missing tenant claim in access token." });
+        }
+        if (string.IsNullOrWhiteSpace(operatorSub))
+        {
+            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
         }
 
         var command = new ReceiveInboundItemCommand(
@@ -51,7 +56,7 @@ public class InboundController : ApiControllerBase
             tenantId,
             request.SkuCode,
             request.BinCode,
-            request.ScannedBy
+            operatorSub
         );
 
         var result = await Mediator.Send(command);

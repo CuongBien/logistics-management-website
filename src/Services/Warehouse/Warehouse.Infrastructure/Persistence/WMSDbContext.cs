@@ -19,6 +19,8 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<InboundReceipt> InboundReceipts => Set<InboundReceipt>();
     public DbSet<InboundItem> InboundItems => Set<InboundItem>();
+    public DbSet<OperatorProfile> OperatorProfiles => Set<OperatorProfile>();
+    public DbSet<OperatorWarehouseScope> OperatorWarehouseScopes => Set<OperatorWarehouseScope>();
     public DbSet<ErpSkuMirror> ErpSkuMirrors => Set<ErpSkuMirror>();
     public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
     public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
