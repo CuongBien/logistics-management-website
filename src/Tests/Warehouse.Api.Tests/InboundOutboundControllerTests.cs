@@ -41,7 +41,12 @@ public class InboundOutboundControllerTests
         };
         var controller = BuildOutboundController(senderMock.Object, claims);
 
-        await controller.SortOrder(new SortOrderCommand(Guid.NewGuid(), Guid.NewGuid(), "wrong-tenant", "wrong-customer", null));
+        await controller.SortOrder(new SortOrderRequest
+        {
+            OrderId = Guid.NewGuid(),
+            DestinationWarehouseId = Guid.NewGuid(),
+            SourceShipmentNo = null
+        });
 
         senderMock.Verify(
             x => x.Send(
