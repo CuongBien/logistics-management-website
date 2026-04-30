@@ -1,5 +1,5 @@
+using Logistics.Core;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using Warehouse.Application.Features.Inventory.Commands.CreateInventoryItem;
 using Warehouse.Application.Features.Inventory.Commands.ReserveStock;
 using Warehouse.Application.Features.Inventory.Dtos;
@@ -14,12 +14,8 @@ public class InventoryController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Guid>> Create(CreateInventoryItemCommand command)
     {
-        var tenantId = User.FindFirst("tenant_id")?.Value
-            ?? User.FindFirst("tenant")?.Value
-            ?? string.Empty;
-        var customerId = User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? string.Empty;
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var customerId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(customerId))
         {
