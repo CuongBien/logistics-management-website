@@ -36,6 +36,11 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot
 
     public void MarkReceived()
     {
+        if (Status == InboundReceiptStatus.Received)
+        {
+            throw new InvalidOperationException("Inbound receipt is already in Received status.");
+        }
+
         Status = InboundReceiptStatus.Received;
         ReceivedAt = DateTime.UtcNow;
     }

@@ -20,6 +20,11 @@ public class InboundItem : Entity<Guid>
 
     public InboundItem(Guid receiptId, string sku, int quantity, string tenantId, string customerId)
     {
+        if (quantity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(quantity), "Inbound quantity must be greater than zero.");
+        }
+
         Id = Guid.NewGuid();
         ReceiptId = receiptId;
         Sku = sku;

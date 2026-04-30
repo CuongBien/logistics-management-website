@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddMassTransit(busConfigurator =>
         {
             busConfigurator.SetKebabCaseEndpointNameFormatter();
+            busConfigurator.AddConsumers(typeof(IApplicationDbContext).Assembly);
 
             // Outbox Pattern for Reliability (use the application's DbContext)
             busConfigurator.AddEntityFrameworkOutbox<WMSDbContext>(o =>
@@ -51,7 +52,7 @@ public static class DependencyInjection
                     h.Password(configuration["MessageBroker:RabbitMQ:Password"]);
                 });
 
-                // Do not configure consumers/endpoints here - this service only publishes (inbound publishing only)
+                cfg.ConfigureEndpoints(context);
             });
         });
 

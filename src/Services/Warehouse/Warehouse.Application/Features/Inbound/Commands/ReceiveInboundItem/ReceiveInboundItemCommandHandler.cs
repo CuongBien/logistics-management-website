@@ -36,6 +36,13 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (receipt == null)
             return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
+        if (!string.Equals(receipt.TenantId, request.TenantId, StringComparison.Ordinal))
+        {
+            return Result.Failure(new Error(
+                "InboundReceipt.ForbiddenTenant",
+                $"Receipt '{request.ReceiptId}' does not belong to tenant '{request.TenantId}'."));
+        }
+
         // 2. Validate OrderId belongs to this receipt
         if (receipt.OrderId != request.OrderId)
             return Result.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));

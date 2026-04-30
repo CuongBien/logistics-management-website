@@ -21,6 +21,16 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
 
     public async Task<Result> Handle(SortOrderCommand request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.TenantId))
+        {
+            return Result.Failure(new Error("Tenant.Missing", "TenantId is required for sorting operation."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            return Result.Failure(new Error("Customer.Missing", "CustomerId is required for sorting operation."));
+        }
+
         // 1. Tìm Bin đang chứa OrderId
         var bin = await _context.Bins
             .FirstOrDefaultAsync(b => b.CurrentOrderId == request.OrderId, cancellationToken);
@@ -33,11 +43,20 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         // 2. Bin.Status = Available (Giải phóng Bin)
         bin.Release();
 
+        var sourceShipmentNo = request.SourceShipmentNo;
+        if (string.IsNullOrWhiteSpace(sourceShipmentNo))
+        {
+            sourceShipmentNo = $"ASN-{request.OrderId:N}";
+        }
+
         // 3. Publish Integration Event (Transactional Outbox will handle persistence)
         await _publishEndpoint.Publish(new ShipmentSortedIntegrationEvent(
             request.OrderId,
             request.DestinationWarehouseId.ToString(),
-            DateTime.UtcNow), cancellationToken);
+            DateTime.UtcNow,
+            request.TenantId,
+            request.CustomerId,
+            sourceShipmentNo), cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
 
