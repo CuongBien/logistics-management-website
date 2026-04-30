@@ -20,7 +20,7 @@ public class ErpMasterDataClient : IErpMasterDataClient
         int batchSize,
         CancellationToken cancellationToken)
     {
-        var requestUri = $"/skus?tenant_id={Uri.EscapeDataString(tenantId)}&updated_after={Uri.EscapeDataString(updatedAfterCursor)}&limit={batchSize}";
+        var requestUri = $"skus?tenant_id={Uri.EscapeDataString(tenantId)}&updated_after={Uri.EscapeDataString(updatedAfterCursor)}&limit={batchSize}";
         using var request = BuildRequest(HttpMethod.Get, requestUri);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -43,7 +43,7 @@ public class ErpMasterDataClient : IErpMasterDataClient
         int batchSize,
         CancellationToken cancellationToken)
     {
-        var requestUri = $"/warehouses?tenant_id={Uri.EscapeDataString(tenantId)}&updated_after={Uri.EscapeDataString(updatedAfterCursor)}&limit={batchSize}";
+        var requestUri = $"warehouses?tenant_id={Uri.EscapeDataString(tenantId)}&updated_after={Uri.EscapeDataString(updatedAfterCursor)}&limit={batchSize}";
         using var request = BuildRequest(HttpMethod.Get, requestUri);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
