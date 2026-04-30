@@ -19,15 +19,6 @@ public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundR
 
     public async Task<Result<Guid>> Handle(CreateInboundReceiptCommand request, CancellationToken cancellationToken)
     {
-        var tenantExists = await _context.ErpWarehouseMirrors
-            .AnyAsync(x => x.TenantId == request.TenantId && x.Status == "active", cancellationToken);
-        if (!tenantExists)
-        {
-            return Result<Guid>.Failure(new Error(
-                "ErpWarehouseMirror.MissingMapping",
-                $"Cannot create inbound receipt because tenant '{request.TenantId}' has no active ERP warehouse mapping."));
-        }
-
         // Kiểm tra xem đã có Receipt cho Order này chưa
         var existing = await _context.InboundReceipts
             .FirstOrDefaultAsync(r => r.OrderId == request.OrderId, cancellationToken);

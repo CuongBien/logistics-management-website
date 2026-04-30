@@ -21,19 +21,6 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
 
     public async Task<Result> Handle(SortOrderCommand request, CancellationToken cancellationToken)
     {
-        var destinationMapped = await _context.ErpWarehouseMirrors
-            .AnyAsync(
-                x => x.TenantId == request.TenantId
-                    && x.Status == "active"
-                    && x.ErpWarehouseId == request.DestinationWarehouseId.ToString(),
-                cancellationToken);
-        if (!destinationMapped)
-        {
-            return Result.Failure(Error.Validation(
-                "ErpWarehouseMirror.MissingMapping",
-                $"Cannot sort order because destination warehouse '{request.DestinationWarehouseId}' is not mapped for tenant '{request.TenantId}'."));
-        }
-
         // 1. Tìm Bin đang chứa OrderId
         var bin = await _context.Bins
             .FirstOrDefaultAsync(b => b.CurrentOrderId == request.OrderId, cancellationToken);
