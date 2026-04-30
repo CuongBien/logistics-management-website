@@ -12,9 +12,14 @@ public class InboundReceiptConfiguration : IEntityTypeConfiguration<InboundRecei
 
         builder.HasKey(ir => ir.Id);
 
+        builder.Property(ir => ir.TenantId).HasMaxLength(100).IsRequired();
+        builder.Property(ir => ir.CustomerId).HasMaxLength(100).IsRequired();
+        builder.Property(ir => ir.SourceShipmentNo).HasMaxLength(100);
         builder.Property(ir => ir.OrderId).IsRequired();
         builder.Property(ir => ir.Status).IsRequired();
         builder.Property(ir => ir.ReceivedAt);
+        builder.HasIndex(ir => new { ir.TenantId, ir.CustomerId, ir.OrderId }).IsUnique();
+        builder.HasIndex(ir => ir.SourceShipmentNo);
 
         builder.HasMany(ir => ir.Items)
             .WithOne(ii => ii.Receipt)

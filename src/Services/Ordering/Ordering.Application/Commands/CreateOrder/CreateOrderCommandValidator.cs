@@ -8,6 +8,12 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
     {
         RuleFor(v => v.ConsignorId)
             .NotEmpty().WithMessage("Consignor ID is required.");
+        
+        RuleFor(v => v.TenantId)
+            .NotEmpty().WithMessage("Tenant ID is required.");
+
+        RuleFor(v => v.SkuCodes)
+            .NotEmpty().WithMessage("At least one SKU code is required.");
 
         RuleFor(v => v.Consignee)
             .NotNull().WithMessage("Consignee info is required.");

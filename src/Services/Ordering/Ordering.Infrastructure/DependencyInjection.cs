@@ -5,6 +5,7 @@ using Ordering.Application.Common.Interfaces;
 using Ordering.Infrastructure.Persistence;
 using MassTransit;
 using Ordering.Application.Sagas.OrderFulfillment;
+using Ordering.Infrastructure.ErpSync;
 
 namespace Ordering.Infrastructure;
 
@@ -20,6 +21,13 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+        services.Configure<ErpSyncOptions>(configuration.GetSection("ErpSync"));
+        services.AddHttpClient<IErpMasterDataClient, ErpMasterDataClient>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpSyncOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
+        services.AddHostedService<ErpSyncWorker>();
 
         // MassTransit Configuration
         services.AddMassTransit(busConfigurator =>

@@ -13,8 +13,10 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.HasKey(oi => oi.Id);
 
         builder.Property(oi => oi.Sku).IsRequired();
+        builder.Property(oi => oi.SkuCode).HasMaxLength(100);
         builder.Property(oi => oi.Quantity).IsRequired();
         builder.Property(oi => oi.Price).HasColumnType("decimal(18,2)").IsRequired();
+        builder.HasIndex(oi => oi.SkuCode);
 
         builder.HasOne(oi => oi.Order)
             .WithMany(o => o.Items)

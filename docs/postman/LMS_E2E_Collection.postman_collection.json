@@ -10,7 +10,10 @@
     { "key": "wms_url", "value": "http://localhost:5051", "type": "string" },
     { "key": "token",   "value": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJPdmtKWV9WeDhSTk5CaXp3ZGh4TXRMdGVlVGUtWmhxT253dUNmRDVwYktVIn0.eyJleHAiOjE3NzY4NjI5OTgsImlhdCI6MTc3Njg2MjY5OCwianRpIjoiZTYxMzg3NWEtNzcyYy00YjU2LTg5NzktMWQwYTkyMThmM2QxIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDoxODA4MC9yZWFsbXMvbG9naXN0aWNzX3JlYWxtIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Ijg2NTI2OTAxLTY0ZTEtNGQzMC1hODU4LWE2NTc4OTAwYmFjYyIsInR5cCI6IkJlYXJlciIsImF6cCI6Im9tcy1jbGllbnQiLCJzZXNzaW9uX3N0YXRlIjoiOTJkZTA0ZDItZWEzNS00ZTU1LWExNDYtYjExZDNjNzY2ZmNlIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy1sb2dpc3RpY3NfcmVhbG0iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6InByb2ZpbGUgZW1haWwiLCJzaWQiOiI5MmRlMDRkMi1lYTM1LTRlNTUtYTE0Ni1iMTFkM2M3NjZmY2UiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6ImFkbWluX3VzZXIifQ.NpFtldxOAWisnkz83eUJEIrRZycJM-4ZcBNzICeW82kQIHbsbJR6aA8AcpuTNc0n_56cpJ5RjH28iR2funjQ53tMVexoThipIteWFkGyYkghJ6xX6_V_0JSSZyhn_rU6P61Gi5nUvOFMyKAkx_Ch0mUZ2a8TaNtoWaREyeVecviKbk8GhWu2l76GU2mq-Ifzvur95jvH9qxszONWGhfAmmIX5RtQNY90uJEN8cq-otmRzXXb9u1oDhyZU_f-si-DuL6LQfUNglt1CF-xfuKskv5FvOrDSFDDwrYiIADIqq4TcwVunU5gyCGBqQiM2PLZ9HkWuIr-Pyb_I4a_YG-HFw", "type": "string", "description": "Paste JWT Bearer Token vào đây sau khi lấy từ Keycloak" },
     { "key": "orderId",    "value": "", "type": "string" },
-    { "key": "receiptId",  "value": "", "type": "string" }
+    { "key": "receiptId",  "value": "", "type": "string" },
+    { "key": "tenantId", "value": "default-tenant", "type": "string" },
+    { "key": "customerId", "value": "", "type": "string" },
+    { "key": "skuCode", "value": "SKU-RED-TSHIRT", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -30,7 +33,11 @@
               "if (token) {",
               "  const payload = JSON.parse(atob(token.split('.')[1]));",
               "  pm.collectionVariables.set('consignorId', payload.sub);",
-              "  console.log('👤 consignorId (sub):', payload.sub);",
+              "  pm.collectionVariables.set('customerId', payload.sub);",
+              "  const tenant = payload.tenant_id || payload.tenant || 'default-tenant';",
+              "  pm.collectionVariables.set('tenantId', tenant);",
+              "  console.log('👤 consignorId/customerId (sub):', payload.sub);",
+              "  console.log('🏷 tenantId:', tenant);",
               "}"
             ]
           }
@@ -55,7 +62,7 @@
         "url": { "raw": "{{oms_url}}/api/Orders", "host": ["{{oms_url}}"], "path": ["api", "Orders"] },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
+          "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"skuCodes\": [\n    \"{{skuCode}}\"\n  ],\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
         }
       },
       "response": []
@@ -111,7 +118,7 @@
         "url": { "raw": "{{wms_url}}/api/inbound/receipts", "host": ["{{wms_url}}"], "path": ["api", "inbound", "receipts"] },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\"\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"sourceShipmentNo\": \"ASN-{{$randomInt}}\"\n}"
         }
       },
       "response": []
@@ -145,7 +152,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"staff_01\"\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"staff_01\"\n}"
         }
       },
       "response": []
@@ -174,7 +181,7 @@
         "url": { "raw": "{{wms_url}}/api/outbound/sort", "host": ["{{wms_url}}"], "path": ["api", "outbound", "sort"] },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"destinationWarehouseId\": \"48b030da-e7ad-452f-90db-ddb01a613583\"\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"destinationWarehouseId\": \"48b030da-e7ad-452f-90db-ddb01a613583\",\n  \"tenantId\": \"{{tenantId}}\"\n}"
         }
       },
       "response": []
@@ -203,6 +210,36 @@
           "raw": "{{oms_url}}/api/Orders/{{orderId}}",
           "host": ["{{oms_url}}"],
           "path": ["api", "Orders", "{{orderId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP QA – Invalid receive endpoint on Ordering returns 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+              "console.log('✅ QA check passed: POST /actions/receive returned 404 as expected');",
+              "console.log('QA response body:', pm.response.text());"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/receive",
+          "host": ["{{oms_url}}"],
+          "path": ["api", "orders", "{{orderId}}", "actions", "receive"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
         }
       },
       "response": []

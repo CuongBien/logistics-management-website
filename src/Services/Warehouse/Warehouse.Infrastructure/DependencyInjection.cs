@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Warehouse.Application.Common.Interfaces;
 using Warehouse.Infrastructure.Persistence;
+using Warehouse.Infrastructure.ErpSync;
 
 namespace Warehouse.Infrastructure;
 
@@ -19,6 +20,13 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<WMSDbContext>());
+        services.Configure<ErpSyncOptions>(configuration.GetSection("ErpSync"));
+        services.AddHttpClient<IErpMasterDataClient, ErpMasterDataClient>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpSyncOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
+        services.AddHostedService<ErpSyncWorker>();
 
         // MassTransit Configuration
         services.AddMassTransit(busConfigurator =>

@@ -6,7 +6,7 @@ using Warehouse.Domain.Entities;
 
 namespace Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 
-public record CreateInboundReceiptCommand(Guid OrderId) : IRequest<Result<Guid>>;
+public record CreateInboundReceiptCommand(Guid OrderId, string TenantId, string CustomerId, string? SourceShipmentNo) : IRequest<Result<Guid>>;
 
 public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundReceiptCommand, Result<Guid>>
 {
@@ -27,7 +27,7 @@ public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundR
             return Result<Guid>.Failure(new Error("InboundReceipt.AlreadyExists",
                 $"An inbound receipt for Order '{request.OrderId}' already exists."));
 
-        var receipt = new InboundReceipt(request.OrderId);
+        var receipt = new InboundReceipt(request.OrderId, request.TenantId, request.CustomerId, request.SourceShipmentNo);
         _context.InboundReceipts.Add(receipt);
 
         await _context.SaveChangesAsync(cancellationToken);

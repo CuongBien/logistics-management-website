@@ -18,8 +18,15 @@ internal sealed class CreateInventoryItemHandler(
         logger.LogInformation("Creating new InventoryItem for SKU: {Sku}", request.Sku);
 
         // Check if SKU exists
+        var tenantId = request.TenantId!;
+        var customerId = request.CustomerId!;
+
         var exists = await context.InventoryItems
-            .AnyAsync(x => x.Sku == request.Sku, cancellationToken);
+            .AnyAsync(
+                x => x.TenantId == tenantId
+                    && x.CustomerId == customerId
+                    && x.Sku == request.Sku,
+                cancellationToken);
         
         if (exists)
         {
@@ -27,7 +34,7 @@ internal sealed class CreateInventoryItemHandler(
         }
 
         // Create Entity
-        var entity = InventoryItem.Create(request.Sku, request.Quantity);
+        var entity = InventoryItem.Create(request.Sku, request.Quantity, tenantId, customerId);
 
         // Save
         context.InventoryItems.Add(entity);

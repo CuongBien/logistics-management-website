@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Ordering.Application.Commands.CreateOrder;
 using Ordering.Application.Queries.GetOrderById;
 using Logistics.Core;
-using System.Security.Claims;
 
 namespace Ordering.Api.Controllers;
 
@@ -28,14 +27,18 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<Result<Guid>>> Create(CreateOrderCommand command)
     {
         // Keep ConsignorId aligned with SignalR user targeting key (prefer sub claim).
-        var userId = User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? "Anonymous";
+        var userId = CurrentUserClaims.GetCustomerId(User) ?? "Anonymous";
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            return BadRequest(Result<Guid>.Failure(new Error("Tenant.MissingClaim", "Missing tenant claim in access token.")));
+        }
         
-        _logger.LogInformation("Creating order... Token 'sub' claim (userId) = {UserId}", userId);
+        _logger.LogInformation("Creating order... userId={UserId}, tenantId={TenantId}", userId, tenantId);
                      
-        // Enforce the user ID as ConsignorId
-        var finalCommand = command with { ConsignorId = userId };
+        // Enforce claims as trusted source for tenancy and consignor.
+        var finalCommand = command with { ConsignorId = userId, TenantId = tenantId };
 
         var result = await _mediator.Send(finalCommand);
 

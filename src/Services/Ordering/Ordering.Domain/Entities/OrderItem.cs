@@ -6,6 +6,7 @@ public class OrderItem : Entity<Guid>
 {
     public Guid OrderId { get; private set; }
     public Guid Sku { get; private set; }
+    public string? SkuCode { get; private set; }
     public int Quantity { get; private set; }
     public decimal Price { get; private set; }
 
@@ -21,6 +22,11 @@ public class OrderItem : Entity<Guid>
         Sku = sku;
         Quantity = quantity;
         Price = price;
+    }
+
+    public void SetSkuCode(string skuCode)
+    {
+        SkuCode = skuCode;
     }
 
     public void UpdateQuantity(int newQuantity)

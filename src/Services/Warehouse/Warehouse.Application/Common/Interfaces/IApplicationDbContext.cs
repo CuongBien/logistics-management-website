@@ -12,6 +12,9 @@ public interface IApplicationDbContext
     DbSet<InventoryItem> InventoryItems { get; }
     DbSet<InboundReceipt> InboundReceipts { get; }
     DbSet<InboundItem> InboundItems { get; }
+    DbSet<ErpSkuMirror> ErpSkuMirrors { get; }
+    DbSet<ErpWarehouseMirror> ErpWarehouseMirrors { get; }
+    DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
