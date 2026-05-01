@@ -62,7 +62,11 @@ public class InboundOutboundControllerTests
         senderMock
             .Setup(x => x.Send(It.IsAny<ReceiveInboundItemCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Logistics.Core.Result.Success());
-        var claims = new[] { new Claim("tenant_id", "tenant-9") };
+        var claims = new[]
+        {
+            new Claim("tenant_id", "tenant-9"),
+            new Claim("sub", "operator-9")
+        };
         var controller = BuildInboundController(senderMock.Object, claims);
 
         await controller.Receive(Guid.NewGuid(), new ReceiveInboundItemRequest
@@ -76,7 +80,7 @@ public class InboundOutboundControllerTests
 
         senderMock.Verify(
             x => x.Send(
-                It.Is<ReceiveInboundItemCommand>(c => c.TenantId == "tenant-9"),
+                It.Is<ReceiveInboundItemCommand>(c => c.TenantId == "tenant-9" && c.ScannedBy == "operator-9"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
