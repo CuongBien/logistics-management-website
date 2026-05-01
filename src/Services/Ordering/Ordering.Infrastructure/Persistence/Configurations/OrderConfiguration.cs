@@ -57,6 +57,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.RouteId).HasMaxLength(100);
         builder.Property(o => o.ProofOfDeliveryUrl).HasMaxLength(500);
         builder.Property(o => o.FailureReason).HasMaxLength(500);
+        builder.Property(o => o.CreatedByOperatorId).HasMaxLength(100);
+        builder.Property(o => o.UpdatedByOperatorId).HasMaxLength(100);
 
         // Consignee owned type
         builder.OwnsOne(o => o.Consignee, consignee =>
@@ -90,6 +92,12 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasIndex(o => new { o.TenantId, o.CustomerIdInternal, o.ExternalReference })
             .IsUnique()
             .HasFilter("\"ExternalReference\" IS NOT NULL");
+
+        builder.HasIndex(o => o.CreatedByOperatorId)
+            .HasFilter("\"CreatedByOperatorId\" IS NOT NULL");
+
+        builder.HasIndex(o => o.UpdatedByOperatorId)
+            .HasFilter("\"UpdatedByOperatorId\" IS NOT NULL");
     }
 }
 
