@@ -204,9 +204,17 @@
             "exec": [
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
               "const body = pm.response.json();",
-              "const status = body.value?.status;",
+              "const val = body.value;",
+              "const status = val?.status;",
               "console.log('📦 Order status:', status);",
-              "pm.test('Order status is AwaitingDispatch', () => pm.expect(status).to.eql('AwaitingDispatch'));"
+              "pm.test('Order status is AwaitingDispatch', () => pm.expect(status).to.eql('AwaitingDispatch'));",
+              "const sub = pm.collectionVariables.get('consignorId');",
+              "if (sub) {",
+              "  pm.test('createdByOperatorId matches JWT sub', () => pm.expect(val.createdByOperatorId).to.eql(sub));",
+              "  pm.test('updatedByOperatorId matches JWT sub', () => pm.expect(val.updatedByOperatorId).to.eql(sub));",
+              "} else {",
+              "  console.log('⚠️ consignorId not set; skip actor assertions');",
+              "}"
             ]
           }
         }
