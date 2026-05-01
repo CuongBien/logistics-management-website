@@ -13,7 +13,8 @@
     { "key": "receiptId",  "value": "", "type": "string" },
     { "key": "tenantId", "value": "default-tenant", "type": "string" },
     { "key": "customerId", "value": "", "type": "string" },
-    { "key": "skuCode", "value": "SKU-RED-TSHIRT", "type": "string" }
+    { "key": "skuCode", "value": "SKU-RED-TSHIRT", "type": "string" },
+    { "key": "sourceShipmentNo", "value": "", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -107,6 +108,8 @@
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
               "const id = pm.response.json();",
               "pm.collectionVariables.set('receiptId', id);",
+              "const requestBody = JSON.parse(pm.request.body.raw);",
+              "pm.collectionVariables.set('sourceShipmentNo', requestBody.sourceShipmentNo);",
               "console.log('✅ receiptId saved:', id);"
             ]
           }
@@ -118,7 +121,7 @@
         "url": { "raw": "{{wms_url}}/api/inbound/receipts", "host": ["{{wms_url}}"], "path": ["api", "inbound", "receipts"] },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"sourceShipmentNo\": \"ASN-{{$randomInt}}\"\n}"
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\"\n}"
         }
       },
       "response": []
@@ -181,7 +184,7 @@
         "url": { "raw": "{{wms_url}}/api/outbound/sort", "host": ["{{wms_url}}"], "path": ["api", "outbound", "sort"] },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"destinationWarehouseId\": \"48b030da-e7ad-452f-90db-ddb01a613583\",\n  \"tenantId\": \"{{tenantId}}\"\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"destinationWarehouseId\": \"48b030da-e7ad-452f-90db-ddb01a613583\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"sourceShipmentNo\": \"{{sourceShipmentNo}}\"\n}"
         }
       },
       "response": []

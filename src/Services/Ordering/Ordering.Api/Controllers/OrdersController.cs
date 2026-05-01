@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Ordering.Application.Commands.CreateOrder;
 using Ordering.Application.Queries.GetOrderById;
+using Ordering.Application.Queries.GetOrderStatusHistory;
 using Logistics.Core;
 
 namespace Ordering.Api.Controllers;
@@ -63,6 +64,26 @@ public class OrdersController : ControllerBase
             if (result.Error.Code == "Order.NotFound")
                 return NotFound(result);
             
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpGet("{id}/status-history")]
+    [ProducesResponseType(typeof(Result<IReadOnlyCollection<OrderStatusHistoryDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result<IReadOnlyCollection<OrderStatusHistoryDto>>>> GetStatusHistory(Guid id)
+    {
+        var query = new GetOrderStatusHistoryQuery(id);
+        var result = await _mediator.Send(query);
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "Order.NotFound")
+            {
+                return NotFound(result);
+            }
+
             return BadRequest(result);
         }
 

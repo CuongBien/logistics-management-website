@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "ecc.install.v1",
+  "installedAt": "2026-04-24T09:54:07.053Z",
+  "target": {
+    "id": "gemini-project",
+    "target": "gemini",
+    "kind": "project",
+    "root": "C:\\Users\\violet\\Documents\\MQF\\Study Materials\\Sixth Semester\\PBL3\\sources\\logistics-management-website\\.gemini",
+    "installStatePath": "C:\\Users\\violet\\Documents\\MQF\\Study Materials\\Sixth Semester\\PBL3\\sources\\logistics-management-website\\.gemini\\ecc-install-state.json"
+  },
+  "request": {
+    "profile": null,
+    "modules": [
+      "platform-configs"
+    ],
+    "includeComponents": [],
+    "excludeComponents": [],
+    "legacyLanguages": [],
+    "legacyMode": false
+  },
+  "resolution": {
+    "selectedModules": [
+      "platform-configs"
+    ],
+    "skippedModules": []
+  },
+  "source": {
+    "repoVersion": "1.10.0",
+    "repoCommit": "4e66b2882da9afb9747468b08a253ca2f09c85f3",
+    "manifestVersion": 1
+  },
+  "operations": [
+    {
+      "kind": "copy-file",
+      "moduleId": "platform-configs",
+      "sourcePath": "C:\\Users\\violet\\AppData\\Local\\Temp\\ecc-repo\\.gemini\\GEMINI.md",
+      "sourceRelativePath": ".gemini\\GEMINI.md",
+      "destinationPath": "C:\\Users\\violet\\Documents\\MQF\\Study Materials\\Sixth Semester\\PBL3\\sources\\logistics-management-website\\.gemini\\GEMINI.md",
+      "strategy": "sync-root-children",
+      "ownership": "managed",
+      "scaffoldOnly": false
+    },
+    {
+      "kind": "copy-file",
+      "moduleId": "platform-configs",
+      "sourcePath": "C:\\Users\\violet\\AppData\\Local\\Temp\\ecc-repo\\mcp-configs\\mcp-servers.json",
+      "sourceRelativePath": "mcp-configs\\mcp-servers.json",
+      "destinationPath": "C:\\Users\\violet\\Documents\\MQF\\Study Materials\\Sixth Semester\\PBL3\\sources\\logistics-management-website\\.gemini\\mcp-configs\\mcp-servers.json",
+      "strategy": "preserve-relative-path",
+      "ownership": "managed",
+      "scaffoldOnly": false
+    },
+    {
+      "kind": "copy-file",
+      "moduleId": "platform-configs",
+      "sourcePath": "C:\\Users\\violet\\AppData\\Local\\Temp\\ecc-repo\\scripts\\setup-package-manager.js",
+      "sourceRelativePath": "scripts/setup-package-manager.js",
+      "destinationPath": "C:\\Users\\violet\\Documents\\MQF\\Study Materials\\Sixth Semester\\PBL3\\sources\\logistics-management-website\\.gemini\\scripts\\setup-package-manager.js",
+      "strategy": "preserve-relative-path",
+      "ownership": "managed",
+      "scaffoldOnly": false
+    }
+  ]
+}

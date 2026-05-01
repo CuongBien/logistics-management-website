@@ -1,0 +1,33 @@
+ERP/WMS OPS RUNBOOK (MVP)
+
+1) Validate transfer path health
+- Run: powershell -ExecutionPolicy Bypass -File d:/Logistics/src/run-erp-smoke.ps1
+- Success criteria:
+  - Script reaches [6/6] Smoke run completed
+  - No fatal exceptions in Ordering/Warehouse container logs
+
+2) Validate message idempotency on replay
+- Re-publish the same ShipmentSorted message with same OrderId and SourceShipmentNo
+- Expected:
+  - Only one inbound receipt exists per (OrderId, TenantId)
+  - Consumer logs indicate duplicate pre-create was skipped
+
+3) Validate tenant isolation checks
+- Try receive/sort with token claims that do not match tenant ownership
+- Expected:
+  - API returns explicit failure
+  - No entity state change is persisted
+
+4) Recovery steps for common failures
+- Missing ERP mappings:
+  - Ensure erp_skus/erp_warehouses mirrors are synced for target tenant
+- Operator scope denied:
+  - Ensure operator profile exists for (tenant, sub)
+  - Ensure scope row exists for target warehouse
+- Duplicate inbound receipt:
+  - Check existing receipt by (OrderId, TenantId), do not manual insert
+
+5) Operational signals to monitor
+- ERP sync worker logs per tenant
+- Outbox/Inbox cleanup and delivery logs
+- Transfer loop latency across create -> receive -> sort

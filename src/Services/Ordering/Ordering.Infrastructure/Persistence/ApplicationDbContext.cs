@@ -6,6 +6,8 @@ using Ordering.Domain.Entities;
 using Ordering.Application.Sagas.OrderFulfillment;
 using MediatR;
 using MassTransit;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Ordering.Domain.Enums;
 
 namespace Ordering.Infrastructure.Persistence;
 
@@ -22,6 +24,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<ErpSkuMirror> ErpSkuMirrors => Set<ErpSkuMirror>();
     public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
     public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
@@ -40,8 +43,62 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var statusHistoryEntries = BuildStatusHistoryEntries();
+        if (statusHistoryEntries.Count > 0)
+        {
+            OrderStatusHistories.AddRange(statusHistoryEntries);
+        }
+
         await _mediator.DispatchDomainEvents(this);
 
         return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private List<OrderStatusHistory> BuildStatusHistoryEntries()
+    {
+        var utcNow = DateTime.UtcNow;
+        var entries = new List<OrderStatusHistory>();
+
+        foreach (EntityEntry<Order> entry in ChangeTracker.Entries<Order>())
+        {
+            if (entry.State != EntityState.Added && entry.State != EntityState.Modified)
+            {
+                continue;
+            }
+
+            if (entry.State == EntityState.Added)
+            {
+                entries.Add(new OrderStatusHistory(
+                    entry.Entity.Id,
+                    entry.Entity.TenantId,
+                    "None",
+                    entry.Entity.Status.ToString(),
+                    utcNow,
+                    "ApplicationDbContext.SaveChanges"));
+                continue;
+            }
+
+            if (!entry.Property(x => x.Status).IsModified)
+            {
+                continue;
+            }
+
+            OrderStatus originalStatus = entry.Property(x => x.Status).OriginalValue;
+            OrderStatus currentStatus = entry.Property(x => x.Status).CurrentValue;
+            if (originalStatus == currentStatus)
+            {
+                continue;
+            }
+
+            entries.Add(new OrderStatusHistory(
+                entry.Entity.Id,
+                entry.Entity.TenantId,
+                originalStatus.ToString(),
+                currentStatus.ToString(),
+                utcNow,
+                "ApplicationDbContext.SaveChanges"));
+        }
+
+        return entries;
     }
 }

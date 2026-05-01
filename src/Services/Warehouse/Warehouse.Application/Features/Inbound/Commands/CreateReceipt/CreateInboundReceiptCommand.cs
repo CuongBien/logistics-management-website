@@ -19,15 +19,28 @@ public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundR
 
     public async Task<Result<Guid>> Handle(CreateInboundReceiptCommand request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.TenantId) || string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            return Result<Guid>.Failure(new Error("InboundReceipt.MissingOwnership", "TenantId and CustomerId are required."));
+        }
+
+        var sourceShipmentNo = request.SourceShipmentNo;
+        if (string.IsNullOrWhiteSpace(sourceShipmentNo))
+        {
+            sourceShipmentNo = $"ASN-{request.OrderId:N}";
+        }
+
         // Kiểm tra xem đã có Receipt cho Order này chưa
         var existing = await _context.InboundReceipts
-            .FirstOrDefaultAsync(r => r.OrderId == request.OrderId, cancellationToken);
+            .FirstOrDefaultAsync(
+                r => r.OrderId == request.OrderId && r.TenantId == request.TenantId,
+                cancellationToken);
 
         if (existing is not null)
             return Result<Guid>.Failure(new Error("InboundReceipt.AlreadyExists",
                 $"An inbound receipt for Order '{request.OrderId}' already exists."));
 
-        var receipt = new InboundReceipt(request.OrderId, request.TenantId, request.CustomerId, request.SourceShipmentNo);
+        var receipt = new InboundReceipt(request.OrderId, request.TenantId, request.CustomerId, sourceShipmentNo);
         _context.InboundReceipts.Add(receipt);
 
         await _context.SaveChangesAsync(cancellationToken);

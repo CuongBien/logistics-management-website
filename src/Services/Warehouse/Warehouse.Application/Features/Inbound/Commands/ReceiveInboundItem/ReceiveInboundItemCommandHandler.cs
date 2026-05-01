@@ -36,6 +36,13 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (receipt == null)
             return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
+        if (!string.Equals(receipt.TenantId, request.TenantId, StringComparison.Ordinal))
+        {
+            return Result.Failure(new Error(
+                "InboundReceipt.ForbiddenTenant",
+                $"Receipt '{request.ReceiptId}' does not belong to tenant '{request.TenantId}'."));
+        }
+
         // 2. Validate OrderId belongs to this receipt
         if (receipt.OrderId != request.OrderId)
             return Result.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));
@@ -49,6 +56,17 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             return Result.Failure(new Error("Bin.NotFound", $"Bin with Code {request.BinCode} not found."));
         if (bin.Zone == null || bin.Zone.Block == null)
             return Result.Failure(new Error("Bin.InvalidHierarchy", $"Bin with Code {request.BinCode} is missing zone/block hierarchy."));
+
+        var hasWarehouseScope = await _context.OperatorProfiles
+            .Where(x => x.TenantId == request.TenantId && x.OperatorSub == request.ScannedBy && x.IsActive)
+            .SelectMany(x => x.WarehouseScopes)
+            .AnyAsync(x => x.WarehouseId == bin.Zone.Block.WarehouseId, cancellationToken);
+        if (!hasWarehouseScope)
+        {
+            return Result.Failure(new Error(
+                "Operator.ForbiddenWarehouseScope",
+                $"Operator '{request.ScannedBy}' is not allowed to receive into warehouse '{bin.Zone.Block.WarehouseId}'."));
+        }
 
         // 4. Mark Bin as Occupied
         bin.AssignOrder(request.OrderId);
