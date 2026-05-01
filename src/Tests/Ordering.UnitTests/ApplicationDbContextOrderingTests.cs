@@ -134,4 +134,75 @@ public sealed class ApplicationDbContextOrderingTests
         Assert.Equal(OrderStatus.Failed.ToString(), last.StatusTo);
         Assert.Equal("address-mismatch", last.Reason);
     }
+
+    [Fact]
+    public async Task Order_Create_StampsCreatedAndUpdatedActor_FromContext()
+    {
+        var transition = new StubOrderTransitionContext("op-123", null);
+        using var ctx = CreateContext(transition, out _);
+        var order = CreateSampleOrder();
+        ctx.Orders.Add(order);
+        await ctx.SaveChangesAsync();
+
+        var reloaded = await ctx.Orders.AsNoTracking().SingleAsync(o => o.Id == order.Id);
+        Assert.Equal("op-123", reloaded.CreatedByOperatorId);
+        Assert.Equal("op-123", reloaded.UpdatedByOperatorId);
+    }
+
+    [Fact]
+    public async Task Order_Update_StampsUpdatedActor_PreservesCreatedActor()
+    {
+        var transition = new MutableStubOrderTransitionContext("op-a", null);
+        using var ctx = CreateContext(transition, out _);
+        var order = CreateSampleOrder();
+        ctx.Orders.Add(order);
+        await ctx.SaveChangesAsync();
+
+        transition.OperatorId = "op-b";
+        var pickup = order.MarkPickedUp("driver-1");
+        Assert.False(pickup.IsFailure);
+        await ctx.SaveChangesAsync();
+
+        var final = await ctx.Orders.AsNoTracking().SingleAsync(o => o.Id == order.Id);
+        Assert.Equal("op-a", final.CreatedByOperatorId);
+        Assert.Equal("op-b", final.UpdatedByOperatorId);
+    }
+
+    [Fact]
+    public async Task Order_Create_NoOperatorContext_LeavesActorNull()
+    {
+        var transition = new StubOrderTransitionContext(null, null);
+        using var ctx = CreateContext(transition, out _);
+        var order = CreateSampleOrder();
+        ctx.Orders.Add(order);
+        await ctx.SaveChangesAsync();
+
+        var reloaded = await ctx.Orders.AsNoTracking().SingleAsync(o => o.Id == order.Id);
+        Assert.Null(reloaded.CreatedByOperatorId);
+        Assert.Null(reloaded.UpdatedByOperatorId);
+    }
+
+    [Fact]
+    public async Task Order_Modified_WithNullContext_DoesNotOverwriteUpdatedByOperatorId()
+    {
+        var transition = new MutableStubOrderTransitionContext("op-a", null);
+        using var ctx = CreateContext(transition, out _);
+        var order = CreateSampleOrder();
+        ctx.Orders.Add(order);
+        await ctx.SaveChangesAsync();
+
+        transition.OperatorId = "op-b";
+        var pickup = order.MarkPickedUp("driver-1");
+        Assert.False(pickup.IsFailure);
+        await ctx.SaveChangesAsync();
+
+        transition.OperatorId = null;
+        var inbound = order.MarkInWarehouse("w1", "recv");
+        Assert.False(inbound.IsFailure);
+        await ctx.SaveChangesAsync();
+
+        var final = await ctx.Orders.AsNoTracking().SingleAsync(o => o.Id == order.Id);
+        Assert.Equal("op-a", final.CreatedByOperatorId);
+        Assert.Equal("op-b", final.UpdatedByOperatorId);
+    }
 }
