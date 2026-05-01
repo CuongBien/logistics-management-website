@@ -14,7 +14,9 @@
     { "key": "tenantId", "value": "default-tenant", "type": "string" },
     { "key": "customerId", "value": "", "type": "string" },
     { "key": "skuCode", "value": "SKU-RED-TSHIRT", "type": "string" },
-    { "key": "sourceShipmentNo", "value": "", "type": "string" }
+    { "key": "sourceShipmentNo", "value": "", "type": "string" },
+    { "key": "correlationId", "value": "corr-postman-e2e-001", "type": "string" },
+    { "key": "historyCountBeforeInvalid", "value": "", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -59,7 +61,10 @@
       ],
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{correlationId}}" }
+        ],
         "url": { "raw": "{{oms_url}}/api/Orders", "host": ["{{oms_url}}"], "path": ["api", "Orders"] },
         "body": {
           "mode": "raw",
@@ -77,7 +82,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "console.log('✅ Order moved to PickedUp');"
+              "console.log('✅ Order moved to PickedUp with correlationId:', pm.collectionVariables.get('correlationId'));"
             ]
           }
         }
@@ -243,6 +248,104 @@
         "body": {
           "mode": "raw",
           "raw": "{}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 5 – Verify status history fields (Ordering)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const rows = body.value || body;",
+              "pm.test('History is array', () => pm.expect(Array.isArray(rows)).to.eql(true));",
+              "pm.test('History has records', () => pm.expect(rows.length).to.be.greaterThan(0));",
+              "pm.collectionVariables.set('historyCountBeforeInvalid', String(rows.length));",
+              "const pickupRow = rows.find(r => r.statusTo === 'PickedUp');",
+              "pm.test('Has PickedUp transition row', () => pm.expect(!!pickupRow).to.eql(true));",
+              "if (pickupRow) {",
+              "  pm.test('Source exists on PickedUp row', () => pm.expect(pickupRow.source).to.be.a('string').and.not.empty);",
+              "  pm.test('ChangedByOperatorId or system fallback', () => pm.expect(!!pickupRow.changedByOperatorId || pickupRow.source === 'system').to.eql(true));",
+              "  pm.test('CorrelationId persisted', () => pm.expect(pickupRow.correlationId).to.eql(pm.collectionVariables.get('correlationId')));",
+              "}",
+              "console.log('✅ StatusHistory checked. rows=', rows.length);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{oms_url}}/api/Orders/{{orderId}}/status-history",
+          "host": ["{{oms_url}}"],
+          "path": ["api", "Orders", "{{orderId}}", "status-history"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 6 – Invalid transition deliver from AwaitingDispatch (Ordering)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+              "console.log('✅ Invalid transition rejected as expected');",
+              "console.log('Response body:', pm.response.text());"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/deliver",
+          "host": ["{{oms_url}}"],
+          "path": ["api", "orders", "{{orderId}}", "actions", "deliver"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"proofOfDeliveryUrl\": \"https://example.com/pod-invalid-transition\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 7 – Verify invalid transition did not create history row",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const rows = body.value || body;",
+              "const before = Number(pm.collectionVariables.get('historyCountBeforeInvalid') || '0');",
+              "pm.test('History count unchanged after invalid transition', () => pm.expect(rows.length).to.eql(before));",
+              "const hasDelivered = rows.some(r => r.statusTo === 'Delivered');",
+              "pm.test('No Delivered row added by invalid transition', () => pm.expect(hasDelivered).to.eql(false));",
+              "console.log('✅ Invalid transition did not create history. before=', before, 'after=', rows.length);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{oms_url}}/api/Orders/{{orderId}}/status-history",
+          "host": ["{{oms_url}}"],
+          "path": ["api", "Orders", "{{orderId}}", "status-history"]
         }
       },
       "response": []
