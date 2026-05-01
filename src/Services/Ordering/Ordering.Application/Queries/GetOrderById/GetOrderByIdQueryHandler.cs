@@ -25,7 +25,9 @@ public record OrderDto(
     string? WarehouseId,
     string? DeliveryDriverId,
     string? ProofOfDeliveryUrl,
-    int DeliveryAttempts
+    int DeliveryAttempts,
+    string? CreatedByOperatorId,
+    string? UpdatedByOperatorId
 );
 
 public record ConsigneeDto(string FullName, string Phone, AddressDto Address);
@@ -75,7 +77,9 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Resul
             order.WarehouseId,
             order.DeliveryDriverId,
             order.ProofOfDeliveryUrl,
-            order.DeliveryAttempts
+            order.DeliveryAttempts,
+            order.CreatedByOperatorId,
+            order.UpdatedByOperatorId
         );
 
         return Result<OrderDto>.Success(dto);
