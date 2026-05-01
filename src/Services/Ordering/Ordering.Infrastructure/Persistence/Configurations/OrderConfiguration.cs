@@ -79,9 +79,17 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasForeignKey(oi => oi.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Ignore computed properties
+        // Ignore computed / non-persisted properties
         builder.Ignore(o => o.CustomerId);
+        builder.Ignore(o => o.LastTransitionReason);
+
         builder.HasIndex(o => new { o.TenantId, o.CustomerIdInternal });
-        builder.HasIndex(o => o.ExternalReference);
+        builder.HasIndex(o => new { o.Status, o.CreatedAt });
+        builder.HasIndex(o => new { o.DestinationWarehouseId, o.Status });
+
+        builder.HasIndex(o => new { o.TenantId, o.CustomerIdInternal, o.ExternalReference })
+            .IsUnique()
+            .HasFilter("\"ExternalReference\" IS NOT NULL");
     }
 }
+

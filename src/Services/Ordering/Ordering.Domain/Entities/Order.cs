@@ -37,6 +37,11 @@ public class Order : Entity<Guid>, IAggregateRoot
     public string? FailureReason { get; private set; }
     public int DeliveryAttempts { get; private set; }
 
+    /// <summary>
+    /// Not persisted: consumed by ApplicationDbContext when writing OrderStatusHistory rows.
+    /// </summary>
+    public string? LastTransitionReason { get; private set; }
+
     // EF Core
     private Order() { }
 
@@ -188,6 +193,7 @@ public class Order : Entity<Guid>, IAggregateRoot
 
         FailureReason = reason;
         DeliveryAttempts++;
+        LastTransitionReason = reason;
         Status = OrderStatus.Failed;
         LastModifiedAt = DateTime.UtcNow;
 
@@ -200,14 +206,28 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result Cancel()
     {
+        return CancelWithReason(null);
+    }
+
+    /// <summary>
+    /// Hủy đơn với lý do (optional) cho OrderStatusHistory.
+    /// </summary>
+    public Result CancelWithReason(string? cancellationReason)
+    {
         if (Status >= OrderStatus.Dispatched && Status != OrderStatus.Failed)
             return Result.Failure(DomainErrors.Order.CannotCancel);
 
+        LastTransitionReason = cancellationReason;
         Status = OrderStatus.Cancelled;
         LastModifiedAt = DateTime.UtcNow;
 
         AddDomainEvent(new OrderCancelledDomainEvent(Id));
         return Result.Success();
+    }
+
+    public void ClearLastTransitionReasonAfterHistoryWritten()
+    {
+        LastTransitionReason = null;
     }
 
     // --- Helpers ---

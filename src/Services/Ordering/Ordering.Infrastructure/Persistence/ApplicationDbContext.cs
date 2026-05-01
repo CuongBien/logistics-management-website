@@ -14,12 +14,15 @@ namespace Ordering.Infrastructure.Persistence;
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
     private readonly IMediator _mediator;
+    private readonly IOrderTransitionContext _orderTransitionContext;
 
     public ApplicationDbContext(
-        DbContextOptions<ApplicationDbContext> options, 
-        IMediator mediator) : base(options) 
+        DbContextOptions<ApplicationDbContext> options,
+        IMediator mediator,
+        IOrderTransitionContext orderTransitionContext) : base(options)
     {
         _mediator = mediator;
+        _orderTransitionContext = orderTransitionContext;
     }
 
     public DbSet<Order> Orders => Set<Order>();
@@ -35,7 +38,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
         base.OnModelCreating(builder);
-        
+
         builder.AddInboxStateEntity();
         builder.AddOutboxMessageEntity();
         builder.AddOutboxStateEntity();
@@ -58,6 +61,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         var utcNow = DateTime.UtcNow;
         var entries = new List<OrderStatusHistory>();
+        var operatorId = _orderTransitionContext.OperatorId;
+        var correlationId = _orderTransitionContext.CorrelationId;
+        var source = string.IsNullOrWhiteSpace(operatorId) ? "system" : operatorId;
 
         foreach (EntityEntry<Order> entry in ChangeTracker.Entries<Order>())
         {
@@ -74,7 +80,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                     "None",
                     entry.Entity.Status.ToString(),
                     utcNow,
-                    "ApplicationDbContext.SaveChanges"));
+                    source,
+                    null,
+                    operatorId,
+                    correlationId));
+                entry.Entity.ClearLastTransitionReasonAfterHistoryWritten();
                 continue;
             }
 
@@ -96,7 +106,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 originalStatus.ToString(),
                 currentStatus.ToString(),
                 utcNow,
-                "ApplicationDbContext.SaveChanges"));
+                source,
+                entry.Entity.LastTransitionReason,
+                operatorId,
+                correlationId));
+            entry.Entity.ClearLastTransitionReasonAfterHistoryWritten();
         }
 
         return entries;

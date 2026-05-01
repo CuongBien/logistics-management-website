@@ -18,8 +18,12 @@ using Microsoft.AspNetCore.SignalR;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+
+builder.Services.AddScoped<Ordering.Application.Common.Interfaces.IOrderTransitionContext, Ordering.Api.Infrastructure.HttpOrderTransitionContext>();
 
 // Add Notification Service Implementation
 builder.Services.AddScoped<Ordering.Application.Common.Interfaces.INotificationService, Ordering.Api.Services.SignalRNotificationService>();

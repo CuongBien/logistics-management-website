@@ -20,6 +20,7 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString);
         });
 
+        services.AddScoped<IOrderTransitionContext, NullOrderTransitionContext>();
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         services.Configure<ErpSyncOptions>(configuration.GetSection("ErpSync"));
         services.AddHttpClient<IErpMasterDataClient, ErpMasterDataClient>((sp, client) =>

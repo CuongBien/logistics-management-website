@@ -1,12 +1,8 @@
 using System;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Ordering.Infrastructure.Persistence;
 
 namespace Ordering.Infrastructure.Persistence.Migrations;
 
-[DbContext(typeof(ApplicationDbContext))]
-[Migration("20260501001500_AddOrderStatusHistory")]
 public partial class AddOrderStatusHistory : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
