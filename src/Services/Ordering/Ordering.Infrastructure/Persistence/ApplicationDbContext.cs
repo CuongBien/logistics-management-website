@@ -46,6 +46,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        StampActorFields();
         var statusHistoryEntries = BuildStatusHistoryEntries();
         if (statusHistoryEntries.Count > 0)
         {
@@ -55,6 +56,31 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         await _mediator.DispatchDomainEvents(this);
 
         return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets CreatedByOperatorId / UpdatedByOperatorId from <see cref="IOrderTransitionContext.OperatorId"/>.
+    /// Added: both columns set to operator id or null (system).
+    /// Modified: updates UpdatedByOperatorId only when operator id is non-null so saga saves do not clear the last actor.
+    /// </summary>
+    private void StampActorFields()
+    {
+        var operatorId = _orderTransitionContext.OperatorId;
+        foreach (EntityEntry<Order> entry in ChangeTracker.Entries<Order>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Property(nameof(Order.CreatedByOperatorId)).CurrentValue = operatorId;
+                entry.Property(nameof(Order.UpdatedByOperatorId)).CurrentValue = operatorId;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                if (!string.IsNullOrWhiteSpace(operatorId))
+                {
+                    entry.Property(nameof(Order.UpdatedByOperatorId)).CurrentValue = operatorId;
+                }
+            }
+        }
     }
 
     private List<OrderStatusHistory> BuildStatusHistoryEntries()

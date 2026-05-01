@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Ordering.Application.Common.Interfaces;
+using System.Security.Claims;
 
 namespace Ordering.Api.Infrastructure;
 
@@ -20,14 +21,18 @@ public sealed class HttpOrderTransitionContext : IOrderTransitionContext
         get
         {
             var user = _httpContextAccessor.HttpContext?.User;
-            var sub = user?.FindFirst("sub")?.Value;
-            if (string.IsNullOrWhiteSpace(sub))
+            var operatorId =
+                user?.FindFirst("sub")?.Value
+                ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user?.FindFirst("nameidentifier")?.Value;
+
+            if (string.IsNullOrWhiteSpace(operatorId))
             {
-                _logger.LogDebug("HttpOrderTransitionContext: no sub claim on current user.");
+                _logger.LogDebug("HttpOrderTransitionContext: no usable operator claim (sub/nameidentifier) on current user.");
                 return null;
             }
 
-            return sub;
+            return operatorId;
         }
     }
 

@@ -23,6 +23,12 @@ public class Order : Entity<Guid>, IAggregateRoot
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastModifiedAt { get; private set; }
 
+    /// <summary>JWT sub or null when created outside operator context (system).</summary>
+    public string? CreatedByOperatorId { get; private set; }
+
+    /// <summary>Last operator who persisted a change; null when system context.</summary>
+    public string? UpdatedByOperatorId { get; private set; }
+
     // Navigation
     private readonly List<OrderItem> _items = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
