@@ -32,6 +32,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
     public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
     public DbSet<Ordering.Application.Sagas.OrderFulfillment.OrderState> OrderStates => Set<Ordering.Application.Sagas.OrderFulfillment.OrderState>();
+    public DbSet<OrderConsignee> OrderConsignees => Set<OrderConsignee>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -47,6 +48,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         StampActorFields();
+        SyncOrderConsignees();
         var statusHistoryEntries = BuildStatusHistoryEntries();
         if (statusHistoryEntries.Count > 0)
         {
@@ -80,6 +82,23 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                     entry.Property(nameof(Order.UpdatedByOperatorId)).CurrentValue = operatorId;
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Dual-write consignee snapshot to OrderConsignees for new orders (inline Orders remains source of truth for reads).
+    /// </summary>
+    private void SyncOrderConsignees()
+    {
+        var addedOrders = ChangeTracker
+            .Entries<Order>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Entity)
+            .ToList();
+
+        foreach (var order in addedOrders)
+        {
+            OrderConsignees.Add(new OrderConsignee(order.Id, order.Consignee));
         }
     }
 

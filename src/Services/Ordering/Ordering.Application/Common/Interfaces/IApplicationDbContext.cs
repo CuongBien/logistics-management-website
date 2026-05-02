@@ -13,5 +13,6 @@ public interface IApplicationDbContext
     DbSet<ErpWarehouseMirror> ErpWarehouseMirrors { get; }
     DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
     DbSet<Ordering.Application.Sagas.OrderFulfillment.OrderState> OrderStates { get; }
+    DbSet<OrderConsignee> OrderConsignees { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
