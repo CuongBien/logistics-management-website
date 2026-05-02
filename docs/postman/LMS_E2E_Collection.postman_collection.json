@@ -214,6 +214,17 @@
               "  pm.test('updatedByOperatorId matches JWT sub', () => pm.expect(val.updatedByOperatorId).to.eql(sub));",
               "} else {",
               "  console.log('⚠️ consignorId not set; skip actor assertions');",
+              "}",
+              "const c = val?.consignee;",
+              "if (c && c.address) {",
+              "  pm.collectionVariables.set('e2eConsigneeFullName', c.fullName);",
+              "  pm.collectionVariables.set('e2eConsigneePhone', c.phone);",
+              "  pm.collectionVariables.set('e2eConsigneeStreet', c.address.street);",
+              "  pm.collectionVariables.set('e2eConsigneeCity', c.address.city);",
+              "  pm.collectionVariables.set('e2eConsigneeState', c.address.state);",
+              "  pm.collectionVariables.set('e2eConsigneeCountry', c.address.country);",
+              "  pm.collectionVariables.set('e2eConsigneeZipCode', c.address.zipCode);",
+              "  console.log('📌 Stored inline consignee snapshot for STEP 4b parity');",
               "}"
             ]
           }
@@ -226,6 +237,53 @@
           "raw": "{{oms_url}}/api/Orders/{{orderId}}",
           "host": ["{{oms_url}}"],
           "path": ["api", "Orders", "{{orderId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 4b – Verify OrderConsignees parity (Ordering)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const v = body.value;",
+              "pm.test('OrderConsignee row has fields', () => {",
+              "  pm.expect(v.fullName).to.be.a('string').and.not.empty;",
+              "  pm.expect(v.phone).to.be.a('string').and.not.empty;",
+              "  pm.expect(v.street).to.be.a('string').and.not.empty;",
+              "  pm.expect(v.city).to.be.a('string').and.not.empty;",
+              "  pm.expect(v.country).to.be.a('string').and.not.empty;",
+              "  pm.expect(v.zipCode).to.be.a('string').and.not.empty;",
+              "});",
+              "const fn = pm.collectionVariables.get('e2eConsigneeFullName');",
+              "if (fn) {",
+              "  pm.test('Parity fullName', () => pm.expect(v.fullName).to.eql(fn));",
+              "  pm.test('Parity phone', () => pm.expect(v.phone).to.eql(pm.collectionVariables.get('e2eConsigneePhone')));",
+              "  pm.test('Parity street', () => pm.expect(v.street).to.eql(pm.collectionVariables.get('e2eConsigneeStreet')));",
+              "  pm.test('Parity city', () => pm.expect(v.city).to.eql(pm.collectionVariables.get('e2eConsigneeCity')));",
+              "  pm.test('Parity state', () => pm.expect(v.state).to.eql(pm.collectionVariables.get('e2eConsigneeState')));",
+              "  pm.test('Parity country', () => pm.expect(v.country).to.eql(pm.collectionVariables.get('e2eConsigneeCountry')));",
+              "  pm.test('Parity zipCode', () => pm.expect(v.zipCode).to.eql(pm.collectionVariables.get('e2eConsigneeZipCode')));",
+              "} else {",
+              "  console.log('⚠️ No inline consignee snapshot; parity field tests only');",
+              "}",
+              "console.log('✅ OrderConsignees parity OK for orderId=', v.orderId);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{oms_url}}/api/Orders/{{orderId}}/consignee",
+          "host": ["{{oms_url}}"],
+          "path": ["api", "Orders", "{{orderId}}", "consignee"]
         }
       },
       "response": []
