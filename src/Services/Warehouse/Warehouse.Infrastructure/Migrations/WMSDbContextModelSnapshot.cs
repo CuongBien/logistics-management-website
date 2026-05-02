@@ -320,6 +320,68 @@ namespace Warehouse.Infrastructure.Migrations
                     b.ToTable("InboundReceipts", (string)null);
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("DestinationWarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OrderId")
+                        .IsUnique();
+
+                    b.ToTable("OutboundOrders", (string)null);
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OutboundOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RequestedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SkuCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Uom")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OutboundOrderId", "SkuCode");
+
+                    b.ToTable("OutboundOrderLines", (string)null);
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.InventoryItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -450,6 +512,17 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("Receipt");
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundOrderLine", b =>
+                {
+                    b.HasOne("Warehouse.Domain.Entities.OutboundOrder", "Order")
+                        .WithMany("Lines")
+                        .HasForeignKey("OutboundOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.Zone", b =>
                 {
                     b.HasOne("Warehouse.Domain.Entities.Block", "Block")
@@ -469,6 +542,11 @@ namespace Warehouse.Infrastructure.Migrations
             modelBuilder.Entity("Warehouse.Domain.Entities.InboundReceipt", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundOrder", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Warehouse", b =>

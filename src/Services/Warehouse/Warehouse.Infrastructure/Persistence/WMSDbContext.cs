@@ -24,6 +24,8 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<ErpSkuMirror> ErpSkuMirrors => Set<ErpSkuMirror>();
     public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
     public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
+    public DbSet<OutboundOrder> OutboundOrders => Set<OutboundOrder>();
+    public DbSet<OutboundOrderLine> OutboundOrderLines => Set<OutboundOrderLine>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

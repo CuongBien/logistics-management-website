@@ -20,6 +20,8 @@ Swagger endpoints via gateway: `http://localhost:5200/swagger/oms/v1/swagger.jso
 - Ordering API: `http://localhost:5200/api/ordering/{**path}` → forwards to `http://localhost:5000/`
 - Warehouse API: `http://localhost:5200/api/warehouse/{**path}` → forwards to `http://localhost:5051/`
 
+**Web UI (Next.js, Odoo-style shell):** `frontend/` — dev server `http://localhost:3000`. Prefer `NEXT_PUBLIC_API_GATEWAY` in `.env.local` so the browser calls the BFF directly (avoids Next dev proxy noise). Optional same-origin rewrites (`/bff/oms`, `/bff/wms`) use `API_GATEWAY_TARGET` when `NEXT_PUBLIC_API_GATEWAY` is unset — see `frontend/.env.example`.
+
 ## How to Run
 
 There are two approaches: **Local Development** (recommended for coding) or **Full Docker**.
