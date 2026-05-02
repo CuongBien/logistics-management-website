@@ -205,4 +205,40 @@ public sealed class ApplicationDbContextOrderingTests
         Assert.Equal("op-a", final.CreatedByOperatorId);
         Assert.Equal("op-b", final.UpdatedByOperatorId);
     }
+
+    [Fact]
+    public async Task OrderConsignee_DualWrite_OnOrderCreate_RowExistsAndMatchesInline()
+    {
+        var transition = new StubOrderTransitionContext(null, null);
+        using var ctx = CreateContext(transition, out _);
+        var order = CreateSampleOrder();
+        ctx.Orders.Add(order);
+        await ctx.SaveChangesAsync();
+
+        var row = await ctx.OrderConsignees.AsNoTracking().SingleAsync(c => c.OrderId == order.Id);
+        Assert.Equal(order.Consignee.FullName, row.FullName);
+        Assert.Equal(order.Consignee.Phone, row.Phone);
+        Assert.Equal(order.Consignee.Address.Street, row.Street);
+        Assert.Equal(order.Consignee.Address.City, row.City);
+        Assert.Equal(order.Consignee.Address.State, row.State);
+        Assert.Equal(order.Consignee.Address.Country, row.Country);
+        Assert.Equal(order.Consignee.Address.ZipCode, row.ZipCode);
+    }
+
+    [Fact]
+    public async Task OrderConsignee_NotDuplicated_OnNonAddedOrderModified()
+    {
+        var transition = new StubOrderTransitionContext(null, null);
+        using var ctx = CreateContext(transition, out _);
+        var order = CreateSampleOrder();
+        ctx.Orders.Add(order);
+        await ctx.SaveChangesAsync();
+
+        var pickup = order.MarkPickedUp("driver-1");
+        Assert.False(pickup.IsFailure);
+        await ctx.SaveChangesAsync();
+
+        var count = await ctx.OrderConsignees.CountAsync(c => c.OrderId == order.Id);
+        Assert.Equal(1, count);
+    }
 }
