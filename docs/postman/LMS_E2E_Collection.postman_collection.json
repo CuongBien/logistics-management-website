@@ -125,7 +125,7 @@
         "url": { "raw": "{{wms_url}}/api/inbound/receipts", "host": ["{{wms_url}}"], "path": ["api", "inbound", "receipts"] },
         "body": {
           "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\"\n}"
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"11111111-1111-1111-1111-111111111111\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\"\n}"
         }
       },
       "response": []
@@ -159,7 +159,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"staff_01\"\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"staff_01\",\n  \"quantity\": 10\n}"
         }
       },
       "response": []

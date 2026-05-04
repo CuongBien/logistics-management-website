@@ -47,10 +47,13 @@ public sealed class ShipmentSortedConsumer : IConsumer<ShipmentSortedIntegration
             sourceShipmentNo = $"ASN-{message.OrderId:N}";
         }
 
+        var destinationWarehouseId = Guid.TryParse(message.DestinationWarehouseId, out var parsedId) ? parsedId : Guid.Empty;
+
         var receipt = new InboundReceipt(
             message.OrderId,
             message.TenantId,
             message.CustomerId,
+            destinationWarehouseId,
             sourceShipmentNo);
 
         _context.InboundReceipts.Add(receipt);

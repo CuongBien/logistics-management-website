@@ -56,7 +56,8 @@ public class InboundController : ApiControllerBase
             tenantId,
             request.SkuCode,
             request.BinCode,
-            operatorSub
+            operatorSub,
+            request.Quantity
         );
 
         var result = await Mediator.Send(command);

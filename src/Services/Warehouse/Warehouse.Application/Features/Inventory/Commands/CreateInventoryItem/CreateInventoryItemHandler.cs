@@ -34,7 +34,7 @@ internal sealed class CreateInventoryItemHandler(
         }
 
         // Create Entity
-        var entity = InventoryItem.Create(request.Sku, request.Quantity, tenantId, customerId);
+        var entity = InventoryItem.Create(request.Sku, request.Quantity, tenantId, customerId, request.WarehouseId, request.BinId);
 
         // Save
         context.InventoryItems.Add(entity);

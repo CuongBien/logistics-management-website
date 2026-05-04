@@ -9,5 +9,6 @@ public record ReceiveInboundItemCommand(
    string TenantId,
    string SkuCode,
    string BinCode,
-   string ScannedBy
+   string ScannedBy,
+   int Quantity = 1
 ) : IRequest<Result>;

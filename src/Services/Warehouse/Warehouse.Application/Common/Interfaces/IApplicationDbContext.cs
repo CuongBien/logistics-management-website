@@ -17,6 +17,8 @@ public interface IApplicationDbContext
     DbSet<ErpSkuMirror> ErpSkuMirrors { get; }
     DbSet<ErpWarehouseMirror> ErpWarehouseMirrors { get; }
     DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
+    DbSet<OutboundOrder> OutboundOrders { get; }
+    DbSet<Shipment> Shipments { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

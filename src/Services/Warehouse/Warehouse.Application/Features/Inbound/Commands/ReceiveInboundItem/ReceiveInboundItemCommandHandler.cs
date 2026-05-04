@@ -68,16 +68,39 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
                 $"Operator '{request.ScannedBy}' is not allowed to receive into warehouse '{bin.Zone.Block.WarehouseId}'."));
         }
 
+        if (receipt.Status == InboundReceiptStatus.Received)
+        {
+            return Result.Success();
+        }
+
         // 4. Mark Bin as Occupied
         bin.AssignOrder(request.OrderId);
         
         // Mark receipt as received.
         receipt.MarkReceived();
 
+        // 4.5 Upsert InventoryItem
+        var warehouseId = bin.Zone.Block.WarehouseId;
+        var inventoryItem = await _context.InventoryItems
+            .FirstOrDefaultAsync(i => i.WarehouseId == warehouseId 
+                                   && i.TenantId == request.TenantId 
+                                   && i.Sku == request.SkuCode 
+                                   && i.BinId == bin.Id, cancellationToken);
+
+        if (inventoryItem == null)
+        {
+            inventoryItem = InventoryItem.Create(request.SkuCode, request.Quantity, request.TenantId, receipt.CustomerId, warehouseId, bin.Id);
+            _context.InventoryItems.Add(inventoryItem);
+        }
+        else
+        {
+            inventoryItem.Restock(request.Quantity);
+        }
+
         // 5. Publish integration event first so EF outbox can persist it in the same SaveChanges.
         var integrationEvent = new ShipmentReceivedIntegrationEvent(
             request.OrderId,
-            bin.Zone.Block.WarehouseId.ToString(),
+            warehouseId.ToString(),
             request.ScannedBy
         );
 
