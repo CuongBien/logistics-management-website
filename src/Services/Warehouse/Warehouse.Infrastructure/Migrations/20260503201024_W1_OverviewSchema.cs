@@ -18,6 +18,10 @@ namespace Warehouse.Infrastructure.Migrations
                 name: "IX_InventoryItems_Sku",
                 table: "InventoryItems");
 
+            migrationBuilder.DropIndex(
+                name: "IX_InventoryItems_TenantId_CustomerId_Sku",
+                table: "InventoryItems");
+
             migrationBuilder.AddColumn<string>(
                 name: "Code",
                 table: "Warehouses",

@@ -25,7 +25,7 @@ public class InboundReceiptConfiguration : IEntityTypeConfiguration<InboundRecei
                .IsRequired();
 
         builder.Property(ir => ir.ReceivedAt);
-        builder.HasIndex(ir => new { ir.TenantId, ir.CustomerId, ir.OrderId }).IsUnique();
+        builder.HasIndex(ir => new { ir.TenantId, ir.CustomerId, ir.OrderId, ir.WarehouseId }).IsUnique();
         builder.HasIndex(ir => ir.SourceShipmentNo);
         builder.HasIndex(ir => new { ir.WarehouseId, ir.CreatedAt }).IsDescending(false, true);
 
