@@ -1,5 +1,7 @@
 using Logistics.Core;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Warehouse.Application.Common.Interfaces;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
@@ -10,6 +12,31 @@ namespace Warehouse.Api.Controllers;
 [Route("api/inbound")]
 public class InboundController : ApiControllerBase
 {
+    private readonly IApplicationDbContext _context;
+
+    public InboundController(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpGet("receipts/by-order/{orderId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetReceiptByOrderId(Guid orderId, [FromQuery] Guid warehouseId)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var query = _context.InboundReceipts.Where(x => x.OrderId == orderId && x.TenantId == tenantId);
+        
+        if (warehouseId != Guid.Empty)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId);
+        }
+
+        var receipt = await query.OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
+
+        if (receipt == null) return NotFound(new { Message = $"Inbound receipt for OrderId {orderId} not found." });
+        return Ok(receipt);
+    }
     /// <summary>
     /// Tạo phiếu nhập kho cho một đơn hàng (Pending)
     /// </summary>
