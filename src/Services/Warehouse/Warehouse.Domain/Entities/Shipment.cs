@@ -52,4 +52,14 @@ public class Shipment : Entity<Guid>, IAggregateRoot
         Status = ShipmentStatus.Dispatched;
         ShippedAt = DateTime.UtcNow;
     }
+
+    public void Deliver()
+    {
+        if (Status != ShipmentStatus.Dispatched)
+        {
+            throw new InvalidOperationException("Shipment is not in a valid state to deliver.");
+        }
+
+        Status = ShipmentStatus.Delivered;
+    }
 }
