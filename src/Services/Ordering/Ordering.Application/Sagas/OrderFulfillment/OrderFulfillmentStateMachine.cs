@@ -105,6 +105,16 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
                         context.Message.OrderId,
                         context.Saga.CurrentState);
                 }),
+            // Multi-hop: Shipment arrived at destination warehouse → go back to InWarehouse
+            When(ShipmentReceived)
+                .Then(context =>
+                {
+                    logger.LogInformation(
+                        "Saga: 📦 Order {OrderId} arrived at destination Warehouse {WH} (multi-hop)",
+                        context.Message.OrderId, context.Message.WarehouseId);
+                    context.Saga.WarehouseId = context.Message.WarehouseId;
+                })
+                .TransitionTo(InWarehouse),
             When(RouteDispatched)
                 .Then(context =>
                 {

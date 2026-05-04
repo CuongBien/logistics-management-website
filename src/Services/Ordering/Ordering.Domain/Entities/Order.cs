@@ -128,7 +128,8 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkInWarehouse(string warehouseId, string receivedBy)
     {
-        if (Status != OrderStatus.PickedUp && Status != OrderStatus.AwaitingInbound)
+        // Allow multi-hop: AwaitingDispatch → InWarehouse when shipment arrives at destination warehouse
+        if (Status != OrderStatus.PickedUp && Status != OrderStatus.AwaitingInbound && Status != OrderStatus.AwaitingDispatch)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
 
         WarehouseId = warehouseId;
