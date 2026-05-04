@@ -13,6 +13,8 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Domain.Entities.W
         builder.HasKey(w => w.Id);
 
         builder.Property(w => w.Name).HasMaxLength(200).IsRequired();
+        builder.Property(w => w.Code).HasMaxLength(50).IsRequired();
+        builder.HasIndex(w => w.Code).IsUnique();
         builder.Property(w => w.LocationText).HasMaxLength(500).IsRequired();
 
         builder.HasMany(w => w.Blocks)
@@ -24,6 +26,7 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Domain.Entities.W
         builder.HasData(new {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
             Name = "Hanoi Central Warehouse",
+            Code = "HAN_01",
             LocationText = "Hanoi, Vietnam"
         });
     }

@@ -8,6 +8,8 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
+    public Guid WarehouseId { get; private set; }
+    public Guid BinId { get; private set; }
     public string Sku { get; private set; } = default!;
     public int QuantityOnHand { get; private set; }
     public int ReservedQty { get; private set; }
@@ -18,7 +20,7 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
     // EF Core
     private InventoryItem() { }
 
-    public static InventoryItem Create(string sku, int initialQty, string tenantId, string customerId)
+    public static InventoryItem Create(string sku, int initialQty, string tenantId, string customerId, Guid warehouseId, Guid binId)
     {
         if (initialQty < 0) throw new ArgumentOutOfRangeException(nameof(initialQty));
 
@@ -27,6 +29,8 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
             Id = Guid.NewGuid(),
             TenantId = tenantId,
             CustomerId = customerId,
+            WarehouseId = warehouseId,
+            BinId = binId,
             Sku = sku,
             QuantityOnHand = initialQty,
             ReservedQty = 0,

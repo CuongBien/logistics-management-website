@@ -5,6 +5,7 @@ namespace Warehouse.Domain.Entities;
 public class Warehouse : Entity<Guid>, IAggregateRoot
 {
     public string Name { get; private set; } = default!;
+    public string Code { get; private set; } = default!;
     public string LocationText { get; private set; } = default!;
 
     // Navigation
@@ -14,10 +15,11 @@ public class Warehouse : Entity<Guid>, IAggregateRoot
     // EF Core
     private Warehouse() { }
 
-    public Warehouse(string name, string locationText)
+    public Warehouse(string name, string code, string locationText)
     {
         Id = Guid.NewGuid();
         Name = name;
+        Code = code;
         LocationText = locationText;
     }
 

@@ -12,6 +12,8 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
+    public Guid WarehouseId { get; private set; }
+    public DateTime CreatedAt { get; private set; }
     public string? SourceShipmentNo { get; private set; }
     public Guid OrderId { get; private set; }
     public InboundReceiptStatus Status { get; private set; }
@@ -24,12 +26,14 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot
     // EF Core
     private InboundReceipt() { }
 
-    public InboundReceipt(Guid orderId, string tenantId, string customerId, string? sourceShipmentNo)
+    public InboundReceipt(Guid orderId, string tenantId, string customerId, Guid warehouseId, string? sourceShipmentNo)
     {
         Id = Guid.NewGuid();
         OrderId = orderId;
         TenantId = tenantId;
         CustomerId = customerId;
+        WarehouseId = warehouseId;
+        CreatedAt = DateTime.UtcNow;
         SourceShipmentNo = sourceShipmentNo;
         Status = InboundReceiptStatus.Pending;
     }

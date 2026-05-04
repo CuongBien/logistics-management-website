@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Warehouse.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Warehouse.Infrastructure.Persistence;
 namespace Warehouse.Infrastructure.Migrations
 {
     [DbContext(typeof(WMSDbContext))]
-    partial class WMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260503201024_W1_OverviewSchema")]
+    partial class W1_OverviewSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -641,7 +644,7 @@ namespace Warehouse.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId", "Status", "PlannedShipAt");
 
-                    b.ToTable("OutboundOrders", (string)null);
+                    b.ToTable("OutboundOrder");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Shipment", b =>
@@ -688,7 +691,7 @@ namespace Warehouse.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId", "Status", "ShippedAt");
 
-                    b.ToTable("Shipments", (string)null);
+                    b.ToTable("Shipment");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Warehouse", b =>
