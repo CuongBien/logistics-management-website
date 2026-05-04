@@ -37,6 +37,13 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
                 BinCode = "BIN-A1-02",
                 Status = "Available",
                 Version = 1
+            },
+            new {
+                Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                ZoneId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                BinCode = "BIN-B1-01",
+                Status = "Available",
+                Version = 1
             }
         });
     }
