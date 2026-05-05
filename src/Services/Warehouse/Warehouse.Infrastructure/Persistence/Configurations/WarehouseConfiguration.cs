@@ -4,13 +4,17 @@ using Warehouse.Domain.Entities;
 
 namespace Warehouse.Infrastructure.Persistence.Configurations;
 
-public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
+public class WarehouseConfiguration : IEntityTypeConfiguration<Domain.Entities.Warehouse>
 {
-    public void Configure(EntityTypeBuilder<Warehouse> builder)
+    public void Configure(EntityTypeBuilder<Domain.Entities.Warehouse> builder)
     {
         builder.ToTable("Warehouses");
 
         builder.HasKey(w => w.Id);
+        builder.HasQueryFilter(w => !w.IsDeleted);
+
+        builder.Property(w => w.Code).HasMaxLength(50).IsRequired();
+        builder.HasIndex(w => w.Code).IsUnique();
 
         builder.Property(w => w.Name).HasMaxLength(200).IsRequired();
         builder.Property(w => w.LocationText).HasMaxLength(500).IsRequired();

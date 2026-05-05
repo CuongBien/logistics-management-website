@@ -11,8 +11,10 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
         builder.ToTable("Blocks");
 
         builder.HasKey(b => b.Id);
+        builder.HasQueryFilter(b => !b.IsDeleted);
 
         builder.Property(b => b.BlockCode).HasMaxLength(50).IsRequired();
+        builder.HasIndex(b => new { b.WarehouseId, b.BlockCode }).IsUnique();
 
         builder.HasOne(b => b.Warehouse)
             .WithMany(w => w.Blocks)

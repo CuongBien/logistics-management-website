@@ -11,8 +11,10 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
         builder.ToTable("Zones");
 
         builder.HasKey(z => z.Id);
+        builder.HasQueryFilter(z => !z.IsDeleted);
 
-        builder.Property(z => z.ZoneType).HasMaxLength(50).IsRequired();
+        builder.Property(z => z.ZoneCode).HasMaxLength(50).IsRequired();
+        builder.Property(z => z.ZoneType).HasConversion<string>().HasMaxLength(50).IsRequired();
 
         builder.HasOne(z => z.Block)
             .WithMany(b => b.Zones)
