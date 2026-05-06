@@ -1,6 +1,5 @@
 using Logistics.Core;
 using Warehouse.Domain.Enums;
-using Logistics.Core;
 
 namespace Warehouse.Domain.Entities;
 
