@@ -1,15 +1,7 @@
 using Logistics.Core;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Domain.Entities;
-
-public enum OutboundOrderStatus
-{
-    Pending = 0,
-    Picking = 1,
-    Packed = 2,
-    Shipped = 3,
-    Cancelled = 4
-}
 
 public class OutboundOrder : Entity<Guid>, IAggregateRoot
 {

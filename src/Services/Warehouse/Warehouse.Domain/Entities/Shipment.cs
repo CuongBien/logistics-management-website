@@ -1,20 +1,7 @@
 using Logistics.Core;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Domain.Entities;
-
-public enum ShipmentStatus
-{
-    Pending = 0,
-    Dispatched = 1,
-    Delivered = 2
-}
-
-public enum DestinationType
-{
-    Warehouse = 0,
-    Customer = 1,
-    Other = 2
-}
 
 public class Shipment : Entity<Guid>, IAggregateRoot, ISoftDelete
 {

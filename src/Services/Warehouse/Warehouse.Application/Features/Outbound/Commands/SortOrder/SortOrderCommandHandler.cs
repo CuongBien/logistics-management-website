@@ -6,6 +6,7 @@ using Warehouse.Domain.Errors;
 using EventBus.Messages.Events;
 using MassTransit;
 using Warehouse.Domain.Entities;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Application.Features.Outbound.Commands.SortOrder;
 
