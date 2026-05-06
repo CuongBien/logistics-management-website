@@ -55,6 +55,21 @@
       "key": "historyCountBeforeInvalid",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "warehouseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "blockId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "zoneId",
+      "value": "",
+      "type": "string"
     }
   ],
   "auth": {
@@ -68,6 +83,132 @@
     ]
   },
   "item": [
+    {
+      "name": "Layout Management",
+      "item": [
+        {
+          "name": "GET List Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{wms_url}}/api/Warehouse",
+              "host": ["{{wms_url}}"],
+              "path": ["api", "Warehouse"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Warehouse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('warehouseId', res.value || res);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Test Warehouse\",\n  \"code\": \"W_NEW_{{$randomInt}}\",\n  \"locationText\": \"HCM City\"\n}"
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/Warehouse",
+              "host": ["{{wms_url}}"],
+              "path": ["api", "Warehouse"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Block",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('blockId', res.value || res);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "\"BLK-C\""
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/blocks",
+              "host": ["{{wms_url}}"],
+              "path": ["api", "Warehouse", "{{warehouseId}}", "blocks"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Zone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('zoneId', res.value || res);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "0"
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/Warehouse/blocks/{{blockId}}/zones",
+              "host": ["{{wms_url}}"],
+              "path": ["api", "Warehouse", "blocks", "{{blockId}}", "zones"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Bin",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"binCode\": \"BIN-C1-01\"\n}"
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/Warehouse/zones/{{zoneId}}/bins",
+              "host": ["{{wms_url}}"],
+              "path": ["api", "Warehouse", "zones", "{{zoneId}}", "bins"]
+            }
+          }
+        },
+        {
+          "name": "GET Warehouse Hierarchy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/hierarchy",
+              "host": ["{{wms_url}}"],
+              "path": ["api", "Warehouse", "{{warehouseId}}", "hierarchy"]
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "STEP 1 – Tạo đơn hàng (Ordering)",
       "event": [
