@@ -16,7 +16,7 @@ public enum DestinationType
     Other = 2
 }
 
-public class Shipment : Entity<Guid>, IAggregateRoot
+public class Shipment : Entity<Guid>, IAggregateRoot, ISoftDelete
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
@@ -27,6 +27,8 @@ public class Shipment : Entity<Guid>, IAggregateRoot
     public ShipmentStatus Status { get; private set; }
     public DateTime? ShippedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     // EF Core
     private Shipment() { }
@@ -42,6 +44,13 @@ public class Shipment : Entity<Guid>, IAggregateRoot
         DestinationId = destinationId;
         CreatedAt = DateTime.UtcNow;
         Status = ShipmentStatus.Pending;
+        IsDeleted = false;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
     }
 
     public void Dispatch()

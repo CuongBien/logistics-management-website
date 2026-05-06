@@ -3,10 +3,12 @@ using Warehouse.Domain.Enums;
 
 namespace Warehouse.Domain.Entities;
 
-public class Zone : Entity<Guid>
+public class Zone : Entity<Guid>, ISoftDelete
 {
     public Guid BlockId { get; private set; }
     public string ZoneType { get; private set; } = default!;
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     // Navigation
     public Block Block { get; private set; } = default!;
@@ -21,6 +23,13 @@ public class Zone : Entity<Guid>
         Id = Guid.NewGuid();
         BlockId = blockId;
         ZoneType = zoneType.ToString();
+        IsDeleted = false;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
     }
 
     public void AddBin(Bin bin)

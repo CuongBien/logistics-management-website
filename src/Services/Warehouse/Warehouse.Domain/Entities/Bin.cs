@@ -3,7 +3,7 @@ using Warehouse.Domain.Enums;
 
 namespace Warehouse.Domain.Entities;
 
-public class Bin : Entity<Guid>
+public class Bin : Entity<Guid>, ISoftDelete
 {
     public Guid WarehouseId { get; private set; }
     public Guid ZoneId { get; private set; }
@@ -11,6 +11,8 @@ public class Bin : Entity<Guid>
     public string Status { get; private set; } = default!;
     public Guid? CurrentOrderId { get; private set; }
     public int Version { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     // Navigation
     public Zone Zone { get; private set; } = default!;
@@ -26,6 +28,13 @@ public class Bin : Entity<Guid>
         BinCode = binCode;
         Status = status.ToString();
         Version = 1;
+        IsDeleted = false;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
     }
 
     public void UpdateStatus(BinStatus newStatus)

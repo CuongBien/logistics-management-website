@@ -8,7 +8,7 @@ public enum InboundReceiptStatus
     Received = 1
 }
 
-public class InboundReceipt : Entity<Guid>, IAggregateRoot
+public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
@@ -18,6 +18,8 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot
     public Guid OrderId { get; private set; }
     public InboundReceiptStatus Status { get; private set; }
     public DateTime? ReceivedAt { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     // Navigation
     private readonly List<InboundItem> _items = new();
@@ -36,6 +38,13 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot
         CreatedAt = DateTime.UtcNow;
         SourceShipmentNo = sourceShipmentNo;
         Status = InboundReceiptStatus.Pending;
+        IsDeleted = false;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
     }
 
     public void MarkReceived()
