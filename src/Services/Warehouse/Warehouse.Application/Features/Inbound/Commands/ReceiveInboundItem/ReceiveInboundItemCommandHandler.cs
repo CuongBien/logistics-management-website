@@ -47,11 +47,11 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (receipt.OrderId != request.OrderId)
             return Result.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));
 
-        // 3. Load Bin by BinCode
+        // 3. Load Bin by BinCode and WarehouseId (safety for multi-warehouse)
         var bin = await _context.Bins
             .Include(b => b.Zone)
             .ThenInclude(z => z.Block)
-            .FirstOrDefaultAsync(b => b.BinCode == request.BinCode, cancellationToken);
+            .FirstOrDefaultAsync(b => b.BinCode == request.BinCode && b.WarehouseId == receipt.WarehouseId, cancellationToken);
         if (bin == null)
             return Result.Failure(new Error("Bin.NotFound", $"Bin with Code {request.BinCode} not found."));
         if (bin.Zone == null || bin.Zone.Block == null)
