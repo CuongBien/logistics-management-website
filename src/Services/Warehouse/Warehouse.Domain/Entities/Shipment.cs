@@ -20,6 +20,7 @@ public class Shipment : Entity<Guid>, IAggregateRoot
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
+    public string ShipmentNo { get; private set; } = default!;
     public Guid WarehouseId { get; private set; } // Source Warehouse
     public DestinationType DestinationType { get; private set; }
     public string DestinationId { get; private set; } = default!;
@@ -30,11 +31,12 @@ public class Shipment : Entity<Guid>, IAggregateRoot
     // EF Core
     private Shipment() { }
 
-    public Shipment(string tenantId, string customerId, Guid sourceWarehouseId, DestinationType destinationType, string destinationId)
+    public Shipment(string tenantId, string customerId, string shipmentNo, Guid sourceWarehouseId, DestinationType destinationType, string destinationId)
     {
         Id = Guid.NewGuid();
         TenantId = tenantId;
         CustomerId = customerId;
+        ShipmentNo = shipmentNo;
         WarehouseId = sourceWarehouseId;
         DestinationType = destinationType;
         DestinationId = destinationId;

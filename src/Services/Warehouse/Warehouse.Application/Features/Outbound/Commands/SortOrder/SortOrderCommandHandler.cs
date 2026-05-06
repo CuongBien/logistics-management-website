@@ -57,6 +57,12 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         // 2. Bin.Status = Available (Giải phóng Bin)
         bin.Release();
 
+        var sourceShipmentNo = request.SourceShipmentNo;
+        if (string.IsNullOrWhiteSpace(sourceShipmentNo))
+        {
+            sourceShipmentNo = $"ASN-{request.OrderId:N}";
+        }
+
         // 2.1 W2: Create OutboundOrder and Shipment (Overview)
         var sourceWarehouseId = bin.Zone.Block.WarehouseId;
 
@@ -69,20 +75,9 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             outboundOrder.UpdateStatus(OutboundOrderStatus.Shipped);
             _context.OutboundOrders.Add(outboundOrder);
 
-            var shipment = new Shipment(request.TenantId, request.CustomerId, sourceWarehouseId, DestinationType.Warehouse, request.DestinationWarehouseId.ToString());
+            var shipment = new Shipment(request.TenantId, request.CustomerId, sourceShipmentNo, sourceWarehouseId, DestinationType.Warehouse, request.DestinationWarehouseId.ToString());
             shipment.Dispatch();
             _context.Shipments.Add(shipment);
-        }
-        else if (outboundOrder.Status == OutboundOrderStatus.Shipped)
-        {
-            // Already processed
-            return Result.Success();
-        }
-
-        var sourceShipmentNo = request.SourceShipmentNo;
-        if (string.IsNullOrWhiteSpace(sourceShipmentNo))
-        {
-            sourceShipmentNo = $"ASN-{request.OrderId:N}";
         }
 
         // 3. Publish Integration Event (Transactional Outbox will handle persistence)

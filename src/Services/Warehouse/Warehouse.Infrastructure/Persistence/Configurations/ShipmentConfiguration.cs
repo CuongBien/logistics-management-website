@@ -13,7 +13,10 @@ public class ShipmentConfiguration : IEntityTypeConfiguration<Shipment>
 
         builder.Property(x => x.TenantId).HasMaxLength(100).IsRequired();
         builder.Property(x => x.CustomerId).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.ShipmentNo).HasMaxLength(100).IsRequired();
         builder.Property(x => x.WarehouseId).IsRequired();
+
+        builder.HasIndex(x => new { x.TenantId, x.ShipmentNo }).IsUnique();
 
         builder.Property(x => x.DestinationType)
                .HasConversion<string>()
