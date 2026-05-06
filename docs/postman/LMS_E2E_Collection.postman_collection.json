@@ -93,8 +93,13 @@
             "header": [],
             "url": {
               "raw": "{{wms_url}}/api/Warehouse",
-              "host": ["{{wms_url}}"],
-              "path": ["api", "Warehouse"]
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "Warehouse"
+              ]
             }
           }
         },
@@ -113,15 +118,25 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"New Test Warehouse\",\n  \"code\": \"W_NEW_{{$randomInt}}\",\n  \"locationText\": \"HCM City\"\n}"
             },
             "url": {
               "raw": "{{wms_url}}/api/Warehouse",
-              "host": ["{{wms_url}}"],
-              "path": ["api", "Warehouse"]
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "Warehouse"
+              ]
             }
           }
         },
@@ -140,15 +155,27 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "\"BLK-C\""
             },
             "url": {
               "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/blocks",
-              "host": ["{{wms_url}}"],
-              "path": ["api", "Warehouse", "{{warehouseId}}", "blocks"]
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "Warehouse",
+                "{{warehouseId}}",
+                "blocks"
+              ]
             }
           }
         },
@@ -167,15 +194,28 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "0"
             },
             "url": {
               "raw": "{{wms_url}}/api/Warehouse/blocks/{{blockId}}/zones",
-              "host": ["{{wms_url}}"],
-              "path": ["api", "Warehouse", "blocks", "{{blockId}}", "zones"]
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "Warehouse",
+                "blocks",
+                "{{blockId}}",
+                "zones"
+              ]
             }
           }
         },
@@ -183,15 +223,28 @@
           "name": "POST Create Bin",
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"binCode\": \"BIN-C1-01\"\n}"
             },
             "url": {
               "raw": "{{wms_url}}/api/Warehouse/zones/{{zoneId}}/bins",
-              "host": ["{{wms_url}}"],
-              "path": ["api", "Warehouse", "zones", "{{zoneId}}", "bins"]
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "Warehouse",
+                "zones",
+                "{{zoneId}}",
+                "bins"
+              ]
             }
           }
         },
@@ -202,8 +255,15 @@
             "header": [],
             "url": {
               "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/hierarchy",
-              "host": ["{{wms_url}}"],
-              "path": ["api", "Warehouse", "{{warehouseId}}", "hierarchy"]
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "Warehouse",
+                "{{warehouseId}}",
+                "hierarchy"
+              ]
             }
           }
         }
@@ -355,13 +415,13 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"11111111-1111-1111-1111-111111111111\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\"\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"11111111-1111-1111-1111-111111111111\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\",\n  \"expectedLines\": [\n    {\n      \"skuCode\": \"{{skuCode}}\",\n      \"expectedQuantity\": 10\n    }\n  ]\n}"
         }
       },
       "response": []
     },
     {
-      "name": "STEP 2b – Nhân viên kho xác nhận nhận hàng (Warehouse)",
+      "name": "STEP 2b.1 – Receive Partial Quantity (Warehouse)",
       "event": [
         {
           "listen": "test",
@@ -369,12 +429,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const orderId = pm.collectionVariables.get('orderId');",
-              "const receiptId = pm.collectionVariables.get('receiptId');",
-              "pm.test('orderId variable exists', () => pm.expect(orderId).to.be.a('string').and.not.empty);",
-              "pm.test('receiptId variable exists', () => pm.expect(receiptId).to.be.a('string').and.not.empty);",
-              "console.log('🔎 STEP2b orderId=', orderId, 'receiptId=', receiptId);",
-              "console.log('✅ InboundReceipt marked as Received');"
+              "console.log('✅ Received 5 items (Partial)');"
             ]
           }
         }
@@ -402,7 +457,145 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"staff_01\",\n  \"quantity\": 10\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 2b.2 – Check Receipt Status (PartiallyReceived)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Status is PartiallyReceived (2)', () => pm.expect(body.status).to.eql('PartiallyReceived'));",
+              "console.log('✅ Status is PartiallyReceived as expected.');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}",
+          "host": [
+            "{{wms_url}}"
+          ],
+          "path": [
+            "api",
+            "inbound",
+            "receipts",
+            "by-order",
+            "{{orderId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 2b.3 – Receive Remaining Quantity (Warehouse)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "console.log('✅ Received remaining 5 items (Full)');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/receive",
+          "host": [
+            "{{wms_url}}"
+          ],
+          "path": [
+            "api",
+            "inbound",
+            "receipts",
+            "{{receiptId}}",
+            "receive"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 2b.4 – Check Receipt Status (Received)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Status is Received (3)', () => pm.expect(body.status).to.eql('Received'));",
+              "console.log('✅ Status is Received as expected. ShipmentReceivedIntegrationEvent should be published.');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}",
+          "host": [
+            "{{wms_url}}"
+          ],
+          "path": [
+            "api",
+            "inbound",
+            "receipts",
+            "by-order",
+            "{{orderId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "STEP 2b.5 - Force Close Receipt (Short Shipment)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/force-close",
+          "host": [
+            "{{wms_url}}"
+          ],
+          "path": [
+            "api",
+            "inbound",
+            "receipts",
+            "{{receiptId}}",
+            "force-close"
+          ]
         }
       },
       "response": []
@@ -529,7 +722,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-B1-01\",\n  \"scannedBy\": \"staff_02\",\n  \"quantity\": 10\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-B1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 10\n}"
         }
       },
       "response": []
