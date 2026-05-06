@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Warehouse.Application.Common.Interfaces;
 using Warehouse.Domain.Entities;
+using Warehouse.Domain.Enums;
 using EventBus.Messages.Events;
 
 namespace Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
@@ -29,8 +30,10 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
                 $"Cannot receive inbound item because SKU '{request.SkuCode}' is not mapped for tenant '{request.TenantId}'."));
         }
 
-        // 1. Load InboundReceipt by ReceiptId
+        // 1. Load InboundReceipt by ReceiptId with lines
         var receipt = await _context.InboundReceipts
+            .Include(r => r.Lines)
+                .ThenInclude(l => l.Allocations)
             .FirstOrDefaultAsync(r => r.Id == request.ReceiptId, cancellationToken);
             
         if (receipt == null)
@@ -68,16 +71,35 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
                 $"Operator '{request.ScannedBy}' is not allowed to receive into warehouse '{bin.Zone.Block.WarehouseId}'."));
         }
 
-        if (receipt.Status == InboundReceiptStatus.Received)
+        // Find or create line for this SKU
+        var line = receipt.Lines.FirstOrDefault(l => l.Sku == request.SkuCode);
+        if (line == null)
         {
-            return Result.Success();
+            // Blind receipt scenario: line wasn't in ASN
+            line = new InboundReceiptLine(receipt.Id, request.TenantId, receipt.CustomerId, request.SkuCode, expectedQuantity: request.Quantity);
+            _context.InboundReceiptLines.Add(line);
+            receipt.AddLine(line);
+        }
+
+        line.AddReceivedQuantity(request.Quantity);
+
+        // Find or create Allocation
+        var allocation = line.Allocations.FirstOrDefault(a => a.BinId == bin.Id);
+        if (allocation != null)
+        {
+            allocation.AddQuantity(request.Quantity);
+        }
+        else
+        {
+            allocation = new InboundBinAllocation(line.Id, bin.Id, request.Quantity, request.TenantId);
+            _context.InboundBinAllocations.Add(allocation);
         }
 
         // 4. Mark Bin as Occupied
         bin.AssignOrder(request.OrderId);
         
-        // Mark receipt as received.
-        receipt.MarkReceived();
+        // Mark receipt as received. (In a real system, we'd check if all lines are fully received)
+        receipt.RecalculateStatus();
 
         // 4.5 Upsert InventoryItem
         var warehouseId = bin.Zone.Block.WarehouseId;
@@ -97,14 +119,17 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             inventoryItem.Restock(request.Quantity);
         }
 
-        // 5. Publish integration event first so EF outbox can persist it in the same SaveChanges.
-        var integrationEvent = new ShipmentReceivedIntegrationEvent(
-            request.OrderId,
-            warehouseId.ToString(),
-            request.ScannedBy
-        );
+        // 5. Publish integration event ONLY if the receipt is fully received
+        if (receipt.Status == InboundReceiptStatus.Received)
+        {
+            var integrationEvent = new ShipmentReceivedIntegrationEvent(
+                request.OrderId,
+                warehouseId.ToString(),
+                request.ScannedBy
+            );
 
-        await _publishEndpoint.Publish(integrationEvent, cancellationToken);
+            await _publishEndpoint.Publish(integrationEvent, cancellationToken);
+        }
 
         // 6. Save entity + outbox message atomically.
         await _context.SaveChangesAsync(cancellationToken);
