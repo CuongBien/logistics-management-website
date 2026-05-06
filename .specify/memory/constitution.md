@@ -1,50 +1,54 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version Change: None -> 1.0.0
+- Modified Principles: Initialized all principles from user constraints.
+- Added Sections: Commit Conventions, Code Quality, Testing Standards, User Experience Consistency
+- Removed Sections: None
+- Templates Requiring Updates: 
+  - [x] .specify/templates/plan-template.md (Checked, no changes needed)
+  - [x] .specify/templates/spec-template.md (Checked, no changes needed)
+  - [x] .specify/templates/tasks-template.md (Checked, no changes needed)
+- Follow-up TODOs: None
+-->
+
+# Logistics Management System Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Commit Conventions
+All code contributions MUST adhere strictly to Conventional Commits standards.
+- Use prefix categories such as `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `perf:`, `test:`, or `chore:`.
+- The subject line must be concise (under 50 characters) and written in the imperative mood.
+- Include related issue numbers or Jira tickets in the footer of the commit message (if applicable).
+Rationale: Ensures a clean, predictable, and parseable history that aids in automated changelog generation and easier debugging.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Code Quality
+Maintain strict architectural boundaries and write clean, modular, and self-documenting code.
+- Respect Clean Architecture boundaries (Domain > Application > Infrastructure > Presentation).
+- Strictly adhere to SOLID and DRY principles.
+- Meaningful naming is mandatory; variables and methods must describe intent.
+- Ensure all business logic is isolated from UI and infrastructure concerns.
+Rationale: A well-structured codebase prevents technical debt, makes onboarding easier, and isolates bugs.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Testing Standards
+Tests are the safety net of the application and must be written alongside the code.
+- Test-Driven Development (TDD) principles are highly encouraged for core logic.
+- Maintain comprehensive unit, integration, and End-to-End (E2E) tests.
+- Minimum acceptable coverage standards must be met before any PR is merged.
+- Tests must be deterministic (no flaky tests) and properly isolated from external state.
+Rationale: Confidence in the software's stability is paramount; testing prevents regressions in a microservice environment.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
-
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
-
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
-
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### IV. User Experience Consistency
+The application interface must remain consistent, predictable, and professional.
+- Conform to established design guidelines (e.g., Antigravity rich aesthetics, Next.js Odoo-style shell).
+- Ensure consistent error handling, loading states, and dynamic feedback for all user actions.
+- Maintain responsiveness across various screen sizes.
+- Adhere to basic accessibility (a11y) standards for all interactive elements.
+Rationale: A premium and consistent design drastically improves user engagement and builds trust in the application.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+This Constitution supersedes all other informal practices. All Pull Requests and code reviews must verify compliance with these core principles.
+- Amendments to this constitution require team review and a version bump following Semantic Versioning (MAJOR for principle redefinitions, MINOR for new principles, PATCH for clarifications).
+- All templates and artifacts in `.specify` must remain aligned with these guidelines.
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-07
