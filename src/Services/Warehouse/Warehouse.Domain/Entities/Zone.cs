@@ -1,4 +1,5 @@
 using Logistics.Core;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Domain.Entities;
 
@@ -15,11 +16,11 @@ public class Zone : Entity<Guid>
     // EF Core
     private Zone() { }
 
-    public Zone(Guid blockId, string zoneType)
+    public Zone(Guid blockId, ZoneType zoneType)
     {
         Id = Guid.NewGuid();
         BlockId = blockId;
-        ZoneType = zoneType;
+        ZoneType = zoneType.ToString();
     }
 
     public void AddBin(Bin bin)
