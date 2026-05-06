@@ -33,8 +33,42 @@ public class WMSDbContext : DbContext, IApplicationDbContext
 
         base.OnModelCreating(builder);
 
+        // Apply Global Query Filter for ISoftDelete
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            if (typeof(Logistics.Core.ISoftDelete).IsAssignableFrom(entityType.ClrType))
+            {
+                builder.Entity(entityType.ClrType).HasQueryFilter(ConvertFilterExpression(entityType.ClrType));
+            }
+        }
+
         builder.AddInboxStateEntity();
         builder.AddOutboxMessageEntity();
         builder.AddOutboxStateEntity();
+    }
+
+    private static System.Linq.Expressions.LambdaExpression ConvertFilterExpression(Type type)
+    {
+        var parameter = System.Linq.Expressions.Expression.Parameter(type, "e");
+        var propertyMethod = typeof(EF).GetMethod("Property")!.MakeGenericMethod(typeof(bool));
+        var isDeletedProperty = System.Linq.Expressions.Expression.Call(propertyMethod, parameter, System.Linq.Expressions.Expression.Constant("IsDeleted"));
+        var compareExpression = System.Linq.Expressions.Expression.Equal(isDeletedProperty, System.Linq.Expressions.Expression.Constant(false));
+        return System.Linq.Expressions.Expression.Lambda(compareExpression, parameter);
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<Logistics.Core.ISoftDelete>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Deleted:
+                    entry.State = EntityState.Modified;
+                    entry.Entity.Delete();
+                    break;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
     }
 }

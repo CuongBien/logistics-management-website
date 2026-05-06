@@ -13,7 +13,12 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
         builder.HasKey(b => b.Id);
 
         builder.Property(b => b.BlockCode).HasMaxLength(50).IsRequired();
-        builder.HasIndex(b => new { b.WarehouseId, b.BlockCode }).IsUnique();
+        builder.HasIndex(b => new { b.WarehouseId, b.BlockCode })
+               .IsUnique()
+               .HasFilter("\"IsDeleted\" = false");
+
+        builder.Property(b => b.IsDeleted).IsRequired();
+        builder.Property(b => b.DeletedAt);
 
         builder.HasOne(b => b.Warehouse)
             .WithMany(w => w.Blocks)
@@ -30,12 +35,14 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
             new {
                 Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                 WarehouseId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                BlockCode = "BLK-A"
+                BlockCode = "BLK-A",
+                IsDeleted = false
             },
             new {
                 Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                 WarehouseId = Guid.Parse("48b030da-e7ad-452f-90db-ddb01a613583"),
-                BlockCode = "BLK-B"
+                BlockCode = "BLK-B",
+                IsDeleted = false
             }
         );
     }

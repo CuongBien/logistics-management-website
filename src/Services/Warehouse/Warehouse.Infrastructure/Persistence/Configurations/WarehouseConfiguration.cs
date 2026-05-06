@@ -14,8 +14,13 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Domain.Entities.W
 
         builder.Property(w => w.Name).HasMaxLength(200).IsRequired();
         builder.Property(w => w.Code).HasMaxLength(50).IsRequired();
-        builder.HasIndex(w => w.Code).IsUnique();
+        builder.HasIndex(w => w.Code)
+               .IsUnique()
+               .HasFilter("\"IsDeleted\" = false");
+               
         builder.Property(w => w.LocationText).HasMaxLength(500).IsRequired();
+        builder.Property(w => w.IsDeleted).IsRequired();
+        builder.Property(w => w.DeletedAt);
 
         builder.HasMany(w => w.Blocks)
             .WithOne(b => b.Warehouse)
@@ -28,13 +33,15 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Domain.Entities.W
                 Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                 Name = "Hanoi Central Warehouse",
                 Code = "HAN_01",
-                LocationText = "Hanoi, Vietnam"
+                LocationText = "Hanoi, Vietnam",
+                IsDeleted = false
             },
             new {
                 Id = Guid.Parse("48b030da-e7ad-452f-90db-ddb01a613583"),
                 Name = "Danang Central Warehouse",
                 Code = "DAD_01",
-                LocationText = "Danang, Vietnam"
+                LocationText = "Danang, Vietnam",
+                IsDeleted = false
             }
         );
     }

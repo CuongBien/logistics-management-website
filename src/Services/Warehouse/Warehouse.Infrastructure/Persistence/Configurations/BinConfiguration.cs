@@ -18,8 +18,14 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
         builder.Property(b => b.Version).IsConcurrencyToken();
         builder.Property(b => b.WarehouseId).IsRequired();
 
-        builder.HasIndex(b => new { b.WarehouseId, b.BinCode }).IsUnique();
+        builder.HasIndex(b => new { b.WarehouseId, b.BinCode })
+               .IsUnique()
+               .HasFilter("\"IsDeleted\" = false");
+
         builder.HasIndex(b => new { b.ZoneId, b.Status });
+
+        builder.Property(b => b.IsDeleted).IsRequired();
+        builder.Property(b => b.DeletedAt);
 
         builder.ToTable("Bins", t => {
             t.HasCheckConstraint("CK_Bin_Version_Positive", "\"Version\" >= 1");
@@ -38,7 +44,8 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
                 ZoneId = Guid.Parse("33333333-3333-3333-3333-333333333333"),
                 BinCode = "BIN-A1-01",
                 Status = "Available",
-                Version = 1
+                Version = 1,
+                IsDeleted = false
             },
             new {
                 Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
@@ -46,7 +53,8 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
                 ZoneId = Guid.Parse("33333333-3333-3333-3333-333333333333"),
                 BinCode = "BIN-A1-02",
                 Status = "Available",
-                Version = 1
+                Version = 1,
+                IsDeleted = false
             },
             new {
                 Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
@@ -54,7 +62,8 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
                 ZoneId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
                 BinCode = "BIN-B1-01",
                 Status = "Available",
-                Version = 1
+                Version = 1,
+                IsDeleted = false
             }
         });
     }
