@@ -25,7 +25,10 @@ public class InboundController : ApiControllerBase
     public async Task<ActionResult> GetReceiptByOrderId(Guid orderId, [FromQuery] Guid warehouseId)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-        var query = _context.InboundReceipts.Where(x => x.OrderId == orderId && x.TenantId == tenantId);
+        var query = _context.InboundReceipts
+            .Include(r => r.Lines)
+            .ThenInclude(l => l.Allocations)
+            .Where(x => x.OrderId == orderId && x.TenantId == tenantId);
         
         if (warehouseId != Guid.Empty)
         {
@@ -87,6 +90,28 @@ public class InboundController : ApiControllerBase
             request.Quantity
         );
 
+        var result = await Mediator.Send(command);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Đóng cưỡng chế phiếu nhập (dành cho trường hợp giao thiếu hàng)
+    /// </summary>
+    [HttpPost("receipts/{receiptId:guid}/force-close")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ForceClose(Guid receiptId)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(operatorSub))
+        {
+            return BadRequest(new { Code = "Claims.Missing", Message = "Missing tenant/operator claims." });
+        }
+
+        var command = new Warehouse.Application.Features.Inbound.Commands.ForceCloseReceipt.ForceCloseReceiptCommand(receiptId, tenantId, operatorSub);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }
