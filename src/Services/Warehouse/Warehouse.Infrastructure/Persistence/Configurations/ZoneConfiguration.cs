@@ -13,6 +13,7 @@ public class ZoneConfiguration : IEntityTypeConfiguration<Zone>
         builder.HasKey(z => z.Id);
 
         builder.Property(z => z.ZoneType).HasMaxLength(50).IsRequired();
+        builder.HasIndex(z => new { z.BlockId, z.ZoneType });
 
         builder.HasOne(z => z.Block)
             .WithMany(b => b.Zones)
