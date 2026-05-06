@@ -6,7 +6,9 @@ using Warehouse.Domain.Entities;
 
 namespace Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 
-public record CreateInboundReceiptCommand(Guid OrderId, string TenantId, string CustomerId, Guid WarehouseId, string? SourceShipmentNo) : IRequest<Result<Guid>>;
+public record ExpectedReceiptLine(string SkuCode, int ExpectedQuantity);
+
+public record CreateInboundReceiptCommand(Guid OrderId, string TenantId, string CustomerId, Guid WarehouseId, string? SourceShipmentNo, List<ExpectedReceiptLine>? ExpectedLines = null) : IRequest<Result<Guid>>;
 
 public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundReceiptCommand, Result<Guid>>
 {
@@ -30,17 +32,29 @@ public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundR
             sourceShipmentNo = $"ASN-{request.OrderId:N}";
         }
 
-        // Kiểm tra xem đã có Receipt cho Order này chưa
+        // Kiểm tra xem đã có Receipt cho Shipment này tại Kho này chưa
         var existing = await _context.InboundReceipts
             .FirstOrDefaultAsync(
-                r => r.OrderId == request.OrderId && r.TenantId == request.TenantId,
+                r => r.SourceShipmentNo == sourceShipmentNo && r.WarehouseId == request.WarehouseId && r.TenantId == request.TenantId,
                 cancellationToken);
 
         if (existing is not null)
             return Result<Guid>.Failure(new Error("InboundReceipt.AlreadyExists",
-                $"An inbound receipt for Order '{request.OrderId}' already exists."));
+                $"An inbound receipt for shipment '{sourceShipmentNo}' at warehouse '{request.WarehouseId}' already exists."));
 
-        var receipt = new InboundReceipt(request.OrderId, request.TenantId, request.CustomerId, request.WarehouseId, sourceShipmentNo);
+        var receiptNo = $"RCV-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
+        var receipt = new InboundReceipt(request.OrderId, request.TenantId, request.CustomerId, request.WarehouseId, receiptNo, sourceShipmentNo);
+        
+        if (request.ExpectedLines != null && request.ExpectedLines.Any())
+        {
+            foreach (var expectedLine in request.ExpectedLines)
+            {
+                var line = new InboundReceiptLine(receipt.Id, request.TenantId, request.CustomerId, expectedLine.SkuCode, expectedLine.ExpectedQuantity);
+                receipt.AddLine(line);
+                _context.InboundReceiptLines.Add(line);
+            }
+        }
+
         _context.InboundReceipts.Add(receipt);
 
         await _context.SaveChangesAsync(cancellationToken);
