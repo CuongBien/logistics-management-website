@@ -177,3 +177,8 @@ Full technical docs in `docs/`:
 - `docs/system_architecture.md` - Architecture overview
 - `docs/db_architecture.md` - Database schema details
 - `docs/checklist/` - 14-chapter training series (Bài 1-14)
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

@@ -1,7 +1,15 @@
 {
-  "integration": "copilot",
-  "version": "0.7.2",
-  "scripts": {
-    "update-context": ".specify/integrations/copilot/scripts/update-context.ps1"
-  }
+  "version": "0.8.7.dev0",
+  "integration_state_schema": 1,
+  "installed_integrations": [
+    "agy"
+  ],
+  "integration_settings": {
+    "agy": {
+      "script": "ps",
+      "invoke_separator": "-"
+    }
+  },
+  "integration": "agy",
+  "default_integration": "agy"
 }
