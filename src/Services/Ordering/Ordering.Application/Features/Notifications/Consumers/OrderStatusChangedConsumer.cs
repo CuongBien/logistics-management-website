@@ -153,15 +153,17 @@ public class OrderStatusChangedConsumer :
             return false;
         }
 
-        if (order.Status == OrderStatus.InWarehouse || order.Status == OrderStatus.AwaitingDispatch)
+        // Idempotency: skip if already InWarehouse at the same warehouse
+        if (order.Status == OrderStatus.InWarehouse)
         {
-            _logger.LogInformation("Skip ShipmentReceived sync for Order {OrderId} because status is {Status}", orderId, order.Status);
+            _logger.LogInformation("Skip ShipmentReceived sync for Order {OrderId} because status is already InWarehouse", orderId);
             return false;
         }
 
-        if (order.Status != OrderStatus.PickedUp)
+        // Allow multi-hop: PickedUp → InWarehouse (first arrival) or AwaitingDispatch → InWarehouse (destination arrival)
+        if (order.Status != OrderStatus.PickedUp && order.Status != OrderStatus.AwaitingDispatch)
         {
-            _logger.LogWarning("Cannot sync ShipmentReceived for Order {OrderId}. Expected PickedUp but got {Status}", orderId, order.Status);
+            _logger.LogWarning("Cannot sync ShipmentReceived for Order {OrderId}. Expected PickedUp or AwaitingDispatch but got {Status}", orderId, order.Status);
             return false;
         }
 

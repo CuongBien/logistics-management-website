@@ -95,6 +95,26 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
 
         // Step 5: 👤 Quản lý assign tài xế → ĐỢI tài xế giao
         During(AwaitingDispatch,
+            // Idempotency: ShipmentSorted can be delivered more than once (retry/duplicate).
+            // Once we're already AwaitingDispatch, ignore duplicates instead of faulting the saga.
+            When(ShipmentSorted)
+                .Then(context =>
+                {
+                    logger.LogInformation(
+                        "Saga: Skip duplicate ShipmentSorted for Order {OrderId} because state is {State}",
+                        context.Message.OrderId,
+                        context.Saga.CurrentState);
+                }),
+            // Multi-hop: Shipment arrived at destination warehouse → go back to InWarehouse
+            When(ShipmentReceived)
+                .Then(context =>
+                {
+                    logger.LogInformation(
+                        "Saga: 📦 Order {OrderId} arrived at destination Warehouse {WH} (multi-hop)",
+                        context.Message.OrderId, context.Message.WarehouseId);
+                    context.Saga.WarehouseId = context.Message.WarehouseId;
+                })
+                .TransitionTo(InWarehouse),
             When(RouteDispatched)
                 .Then(context =>
                 {
@@ -108,6 +128,15 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
 
         // Step 6: 👤 Tài xế → Giao thành công HOẶC thất bại
         During(Dispatched,
+            // Idempotency: ignore duplicate ShipmentSorted after dispatch
+            When(ShipmentSorted)
+                .Then(context =>
+                {
+                    logger.LogInformation(
+                        "Saga: Skip duplicate ShipmentSorted for Order {OrderId} because state is {State}",
+                        context.Message.OrderId,
+                        context.Saga.CurrentState);
+                }),
             When(DeliveryCompleted)
                 .Then(context =>
                 {
@@ -132,6 +161,15 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
 
         // Step 7: Failed → có thể re-dispatch (giao lại)
         During(DeliveryFailed,
+            // Idempotency: ignore duplicate ShipmentSorted after failure
+            When(ShipmentSorted)
+                .Then(context =>
+                {
+                    logger.LogInformation(
+                        "Saga: Skip duplicate ShipmentSorted for Order {OrderId} because state is {State}",
+                        context.Message.OrderId,
+                        context.Saga.CurrentState);
+                }),
             When(RouteDispatched)
                 .Then(context =>
                 {

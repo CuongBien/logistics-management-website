@@ -5,6 +5,8 @@ using Warehouse.Application.Common.Interfaces;
 using Warehouse.Domain.Errors;
 using EventBus.Messages.Events;
 using MassTransit;
+using Warehouse.Domain.Entities;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Application.Features.Outbound.Commands.SortOrder;
 
@@ -44,6 +46,8 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
 
         // 1. Tìm Bin đang chứa OrderId
         var bin = await _context.Bins
+            .Include(b => b.Zone)
+            .ThenInclude(z => z.Block)
             .FirstOrDefaultAsync(b => b.CurrentOrderId == request.OrderId, cancellationToken);
 
         if (bin == null)
@@ -58,6 +62,23 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         if (string.IsNullOrWhiteSpace(sourceShipmentNo))
         {
             sourceShipmentNo = $"ASN-{request.OrderId:N}";
+        }
+
+        // 2.1 W2: Create OutboundOrder and Shipment (Overview)
+        var sourceWarehouseId = bin.Zone.Block.WarehouseId;
+
+        var outboundOrder = await _context.OutboundOrders
+            .FirstOrDefaultAsync(o => o.OrderId == request.OrderId, cancellationToken);
+            
+        if (outboundOrder == null)
+        {
+            outboundOrder = new OutboundOrder(request.OrderId, request.TenantId, request.CustomerId, sourceWarehouseId, null);
+            outboundOrder.UpdateStatus(OutboundOrderStatus.Shipped);
+            _context.OutboundOrders.Add(outboundOrder);
+
+            var shipment = new Shipment(request.TenantId, request.CustomerId, sourceShipmentNo, sourceWarehouseId, DestinationType.Warehouse, request.DestinationWarehouseId.ToString());
+            shipment.Dispatch();
+            _context.Shipments.Add(shipment);
         }
 
         // 3. Publish Integration Event (Transactional Outbox will handle persistence)

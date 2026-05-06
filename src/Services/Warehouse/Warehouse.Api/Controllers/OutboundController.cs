@@ -3,6 +3,8 @@ using Warehouse.Application.Features.Outbound.Commands.CreateOutboundOrder;
 using Warehouse.Application.Features.Outbound.Commands.SortOrder;
 using Warehouse.Application.Features.Outbound.Dtos;
 using Warehouse.Application.Features.Outbound.Queries.GetOutboundOrderById;
+using Microsoft.EntityFrameworkCore;
+using Warehouse.Application.Common.Interfaces;
 using Warehouse.Api.Controllers.Requests;
 using Logistics.Core;
 
@@ -13,6 +15,13 @@ namespace Warehouse.Api.Controllers;
 [Route("api/outbound")]
 public class OutboundController : ApiControllerBase
 {
+    private readonly IApplicationDbContext _context;
+
+    public OutboundController(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
     /// <summary>
     /// Tạo phiếu xuất kho (Outbound Order) ở trạng thái Draft — tenant/customer lấy từ JWT.
     /// </summary>
@@ -63,6 +72,20 @@ public class OutboundController : ApiControllerBase
         var query = new GetOutboundOrderByIdQuery(id, tenantId);
         var result = await Mediator.Send(query);
         return ToActionResult(result);
+    }
+
+    [HttpGet("shipments")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetShipments()
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var shipments = await _context.Shipments
+            .Where(x => x.TenantId == tenantId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(50)
+            .ToListAsync();
+
+        return Ok(shipments);
     }
 
     [HttpPut("sort")]

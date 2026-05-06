@@ -11,7 +11,8 @@ public interface IApplicationDbContext
     DbSet<Bin> Bins { get; }
     DbSet<InventoryItem> InventoryItems { get; }
     DbSet<InboundReceipt> InboundReceipts { get; }
-    DbSet<InboundItem> InboundItems { get; }
+    DbSet<InboundReceiptLine> InboundReceiptLines { get; }
+    DbSet<InboundBinAllocation> InboundBinAllocations { get; }
     DbSet<OperatorProfile> OperatorProfiles { get; }
     DbSet<OperatorWarehouseScope> OperatorWarehouseScopes { get; }
     DbSet<ErpSkuMirror> ErpSkuMirrors { get; }
@@ -19,6 +20,6 @@ public interface IApplicationDbContext
     DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
     DbSet<OutboundOrder> OutboundOrders { get; }
     DbSet<OutboundOrderLine> OutboundOrderLines { get; }
-
+    DbSet<Shipment> Shipments { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

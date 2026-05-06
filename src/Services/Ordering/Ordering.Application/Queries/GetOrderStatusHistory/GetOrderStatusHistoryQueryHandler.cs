@@ -13,7 +13,10 @@ public record OrderStatusHistoryDto(
     string StatusFrom,
     string StatusTo,
     DateTime ChangedAtUtc,
-    string Source);
+    string Source,
+    string? Reason,
+    string? ChangedByOperatorId,
+    string? CorrelationId);
 
 public sealed class GetOrderStatusHistoryQueryHandler
     : IRequestHandler<GetOrderStatusHistoryQuery, Result<IReadOnlyCollection<OrderStatusHistoryDto>>>
@@ -48,7 +51,10 @@ public sealed class GetOrderStatusHistoryQueryHandler
                 x.StatusFrom,
                 x.StatusTo,
                 x.ChangedAtUtc,
-                x.Source))
+                x.Source,
+                x.Reason,
+                x.ChangedByOperatorId,
+                x.CorrelationId))
             .ToListAsync(cancellationToken);
 
         return Result<IReadOnlyCollection<OrderStatusHistoryDto>>.Success(rows);

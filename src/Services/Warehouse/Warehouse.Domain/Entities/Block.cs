@@ -2,10 +2,12 @@ using Logistics.Core;
 
 namespace Warehouse.Domain.Entities;
 
-public class Block : Entity<Guid>
+public class Block : Entity<Guid>, ISoftDelete
 {
     public Guid WarehouseId { get; private set; }
     public string BlockCode { get; private set; } = default!;
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     // Navigation
     public Warehouse Warehouse { get; private set; } = default!;
@@ -20,6 +22,13 @@ public class Block : Entity<Guid>
         Id = Guid.NewGuid();
         WarehouseId = warehouseId;
         BlockCode = blockCode;
+        IsDeleted = false;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
     }
 
     public void AddZone(Zone zone)

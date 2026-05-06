@@ -14,12 +14,15 @@ namespace Ordering.Infrastructure.Persistence;
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
     private readonly IMediator _mediator;
+    private readonly IOrderTransitionContext _orderTransitionContext;
 
     public ApplicationDbContext(
-        DbContextOptions<ApplicationDbContext> options, 
-        IMediator mediator) : base(options) 
+        DbContextOptions<ApplicationDbContext> options,
+        IMediator mediator,
+        IOrderTransitionContext orderTransitionContext) : base(options)
     {
         _mediator = mediator;
+        _orderTransitionContext = orderTransitionContext;
     }
 
     public DbSet<Order> Orders => Set<Order>();
@@ -29,13 +32,14 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
     public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
     public DbSet<Ordering.Application.Sagas.OrderFulfillment.OrderState> OrderStates => Set<Ordering.Application.Sagas.OrderFulfillment.OrderState>();
+    public DbSet<OrderConsignee> OrderConsignees => Set<OrderConsignee>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
         base.OnModelCreating(builder);
-        
+
         builder.AddInboxStateEntity();
         builder.AddOutboxMessageEntity();
         builder.AddOutboxStateEntity();
@@ -43,6 +47,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        StampActorFields();
+        SyncOrderConsignees();
         var statusHistoryEntries = BuildStatusHistoryEntries();
         if (statusHistoryEntries.Count > 0)
         {
@@ -54,10 +60,55 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         return await base.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Sets CreatedByOperatorId / UpdatedByOperatorId from <see cref="IOrderTransitionContext.OperatorId"/>.
+    /// Added: both columns set to operator id or null (system).
+    /// Modified: updates UpdatedByOperatorId only when operator id is non-null so saga saves do not clear the last actor.
+    /// </summary>
+    private void StampActorFields()
+    {
+        var operatorId = _orderTransitionContext.OperatorId;
+        foreach (EntityEntry<Order> entry in ChangeTracker.Entries<Order>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Property(nameof(Order.CreatedByOperatorId)).CurrentValue = operatorId;
+                entry.Property(nameof(Order.UpdatedByOperatorId)).CurrentValue = operatorId;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                if (!string.IsNullOrWhiteSpace(operatorId))
+                {
+                    entry.Property(nameof(Order.UpdatedByOperatorId)).CurrentValue = operatorId;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Dual-write consignee snapshot to OrderConsignees for new orders (inline Orders remains source of truth for reads).
+    /// </summary>
+    private void SyncOrderConsignees()
+    {
+        var addedOrders = ChangeTracker
+            .Entries<Order>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Entity)
+            .ToList();
+
+        foreach (var order in addedOrders)
+        {
+            OrderConsignees.Add(new OrderConsignee(order.Id, order.Consignee));
+        }
+    }
+
     private List<OrderStatusHistory> BuildStatusHistoryEntries()
     {
         var utcNow = DateTime.UtcNow;
         var entries = new List<OrderStatusHistory>();
+        var operatorId = _orderTransitionContext.OperatorId;
+        var correlationId = _orderTransitionContext.CorrelationId;
+        var source = string.IsNullOrWhiteSpace(operatorId) ? "system" : operatorId;
 
         foreach (EntityEntry<Order> entry in ChangeTracker.Entries<Order>())
         {
@@ -74,7 +125,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                     "None",
                     entry.Entity.Status.ToString(),
                     utcNow,
-                    "ApplicationDbContext.SaveChanges"));
+                    source,
+                    null,
+                    operatorId,
+                    correlationId));
+                entry.Entity.ClearLastTransitionReasonAfterHistoryWritten();
                 continue;
             }
 
@@ -96,7 +151,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 originalStatus.ToString(),
                 currentStatus.ToString(),
                 utcNow,
-                "ApplicationDbContext.SaveChanges"));
+                source,
+                entry.Entity.LastTransitionReason,
+                operatorId,
+                correlationId));
+            entry.Entity.ClearLastTransitionReasonAfterHistoryWritten();
         }
 
         return entries;

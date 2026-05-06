@@ -7,4 +7,5 @@ public class ReceiveInboundItemRequest
     public required string SkuCode { get; init; }
     public required string BinCode { get; init; }
     public required string ScannedBy { get; init; }
+    public int Quantity { get; init; } = 1;
 }

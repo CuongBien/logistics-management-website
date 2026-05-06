@@ -18,6 +18,10 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(oi => oi.Price).HasColumnType("decimal(18,2)").IsRequired();
         builder.HasIndex(oi => oi.SkuCode);
 
+        builder.HasIndex(oi => new { oi.OrderId, oi.SkuCode })
+            .IsUnique()
+            .HasFilter("\"SkuCode\" IS NOT NULL");
+
         builder.HasOne(oi => oi.Order)
             .WithMany(o => o.Items)
             .HasForeignKey(oi => oi.OrderId)

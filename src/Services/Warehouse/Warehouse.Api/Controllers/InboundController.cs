@@ -1,5 +1,7 @@
 using Logistics.Core;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Warehouse.Application.Common.Interfaces;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
@@ -10,6 +12,34 @@ namespace Warehouse.Api.Controllers;
 [Route("api/inbound")]
 public class InboundController : ApiControllerBase
 {
+    private readonly IApplicationDbContext _context;
+
+    public InboundController(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpGet("receipts/by-order/{orderId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetReceiptByOrderId(Guid orderId, [FromQuery] Guid warehouseId)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var query = _context.InboundReceipts
+            .Include(r => r.Lines)
+            .ThenInclude(l => l.Allocations)
+            .Where(x => x.OrderId == orderId && x.TenantId == tenantId);
+        
+        if (warehouseId != Guid.Empty)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId);
+        }
+
+        var receipt = await query.OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
+
+        if (receipt == null) return NotFound(new { Message = $"Inbound receipt for OrderId {orderId} not found." });
+        return Ok(receipt);
+    }
     /// <summary>
     /// Tạo phiếu nhập kho cho một đơn hàng (Pending)
     /// </summary>
@@ -56,9 +86,32 @@ public class InboundController : ApiControllerBase
             tenantId,
             request.SkuCode,
             request.BinCode,
-            operatorSub
+            operatorSub,
+            request.Quantity
         );
 
+        var result = await Mediator.Send(command);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Đóng cưỡng chế phiếu nhập (dành cho trường hợp giao thiếu hàng)
+    /// </summary>
+    [HttpPost("receipts/{receiptId:guid}/force-close")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ForceClose(Guid receiptId)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(operatorSub))
+        {
+            return BadRequest(new { Code = "Claims.Missing", Message = "Missing tenant/operator claims." });
+        }
+
+        var command = new Warehouse.Application.Features.Inbound.Commands.ForceCloseReceipt.ForceCloseReceiptCommand(receiptId, tenantId, operatorSub);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }

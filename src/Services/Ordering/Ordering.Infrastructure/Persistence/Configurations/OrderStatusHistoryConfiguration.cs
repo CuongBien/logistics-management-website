@@ -18,8 +18,13 @@ public sealed class OrderStatusHistoryConfiguration : IEntityTypeConfiguration<O
         builder.Property(x => x.StatusTo).HasMaxLength(50).IsRequired();
         builder.Property(x => x.ChangedAtUtc).IsRequired();
         builder.Property(x => x.Source).HasMaxLength(120).IsRequired();
+        builder.Property(x => x.Reason).HasMaxLength(500);
+        builder.Property(x => x.ChangedByOperatorId).HasMaxLength(100);
+        builder.Property(x => x.CorrelationId).HasMaxLength(100);
 
-        builder.HasIndex(x => new { x.OrderId, x.ChangedAtUtc });
+        builder.HasIndex(x => new { x.OrderId, x.ChangedAtUtc })
+            .IsDescending(false, true);
+
         builder.HasIndex(x => new { x.TenantId, x.ChangedAtUtc });
 
         builder

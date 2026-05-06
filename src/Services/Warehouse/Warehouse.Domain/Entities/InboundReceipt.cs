@@ -1,52 +1,110 @@
 using Logistics.Core;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Domain.Entities;
 
-public enum InboundReceiptStatus
-{
-    Pending = 0,
-    Received = 1
-}
-
-public class InboundReceipt : Entity<Guid>, IAggregateRoot
+public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
+    public Guid WarehouseId { get; private set; }
+    public string ReceiptNo { get; private set; } = default!;
+    public DateTime CreatedAt { get; private set; }
     public string? SourceShipmentNo { get; private set; }
     public Guid OrderId { get; private set; }
     public InboundReceiptStatus Status { get; private set; }
     public DateTime? ReceivedAt { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     // Navigation
-    private readonly List<InboundItem> _items = new();
-    public IReadOnlyCollection<InboundItem> Items => _items.AsReadOnly();
+    private readonly List<InboundReceiptLine> _lines = new();
+    public IReadOnlyCollection<InboundReceiptLine> Lines => _lines.AsReadOnly();
 
     // EF Core
     private InboundReceipt() { }
 
-    public InboundReceipt(Guid orderId, string tenantId, string customerId, string? sourceShipmentNo)
+    public InboundReceipt(Guid orderId, string tenantId, string customerId, Guid warehouseId, string receiptNo, string? sourceShipmentNo)
     {
         Id = Guid.NewGuid();
         OrderId = orderId;
         TenantId = tenantId;
         CustomerId = customerId;
+        WarehouseId = warehouseId;
+        ReceiptNo = receiptNo;
+        CreatedAt = DateTime.UtcNow;
         SourceShipmentNo = sourceShipmentNo;
         Status = InboundReceiptStatus.Pending;
+        IsDeleted = false;
     }
 
-    public void MarkReceived()
+    public void Delete()
     {
-        if (Status == InboundReceiptStatus.Received)
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateStatus(InboundReceiptStatus status)
+    {
+        Status = status;
+        if (status == InboundReceiptStatus.Received || status == InboundReceiptStatus.CompletedWithExceptions)
         {
-            throw new InvalidOperationException("Inbound receipt is already in Received status.");
+            ReceivedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void RecalculateStatus()
+    {
+        if (_lines.Count == 0)
+        {
+            Status = InboundReceiptStatus.Pending;
+            return;
         }
 
-        Status = InboundReceiptStatus.Received;
+        bool allReceived = true;
+        bool anyReceived = false;
+
+        foreach (var line in _lines)
+        {
+            if (line.ReceivedQuantity > 0)
+            {
+                anyReceived = true;
+            }
+            if (line.ReceivedQuantity < line.ExpectedQuantity)
+            {
+                allReceived = false;
+            }
+        }
+
+        if (allReceived)
+        {
+            Status = InboundReceiptStatus.Received;
+            ReceivedAt = DateTime.UtcNow;
+        }
+        else if (anyReceived)
+        {
+            Status = InboundReceiptStatus.PartiallyReceived;
+            ReceivedAt = null;
+        }
+        else
+        {
+            Status = InboundReceiptStatus.Pending;
+        }
+    }
+
+    public void ForceClose()
+    {
+        if (Status == InboundReceiptStatus.Received || Status == InboundReceiptStatus.Closed || Status == InboundReceiptStatus.Cancelled || Status == InboundReceiptStatus.CompletedWithExceptions)
+        {
+            return; // Already closed
+        }
+
+        Status = InboundReceiptStatus.CompletedWithExceptions;
         ReceivedAt = DateTime.UtcNow;
     }
 
-    public void AddItem(InboundItem item)
+    public void AddLine(InboundReceiptLine line)
     {
-        _items.Add(item);
+        _lines.Add(line);
     }
 }

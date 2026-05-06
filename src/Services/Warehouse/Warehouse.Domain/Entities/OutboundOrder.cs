@@ -1,19 +1,19 @@
 using Logistics.Core;
+using Warehouse.Domain.Enums;
+using Logistics.Core;
 
 namespace Warehouse.Domain.Entities;
 
-public enum OutboundOrderStatus
-{
-    Draft = 0
-}
 
 public class OutboundOrder : Entity<Guid>, IAggregateRoot
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
     public Guid OrderId { get; private set; }
-    public Guid DestinationWarehouseId { get; private set; }
+    public Guid WarehouseId { get; private set; }
     public OutboundOrderStatus Status { get; private set; }
+    public DateTime? PlannedShipAt { get; private set; }
+    public DateTime CreatedAt { get; private set; }
 
     private readonly List<OutboundOrderLine> _lines = new();
     public IReadOnlyCollection<OutboundOrderLine> Lines => _lines.AsReadOnly();
@@ -24,10 +24,11 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
 
     public OutboundOrder(
         Guid orderId,
-        Guid destinationWarehouseId,
+        Guid warehouseId,
         string tenantId,
         string customerId,
-        IReadOnlyCollection<(string SkuCode, int RequestedQty, string? Uom)> lineSpecs)
+        IReadOnlyCollection<(string SkuCode, int RequestedQty, string? Uom)> lineSpecs,
+        DateTime? plannedShipAt = null)
     {
         ArgumentNullException.ThrowIfNull(lineSpecs);
         if (lineSpecs.Count == 0)
@@ -47,10 +48,12 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
 
         Id = Guid.NewGuid();
         OrderId = orderId;
-        DestinationWarehouseId = destinationWarehouseId;
+        WarehouseId = warehouseId;
         TenantId = tenantId.Trim();
         CustomerId = customerId.Trim();
-        Status = OutboundOrderStatus.Draft;
+        Status = OutboundOrderStatus.Pending;
+        PlannedShipAt = plannedShipAt;
+        CreatedAt = DateTime.UtcNow;
 
         foreach (var spec in lineSpecs)
         {
@@ -66,5 +69,10 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
 
             _lines.Add(new OutboundOrderLine(Id, spec.SkuCode.Trim(), spec.RequestedQty, spec.Uom));
         }
+    }
+
+    public void UpdateStatus(OutboundOrderStatus newStatus)
+    {
+        Status = newStatus;
     }
 }

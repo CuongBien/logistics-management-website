@@ -30,16 +30,7 @@ public sealed class ShipmentSortedConsumer : IConsumer<ShipmentSortedIntegration
             return;
         }
 
-        var existed = await _context.InboundReceipts
-            .FirstOrDefaultAsync(x => x.OrderId == message.OrderId, context.CancellationToken);
-
-        if (existed is not null)
-        {
-            _logger.LogInformation(
-                "Inbound receipt already exists for Order {OrderId}. Skip duplicate pre-create.",
-                message.OrderId);
-            return;
-        }
+        var destinationWarehouseId = Guid.TryParse(message.DestinationWarehouseId, out var parsedId) ? parsedId : Guid.Empty;
 
         var sourceShipmentNo = message.SourceShipmentNo;
         if (string.IsNullOrWhiteSpace(sourceShipmentNo))
@@ -47,10 +38,25 @@ public sealed class ShipmentSortedConsumer : IConsumer<ShipmentSortedIntegration
             sourceShipmentNo = $"ASN-{message.OrderId:N}";
         }
 
+        var existed = await _context.InboundReceipts
+            .FirstOrDefaultAsync(x => x.SourceShipmentNo == sourceShipmentNo && x.WarehouseId == destinationWarehouseId && x.TenantId == message.TenantId, context.CancellationToken);
+
+        if (existed is not null)
+        {
+            _logger.LogInformation(
+                "Inbound receipt already exists for Shipment {SourceShipmentNo} in Warehouse {WarehouseId}. Skip duplicate pre-create.",
+                sourceShipmentNo,
+                destinationWarehouseId);
+            return;
+        }
+
+        var receiptNo = $"RCV-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
         var receipt = new InboundReceipt(
             message.OrderId,
             message.TenantId,
             message.CustomerId,
+            destinationWarehouseId,
+            receiptNo,
             sourceShipmentNo);
 
         _context.InboundReceipts.Add(receipt);

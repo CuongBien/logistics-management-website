@@ -23,6 +23,12 @@ public class Order : Entity<Guid>, IAggregateRoot
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastModifiedAt { get; private set; }
 
+    /// <summary>JWT sub or null when created outside operator context (system).</summary>
+    public string? CreatedByOperatorId { get; private set; }
+
+    /// <summary>Last operator who persisted a change; null when system context.</summary>
+    public string? UpdatedByOperatorId { get; private set; }
+
     // Navigation
     private readonly List<OrderItem> _items = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
@@ -36,6 +42,11 @@ public class Order : Entity<Guid>, IAggregateRoot
     public string? ProofOfDeliveryUrl { get; private set; }
     public string? FailureReason { get; private set; }
     public int DeliveryAttempts { get; private set; }
+
+    /// <summary>
+    /// Not persisted: consumed by ApplicationDbContext when writing OrderStatusHistory rows.
+    /// </summary>
+    public string? LastTransitionReason { get; private set; }
 
     // EF Core
     private Order() { }
@@ -117,7 +128,8 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkInWarehouse(string warehouseId, string receivedBy)
     {
-        if (Status != OrderStatus.PickedUp && Status != OrderStatus.AwaitingInbound)
+        // Allow multi-hop: AwaitingDispatch → InWarehouse when shipment arrives at destination warehouse
+        if (Status != OrderStatus.PickedUp && Status != OrderStatus.AwaitingInbound && Status != OrderStatus.AwaitingDispatch)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
 
         WarehouseId = warehouseId;
@@ -188,6 +200,7 @@ public class Order : Entity<Guid>, IAggregateRoot
 
         FailureReason = reason;
         DeliveryAttempts++;
+        LastTransitionReason = reason;
         Status = OrderStatus.Failed;
         LastModifiedAt = DateTime.UtcNow;
 
@@ -200,14 +213,28 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result Cancel()
     {
+        return CancelWithReason(null);
+    }
+
+    /// <summary>
+    /// Hủy đơn với lý do (optional) cho OrderStatusHistory.
+    /// </summary>
+    public Result CancelWithReason(string? cancellationReason)
+    {
         if (Status >= OrderStatus.Dispatched && Status != OrderStatus.Failed)
             return Result.Failure(DomainErrors.Order.CannotCancel);
 
+        LastTransitionReason = cancellationReason;
         Status = OrderStatus.Cancelled;
         LastModifiedAt = DateTime.UtcNow;
 
         AddDomainEvent(new OrderCancelledDomainEvent(Id));
         return Result.Success();
+    }
+
+    public void ClearLastTransitionReasonAfterHistoryWritten()
+    {
+        LastTransitionReason = null;
     }
 
     // --- Helpers ---

@@ -2,10 +2,13 @@ using Logistics.Core;
 
 namespace Warehouse.Domain.Entities;
 
-public class Warehouse : Entity<Guid>, IAggregateRoot
+public class Warehouse : Entity<Guid>, IAggregateRoot, ISoftDelete
 {
     public string Name { get; private set; } = default!;
+    public string Code { get; private set; } = default!;
     public string LocationText { get; private set; } = default!;
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     // Navigation
     private readonly List<Block> _blocks = new();
@@ -14,11 +17,19 @@ public class Warehouse : Entity<Guid>, IAggregateRoot
     // EF Core
     private Warehouse() { }
 
-    public Warehouse(string name, string locationText)
+    public Warehouse(string name, string code, string locationText)
     {
         Id = Guid.NewGuid();
         Name = name;
+        Code = code;
         LocationText = locationText;
+        IsDeleted = false;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
     }
 
     public void AddBlock(Block block)

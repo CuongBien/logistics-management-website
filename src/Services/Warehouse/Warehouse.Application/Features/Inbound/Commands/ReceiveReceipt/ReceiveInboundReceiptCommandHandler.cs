@@ -1,3 +1,4 @@
+using Warehouse.Domain.Enums;
 using Logistics.Core;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,11 +24,11 @@ public class ReceiveInboundReceiptCommandHandler : IRequestHandler<ReceiveInboun
             return Result.Failure(new Error("InboundReceipt.NotFound",
                 $"Inbound receipt '{request.ReceiptId}' was not found."));
 
-        if (receipt.Status == Domain.Entities.InboundReceiptStatus.Received)
+        if (receipt.Status == InboundReceiptStatus.Received)
             return Result.Failure(new Error("InboundReceipt.AlreadyReceived",
                 "This receipt has already been marked as received."));
 
-        receipt.MarkReceived();
+        receipt.UpdateStatus(InboundReceiptStatus.Received);
 
         await _context.SaveChangesAsync(cancellationToken);
 
