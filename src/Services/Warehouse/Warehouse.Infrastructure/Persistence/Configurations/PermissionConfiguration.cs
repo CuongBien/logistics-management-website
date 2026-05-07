@@ -28,7 +28,10 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
         builder.HasData(
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000001"), Code = "inbound:receive", Resource = "inbound", Action = "receive", IsActive = true },
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000002"), Code = "inbound:force_close", Resource = "inbound", Action = "force_close", IsActive = true },
-            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000003"), Code = "outbound:sort", Resource = "outbound", Action = "sort", IsActive = true }
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000003"), Code = "outbound:sort", Resource = "outbound", Action = "sort", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000004"), Code = "inventory:reserve", Resource = "inventory", Action = "reserve", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000005"), Code = "inventory:release", Resource = "inventory", Action = "release", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000006"), Code = "inventory:consume", Resource = "inventory", Action = "consume", IsActive = true }
         );
     }
 }
