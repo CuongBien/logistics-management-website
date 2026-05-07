@@ -59,6 +59,26 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
         Version++;
     }
 
+    public void ReleaseStock(int quantity)
+    {
+        if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+        if (ReservedQty < quantity) throw new InvalidOperationException("Cannot release more than reserved quantity.");
+
+        ReservedQty -= quantity;
+        Version++;
+    }
+
+    public void ConsumeStock(int quantity)
+    {
+        if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+        if (QuantityOnHand < quantity) throw new InsufficientStockException(Sku, quantity, QuantityOnHand);
+        if (ReservedQty < quantity) throw new InvalidOperationException("Cannot consume more than reserved quantity.");
+
+        QuantityOnHand -= quantity;
+        ReservedQty -= quantity;
+        Version++;
+    }
+
     public void Restock(int quantity)
     {
         if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));

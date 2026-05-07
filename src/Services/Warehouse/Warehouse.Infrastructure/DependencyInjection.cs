@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Warehouse.Application.Common.Interfaces;
 using Warehouse.Infrastructure.Persistence;
 using Warehouse.Infrastructure.ErpSync;
+using Warehouse.Infrastructure.Inventory;
 
 namespace Warehouse.Infrastructure;
 
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<WMSDbContext>());
         services.AddMemoryCache();
         services.AddScoped<IOperatorAuthorizationService, Identity.OperatorAuthorizationService>();
+        services.AddScoped<IInventoryService, InventoryService>();
         
         services.Configure<ErpSyncOptions>(configuration.GetSection("ErpSync"));
         services.AddHttpClient<IErpMasterDataClient, ErpMasterDataClient>((sp, client) =>
@@ -30,6 +32,7 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(options.BaseUrl);
         });
         services.AddHostedService<ErpSyncWorker>();
+        services.AddHostedService<ExpiredReservationCleanupWorker>();
 
         // MassTransit Configuration
         services.AddMassTransit(busConfigurator =>

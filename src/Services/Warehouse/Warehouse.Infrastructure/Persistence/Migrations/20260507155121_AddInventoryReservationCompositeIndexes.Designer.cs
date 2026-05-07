@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Warehouse.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace Warehouse.Infrastructure.Migrations
+namespace Warehouse.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(WMSDbContext))]
-    partial class WMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507155121_AddInventoryReservationCompositeIndexes")]
+    partial class AddInventoryReservationCompositeIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -878,30 +881,6 @@ namespace Warehouse.Infrastructure.Migrations
                             Code = "outbound:sort",
                             IsActive = true,
                             Resource = "outbound"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000004"),
-                            Action = "reserve",
-                            Code = "inventory:reserve",
-                            IsActive = true,
-                            Resource = "inventory"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000005"),
-                            Action = "release",
-                            Code = "inventory:release",
-                            IsActive = true,
-                            Resource = "inventory"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000006"),
-                            Action = "consume",
-                            Code = "inventory:consume",
-                            IsActive = true,
-                            Resource = "inventory"
                         });
                 });
 

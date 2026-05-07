@@ -10,6 +10,7 @@ public interface IApplicationDbContext
     DbSet<Zone> Zones { get; }
     DbSet<Bin> Bins { get; }
     DbSet<InventoryItem> InventoryItems { get; }
+    DbSet<InventoryReservation> InventoryReservations { get; }
     DbSet<InboundReceipt> InboundReceipts { get; }
     DbSet<InboundReceiptLine> InboundReceiptLines { get; }
     DbSet<InboundBinAllocation> InboundBinAllocations { get; }
