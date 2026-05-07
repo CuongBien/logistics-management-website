@@ -20,6 +20,14 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<InboundReceipt> InboundReceipts => Set<InboundReceipt>();
     public DbSet<InboundItem> InboundItems => Set<InboundItem>();
+    
+    // Outbound & Shipment
+    public DbSet<OutboundOrder> OutboundOrders => Set<OutboundOrder>();
+    public DbSet<OutboundOrderLine> OutboundOrderLines => Set<OutboundOrderLine>();
+    public DbSet<PickTask> PickTasks => Set<PickTask>();
+    public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<ShipmentItem> ShipmentItems => Set<ShipmentItem>();
+    public DbSet<ShipmentOrder> ShipmentOrders => Set<ShipmentOrder>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

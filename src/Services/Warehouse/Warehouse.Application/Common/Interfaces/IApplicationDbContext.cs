@@ -13,5 +13,13 @@ public interface IApplicationDbContext
     DbSet<InboundReceipt> InboundReceipts { get; }
     DbSet<InboundItem> InboundItems { get; }
     
+    // Outbound & Shipment
+    DbSet<OutboundOrder> OutboundOrders { get; }
+    DbSet<OutboundOrderLine> OutboundOrderLines { get; }
+    DbSet<PickTask> PickTasks { get; }
+    DbSet<Shipment> Shipments { get; }
+    DbSet<ShipmentItem> ShipmentItems { get; }
+    DbSet<ShipmentOrder> ShipmentOrders { get; }
+    
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
