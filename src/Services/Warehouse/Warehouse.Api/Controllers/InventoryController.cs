@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Warehouse.Application.Features.Inventory.Commands.ConsumeStock;
 using Warehouse.Application.Features.Inventory.Commands.ReleaseStock;
 using Warehouse.Application.Features.Inventory.Commands.ReserveStock;
+using Warehouse.Application.Features.Inventory.Queries.GetInventoryLedger;
 
 namespace Warehouse.Api.Controllers;
 
@@ -42,6 +43,13 @@ public class InventoryController : ControllerBase
     {
         command.OperatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpGet("{inventoryItemId}/ledger")]
+    public async Task<IActionResult> GetLedger(Guid inventoryItemId)
+    {
+        var result = await _mediator.Send(new GetInventoryLedgerQuery(inventoryItemId));
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 }

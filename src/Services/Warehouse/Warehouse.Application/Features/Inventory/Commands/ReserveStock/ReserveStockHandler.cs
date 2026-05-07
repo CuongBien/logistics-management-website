@@ -41,6 +41,7 @@ public class ReserveStockHandler : IRequestHandler<ReserveStockCommand, Result<G
                 request.Quantity,
                 request.ReferenceId,
                 request.ReferenceType,
+                request.OperatorSub,
                 request.CorrelationId,
                 cancellationToken);
 

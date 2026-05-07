@@ -31,7 +31,7 @@ public class ReleaseStockHandler : IRequestHandler<ReleaseStockCommand, Result<b
             return Result<bool>.Failure(new Error("Forbidden", "You do not have permission to release inventory."));
 
         // 2. Perform Release
-        var success = await _inventoryService.ReleaseAsync(request.ReservationId, cancellationToken);
+        var success = await _inventoryService.ReleaseAsync(request.ReservationId, request.OperatorSub, cancellationToken);
         
         if (!success)
             return Result<bool>.Failure(new Error("Inventory.ReleaseFailed", "Reservation not found or already processed."));

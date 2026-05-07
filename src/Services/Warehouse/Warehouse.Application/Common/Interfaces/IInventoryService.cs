@@ -11,10 +11,11 @@ public interface IInventoryService
         int quantity,
         string referenceId,
         ReservationType referenceType,
+        string? operatorSub = null,
         string? correlationId = null,
         CancellationToken cancellationToken = default);
 
-    Task<bool> ReleaseAsync(Guid reservationId, CancellationToken cancellationToken = default);
+    Task<bool> ReleaseAsync(Guid reservationId, string? operatorSub = null, CancellationToken cancellationToken = default);
     
-    Task<bool> ConsumeAsync(Guid reservationId, CancellationToken cancellationToken = default);
+    Task<bool> ConsumeAsync(Guid reservationId, string? operatorSub = null, CancellationToken cancellationToken = default);
 }

@@ -31,7 +31,7 @@ public class ConsumeStockHandler : IRequestHandler<ConsumeStockCommand, Result<b
             return Result<bool>.Failure(new Error("Forbidden", "You do not have permission to consume inventory."));
 
         // 2. Perform Consume
-        var success = await _inventoryService.ConsumeAsync(request.ReservationId, cancellationToken);
+        var success = await _inventoryService.ConsumeAsync(request.ReservationId, request.OperatorSub, cancellationToken);
 
         if (!success)
             return Result<bool>.Failure(new Error("Inventory.ConsumeFailed", "Reservation not found, expired, or already processed."));
