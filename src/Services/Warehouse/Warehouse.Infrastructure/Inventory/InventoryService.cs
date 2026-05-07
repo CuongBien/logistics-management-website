@@ -1,18 +1,22 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Warehouse.Application.Common.Interfaces;
 using Warehouse.Domain.Entities;
 using Warehouse.Domain.Enums;
+using Warehouse.Domain.Exceptions;
 
 namespace Warehouse.Infrastructure.Inventory;
 
 public class InventoryService : IInventoryService
 {
     private readonly IApplicationDbContext _context;
+    private readonly ILogger<InventoryService> _logger;
     private static readonly TimeSpan DefaultTtl = TimeSpan.FromMinutes(30);
 
-    public InventoryService(IApplicationDbContext context)
+    public InventoryService(IApplicationDbContext context, ILogger<InventoryService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<Guid> ReserveAsync(
@@ -26,44 +30,77 @@ public class InventoryService : IInventoryService
         string? correlationId = null,
         CancellationToken cancellationToken = default)
     {
-        var inventoryItem = await _context.InventoryItems
-            .Where(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.Sku == sku)
-            .Where(x => x.QuantityOnHand - x.ReservedQty >= quantity)
-            .OrderByDescending(x => x.QuantityOnHand - x.ReservedQty)
-            .FirstOrDefaultAsync(cancellationToken);
+        // 1. Idempotency Check
+        if (!string.IsNullOrWhiteSpace(correlationId))
+        {
+            var existing = await _context.InventoryReservations
+                .FirstOrDefaultAsync(r => r.CorrelationId == correlationId, cancellationToken);
 
-        if (inventoryItem == null)
-            throw new InvalidOperationException($"Insufficient stock for SKU {sku} in warehouse {warehouseId}");
+            if (existing != null)
+            {
+                _logger.LogInformation("Idempotent reserve: existing reservation found for CorrelationId {CorrelationId}", correlationId);
+                return existing.Id;
+            }
+        }
 
-        // 1. Update InventoryItem (Snapshot)
-        inventoryItem.ReserveStock(quantity);
+        const int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var inventoryItem = await _context.InventoryItems
+                    .Where(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.Sku == sku)
+                    .Where(x => x.QuantityOnHand - x.ReservedQty >= quantity)
+                    .OrderByDescending(x => x.QuantityOnHand - x.ReservedQty)
+                    .FirstOrDefaultAsync(cancellationToken);
 
-        // 2. Create Reservation
-        var reservation = InventoryReservation.Create(
-            inventoryItem.Id,
-            referenceId,
-            referenceType,
-            quantity,
-            DefaultTtl,
-            correlationId);
+                if (inventoryItem == null)
+                    throw new InsufficientStockException($"Insufficient stock for SKU {sku} in warehouse {warehouseId}");
 
-        _context.InventoryReservations.Add(reservation);
+                // 2. Update Snapshot
+                inventoryItem.ReserveStock(quantity);
 
-        // 3. Log to Ledger (Reason: Reserve, Delta: 0)
-        var ledger = InventoryLedger.Create(
-            inventoryItem,
-            InventoryLedgerReason.Reserve,
-            0,
-            referenceId,
-            referenceType.ToString(),
-            operatorSub,
-            correlationId);
+                // 3. Create Reservation
+                var reservation = InventoryReservation.Create(
+                    inventoryItem.Id,
+                    referenceId,
+                    referenceType,
+                    quantity,
+                    DefaultTtl,
+                    correlationId);
 
-        _context.InventoryLedgers.Add(ledger);
-        
-        await _context.SaveChangesAsync(cancellationToken);
+                _context.InventoryReservations.Add(reservation);
 
-        return reservation.Id;
+                // 4. Log to Ledger
+                var ledger = InventoryLedger.Create(
+                    inventoryItem,
+                    InventoryLedgerReason.Reserve,
+                    0,
+                    referenceId,
+                    referenceType.ToString(),
+                    operatorSub,
+                    correlationId);
+
+                _context.InventoryLedgers.Add(ledger);
+                
+                await _context.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Stock reserved successfully for SKU: {Sku} (attempt {Attempt})", sku, attempt);
+                return reservation.Id;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Concurrency conflict for SKU: {Sku} on attempt {Attempt}", sku, attempt);
+                if (attempt == maxRetries) throw;
+                
+                // Tránh các transaction dở dang trong context nếu có
+                _context.ChangeTracker.Clear();
+                
+                await Task.Delay(50 * attempt, cancellationToken);
+            }
+        }
+
+        throw new InvalidOperationException("Failed to reserve stock after retries");
     }
 
     public async Task<bool> ReleaseAsync(Guid reservationId, string? operatorSub = null, CancellationToken cancellationToken = default)
@@ -82,10 +119,8 @@ public class InventoryService : IInventoryService
 
         if (reservation.MarkAsReleased())
         {
-            // 1. Update Snapshot
             reservation.InventoryItem.ReleaseStock(reservation.Quantity);
 
-            // 2. Log to Ledger (Reason: Release, Delta: 0)
             var ledger = InventoryLedger.Create(
                 reservation.InventoryItem,
                 InventoryLedgerReason.Release,
@@ -120,11 +155,8 @@ public class InventoryService : IInventoryService
 
         if (reservation.MarkAsConsumed())
         {
-            // 1. Update Snapshot
             reservation.InventoryItem.ConsumeStock(reservation.Quantity);
 
-            // 2. Log to Ledger (Reason: Ship, Delta: -Quantity)
-            // Lưu ý: Chúng ta dùng 'Ship' cho Consume thực tế của đơn hàng
             var ledger = InventoryLedger.Create(
                 reservation.InventoryItem,
                 InventoryLedgerReason.Ship,
@@ -153,10 +185,8 @@ public class InventoryService : IInventoryService
 
         if (reservation.MarkAsExpired())
         {
-            // 1. Update Snapshot
             reservation.InventoryItem.ReleaseStock(reservation.Quantity);
 
-            // 2. Log to Ledger (Reason: Expired, Delta: 0)
             var ledger = InventoryLedger.Create(
                 reservation.InventoryItem,
                 InventoryLedgerReason.Expired,
