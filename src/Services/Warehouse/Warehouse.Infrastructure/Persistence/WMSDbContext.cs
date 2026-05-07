@@ -32,6 +32,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
     public DbSet<OutboundOrder> OutboundOrders => Set<OutboundOrder>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<InventoryLedger> InventoryLedgers => Set<InventoryLedger>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

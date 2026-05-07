@@ -25,6 +25,7 @@ public interface IApplicationDbContext
     DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
     DbSet<OutboundOrder> OutboundOrders { get; }
     DbSet<Shipment> Shipments { get; }
+    DbSet<InventoryLedger> InventoryLedgers { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
