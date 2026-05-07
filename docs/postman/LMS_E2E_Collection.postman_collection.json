@@ -104,6 +104,38 @@
       }
     },
     {
+      "name": "User & Role Management",
+      "item": [
+        {
+          "name": "Assign Role to Warehouse",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"operatorSub\": \"SUB_CUA_NHAN_VIEN\",\n    \"roleCode\": \"manager\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/roleassignment",
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "roleassignment"
+              ]
+            }
+          },
+          "description": "Gán một Role (ví dụ: manager, admin) cho một nhân viên tại một Kho cụ thể để phân quyền."
+        }
+      ]
+    },
+    {
       "name": "Layout Management",
       "item": [
         {
@@ -290,6 +322,106 @@
       ]
     },
     {
+      "name": "Inventory Management",
+      "item": [
+        {
+          "name": "Reserve Stock",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"SKU001\",\n    \"quantity\": 10,\n    \"referenceId\": \"ORD-123\",\n    \"referenceType\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/inventory/reserve",
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "reserve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.isSuccess) {",
+                  "    pm.collectionVariables.set('reservationId', res.value);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Release Stock",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"reservationId\": \"{{reservationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/inventory/release",
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "release"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consume Stock",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"reservationId\": \"{{reservationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/inventory/consume",
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "consume"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "STEP 1 – Tạo đơn hàng (Ordering)",
       "event": [
         {
@@ -435,7 +567,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"11111111-1111-1111-1111-111111111111\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\",\n  \"expectedLines\": [\n    {\n      \"skuCode\": \"{{skuCode}}\",\n      \"expectedQuantity\": 10\n    }\n  ]\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\",\n  \"expectedLines\": [\n    {\n      \"skuCode\": \"{{skuCode}}\",\n      \"expectedQuantity\": 10\n    }\n  ]\n}"
         }
       },
       "response": []
@@ -477,7 +609,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-C1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
         }
       },
       "response": []
@@ -554,7 +686,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
+          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-C1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
         }
       },
       "response": []
