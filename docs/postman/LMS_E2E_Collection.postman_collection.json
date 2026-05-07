@@ -418,6 +418,26 @@
               ]
             }
           }
+        },
+        {
+          "name": "Get Inventory Ledger",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{wms_url}}/api/inventory/{{inventoryItemId}}/ledger",
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "{{inventoryItemId}}",
+                "ledger"
+              ]
+            }
+          },
+          "description": "Lấy toàn bộ lịch sử biến động (Inbound, Outbound, Reserve, Release...) của một Inventory Item cụ thể."
         }
       ]
     },

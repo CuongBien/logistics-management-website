@@ -127,6 +127,17 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             inventoryItem.Restock(request.Quantity);
         }
 
+        // 4.6 Log to Ledger
+        var ledger = InventoryLedger.Create(
+            inventoryItem.Id,
+            InventoryTransactionType.Inbound,
+            request.Quantity,
+            inventoryItem.QuantityOnHand,
+            request.ReceiptId.ToString(),
+            request.ScannedBy);
+            
+        _context.InventoryLedgers.Add(ledger);
+
         // 5. Publish integration event ONLY if the receipt is fully received
         if (receipt.Status == InboundReceiptStatus.Received)
         {

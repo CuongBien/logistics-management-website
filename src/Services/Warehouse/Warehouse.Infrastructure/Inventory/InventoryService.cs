@@ -22,14 +22,14 @@ public class InventoryService : IInventoryService
         int quantity,
         string referenceId,
         ReservationType referenceType,
+        string? operatorSub = null,
         string? correlationId = null,
         CancellationToken cancellationToken = default)
     {
-        // Simple bin selection: First bin with enough available stock
         var inventoryItem = await _context.InventoryItems
             .Where(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.Sku == sku)
             .Where(x => x.QuantityOnHand - x.ReservedQty >= quantity)
-            .OrderByDescending(x => x.QuantityOnHand - x.ReservedQty) // Prefer bins with more stock
+            .OrderByDescending(x => x.QuantityOnHand - x.ReservedQty)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (inventoryItem == null)
@@ -48,13 +48,25 @@ public class InventoryService : IInventoryService
             correlationId);
 
         _context.InventoryReservations.Add(reservation);
+
+        // 3. Log to Ledger (Type: Reservation, Change: 0 physical)
+        var ledger = InventoryLedger.Create(
+            inventoryItem.Id,
+            InventoryTransactionType.Reservation,
+            0,
+            inventoryItem.QuantityOnHand,
+            referenceId,
+            operatorSub,
+            correlationId);
+
+        _context.InventoryLedgers.Add(ledger);
         
         await _context.SaveChangesAsync(cancellationToken);
 
         return reservation.Id;
     }
 
-    public async Task<bool> ReleaseAsync(Guid reservationId, CancellationToken cancellationToken = default)
+    public async Task<bool> ReleaseAsync(Guid reservationId, string? operatorSub = null, CancellationToken cancellationToken = default)
     {
         var reservation = await _context.InventoryReservations
             .Include(r => r.InventoryItem)
@@ -62,18 +74,29 @@ public class InventoryService : IInventoryService
 
         if (reservation == null) return false;
 
-        // Idempotency: If already released or expired, we consider it a success
         if (reservation.Status == ReservationStatus.Released || reservation.Status == ReservationStatus.Expired)
             return true;
 
-        // If it's already consumed, we cannot release it (Business Error)
         if (reservation.Status == ReservationStatus.Consumed)
             return false;
 
         if (reservation.MarkAsReleased())
         {
-            // Update Snapshot
+            // 1. Update Snapshot
             reservation.InventoryItem.ReleaseStock(reservation.Quantity);
+
+            // 2. Log to Ledger (Type: Release, Change: 0 physical)
+            var ledger = InventoryLedger.Create(
+                reservation.InventoryItemId,
+                InventoryTransactionType.Release,
+                0,
+                reservation.InventoryItem.QuantityOnHand,
+                reservation.ReferenceId,
+                operatorSub,
+                reservation.CorrelationId);
+
+            _context.InventoryLedgers.Add(ledger);
+
             await _context.SaveChangesAsync(cancellationToken);
             return true;
         }
@@ -81,7 +104,7 @@ public class InventoryService : IInventoryService
         return false;
     }
 
-    public async Task<bool> ConsumeAsync(Guid reservationId, CancellationToken cancellationToken = default)
+    public async Task<bool> ConsumeAsync(Guid reservationId, string? operatorSub = null, CancellationToken cancellationToken = default)
     {
         var reservation = await _context.InventoryReservations
             .Include(r => r.InventoryItem)
@@ -89,18 +112,29 @@ public class InventoryService : IInventoryService
 
         if (reservation == null) return false;
 
-        // Idempotency: If already consumed, it's a success
         if (reservation.Status == ReservationStatus.Consumed)
             return true;
 
-        // If it's released or expired, we cannot consume it
         if (reservation.Status != ReservationStatus.Active)
             return false;
 
         if (reservation.MarkAsConsumed())
         {
-            // Update Snapshot (Deduct from both OnHand and Reserved)
+            // 1. Update Snapshot
             reservation.InventoryItem.ConsumeStock(reservation.Quantity);
+
+            // 2. Log to Ledger (Type: Outbound, Change: -Quantity)
+            var ledger = InventoryLedger.Create(
+                reservation.InventoryItemId,
+                InventoryTransactionType.Outbound,
+                -reservation.Quantity,
+                reservation.InventoryItem.QuantityOnHand,
+                reservation.ReferenceId,
+                operatorSub,
+                reservation.CorrelationId);
+
+            _context.InventoryLedgers.Add(ledger);
+
             await _context.SaveChangesAsync(cancellationToken);
             return true;
         }
@@ -108,7 +142,6 @@ public class InventoryService : IInventoryService
         return false;
     }
 
-    // Internal helper for background job
     public async Task ExpireAsync(Guid reservationId, CancellationToken cancellationToken = default)
     {
         var reservation = await _context.InventoryReservations
@@ -119,7 +152,21 @@ public class InventoryService : IInventoryService
 
         if (reservation.MarkAsExpired())
         {
+            // 1. Update Snapshot
             reservation.InventoryItem.ReleaseStock(reservation.Quantity);
+
+            // 2. Log to Ledger (Type: Expired, Change: 0 physical)
+            var ledger = InventoryLedger.Create(
+                reservation.InventoryItemId,
+                InventoryTransactionType.Expired,
+                0,
+                reservation.InventoryItem.QuantityOnHand,
+                reservation.ReferenceId,
+                "system-worker",
+                reservation.CorrelationId);
+
+            _context.InventoryLedgers.Add(ledger);
+
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
