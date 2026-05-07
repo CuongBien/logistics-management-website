@@ -12,6 +12,7 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
             t.HasCheckConstraint("CK_InventoryItem_QtyOnHand_Positive", "\"QuantityOnHand\" >= 0");
             t.HasCheckConstraint("CK_InventoryItem_ReservedQty_Positive", "\"ReservedQty\" >= 0");
             t.HasCheckConstraint("CK_InventoryItem_ReservedQty_Lte_OnHand", "\"ReservedQty\" <= \"QuantityOnHand\"");
+            t.HasCheckConstraint("CK_InventoryItem_Version_Min1", "\"Version\" >= 1");
         });
 
         builder.HasKey(x => x.Id);
@@ -23,12 +24,13 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
         builder.Property(x => x.Sku).IsRequired().HasMaxLength(100);
 
         builder.HasIndex(x => new { x.TenantId, x.WarehouseId, x.Sku, x.BinId }).IsUnique();
+        builder.HasIndex(x => new { x.WarehouseId, x.BinId });
 
         builder.Property(x => x.QuantityOnHand).IsRequired();
         builder.Property(x => x.ReservedQty).IsRequired();
         builder.Ignore(x => x.AvailableQty);
         builder.Property(x => x.LastRestockedAt);
 
-        builder.Property(x => x.Version).IsConcurrencyToken();
+        builder.Property(x => x.Version).IsConcurrencyToken().IsRequired().HasDefaultValue(1);
     }
 }

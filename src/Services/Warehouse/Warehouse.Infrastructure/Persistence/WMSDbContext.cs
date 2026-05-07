@@ -17,6 +17,8 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<Zone> Zones => Set<Zone>();
     public DbSet<Bin> Bins => Set<Bin>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
+    public DbSet<InventoryLedger> InventoryLedger => Set<InventoryLedger>();
     public DbSet<InboundReceipt> InboundReceipts => Set<InboundReceipt>();
     public DbSet<InboundItem> InboundItems => Set<InboundItem>();
     public DbSet<OperatorProfile> OperatorProfiles => Set<OperatorProfile>();

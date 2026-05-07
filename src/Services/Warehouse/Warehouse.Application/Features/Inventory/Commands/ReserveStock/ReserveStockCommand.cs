@@ -3,4 +3,4 @@ using MediatR;
 
 namespace Warehouse.Application.Features.Inventory.Commands.ReserveStock;
 
-public sealed record ReserveStockCommand(string Sku, int Quantity) : IRequest<Result<bool>>;
+public sealed record ReserveStockCommand(string Sku, int Quantity, string? CorrelationId = null) : IRequest<Result<bool>>;

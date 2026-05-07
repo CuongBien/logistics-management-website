@@ -27,6 +27,8 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(options.BaseUrl);
         });
         services.AddHostedService<ErpSyncWorker>();
+        // Reservation expiry background worker
+        services.AddHostedService<Warehouse.Infrastructure.Workers.ExpireReservationsWorker>();
 
         // MassTransit Configuration
         services.AddMassTransit(busConfigurator =>
