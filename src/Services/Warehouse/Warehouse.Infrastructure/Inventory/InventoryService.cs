@@ -49,13 +49,13 @@ public class InventoryService : IInventoryService
 
         _context.InventoryReservations.Add(reservation);
 
-        // 3. Log to Ledger (Type: Reservation, Change: 0 physical)
+        // 3. Log to Ledger (Reason: Reserve, Delta: 0)
         var ledger = InventoryLedger.Create(
-            inventoryItem.Id,
-            InventoryTransactionType.Reservation,
+            inventoryItem,
+            InventoryLedgerReason.Reserve,
             0,
-            inventoryItem.QuantityOnHand,
             referenceId,
+            referenceType.ToString(),
             operatorSub,
             correlationId);
 
@@ -85,13 +85,13 @@ public class InventoryService : IInventoryService
             // 1. Update Snapshot
             reservation.InventoryItem.ReleaseStock(reservation.Quantity);
 
-            // 2. Log to Ledger (Type: Release, Change: 0 physical)
+            // 2. Log to Ledger (Reason: Release, Delta: 0)
             var ledger = InventoryLedger.Create(
-                reservation.InventoryItemId,
-                InventoryTransactionType.Release,
+                reservation.InventoryItem,
+                InventoryLedgerReason.Release,
                 0,
-                reservation.InventoryItem.QuantityOnHand,
                 reservation.ReferenceId,
+                reservation.ReferenceType.ToString(),
                 operatorSub,
                 reservation.CorrelationId);
 
@@ -123,13 +123,14 @@ public class InventoryService : IInventoryService
             // 1. Update Snapshot
             reservation.InventoryItem.ConsumeStock(reservation.Quantity);
 
-            // 2. Log to Ledger (Type: Outbound, Change: -Quantity)
+            // 2. Log to Ledger (Reason: Ship, Delta: -Quantity)
+            // Lưu ý: Chúng ta dùng 'Ship' cho Consume thực tế của đơn hàng
             var ledger = InventoryLedger.Create(
-                reservation.InventoryItemId,
-                InventoryTransactionType.Outbound,
+                reservation.InventoryItem,
+                InventoryLedgerReason.Ship,
                 -reservation.Quantity,
-                reservation.InventoryItem.QuantityOnHand,
                 reservation.ReferenceId,
+                reservation.ReferenceType.ToString(),
                 operatorSub,
                 reservation.CorrelationId);
 
@@ -155,13 +156,13 @@ public class InventoryService : IInventoryService
             // 1. Update Snapshot
             reservation.InventoryItem.ReleaseStock(reservation.Quantity);
 
-            // 2. Log to Ledger (Type: Expired, Change: 0 physical)
+            // 2. Log to Ledger (Reason: Expired, Delta: 0)
             var ledger = InventoryLedger.Create(
-                reservation.InventoryItemId,
-                InventoryTransactionType.Expired,
+                reservation.InventoryItem,
+                InventoryLedgerReason.Expired,
                 0,
-                reservation.InventoryItem.QuantityOnHand,
                 reservation.ReferenceId,
+                reservation.ReferenceType.ToString(),
                 "system-worker",
                 reservation.CorrelationId);
 

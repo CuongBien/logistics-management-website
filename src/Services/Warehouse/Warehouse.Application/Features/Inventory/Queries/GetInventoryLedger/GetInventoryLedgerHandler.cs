@@ -10,12 +10,16 @@ public record GetInventoryLedgerQuery(Guid InventoryItemId) : IRequest<Result<Li
 
 public record InventoryLedgerDto(
     Guid Id,
-    InventoryTransactionType TransactionType,
-    int QuantityChange,
+    string Sku,
+    Guid WarehouseId,
+    Guid BinId,
+    InventoryLedgerReason Reason,
+    int DeltaQty,
     int BalanceAfter,
-    string ReferenceId,
+    string? ReferenceType,
+    string? ReferenceId,
     string? OperatorSub,
-    DateTime CreatedAt);
+    DateTime OccurredAt);
 
 public class GetInventoryLedgerHandler : IRequestHandler<GetInventoryLedgerQuery, Result<List<InventoryLedgerDto>>>
 {
@@ -30,15 +34,19 @@ public class GetInventoryLedgerHandler : IRequestHandler<GetInventoryLedgerQuery
     {
         var ledger = await _context.InventoryLedgers
             .Where(x => x.InventoryItemId == request.InventoryItemId)
-            .OrderByDescending(x => x.CreatedAt)
+            .OrderByDescending(x => x.OccurredAt)
             .Select(x => new InventoryLedgerDto(
                 x.Id,
-                x.TransactionType,
-                x.QuantityChange,
+                x.Sku,
+                x.WarehouseId,
+                x.BinId,
+                x.Reason,
+                x.DeltaQty,
                 x.BalanceAfter,
+                x.ReferenceType,
                 x.ReferenceId,
                 x.OperatorSub,
-                x.CreatedAt))
+                x.OccurredAt))
             .ToListAsync(cancellationToken);
 
         return Result<List<InventoryLedgerDto>>.Success(ledger);

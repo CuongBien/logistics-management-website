@@ -1,68 +1,88 @@
-# Hướng Dẫn Kiểm Tra & Đối Soát Sổ Cái Tồn Kho (Inventory Ledger)
+# Hướng Dẫn Kỹ Thuật: Sổ Cái Tồn Kho (Ledger) & Đối Soát Tự Động (Reconciliation)
 
-Hệ thống Sổ cái (Ledger) vừa được triển khai là lớp bảo vệ dữ liệu cao nhất cho kho hàng. Tài liệu này hướng dẫn bạn cách kiểm tra xem dữ liệu có được ghi nhận đúng và đủ hay không.
+Tài liệu này cung cấp cái nhìn chi tiết về hệ thống Audit Trail của Warehouse Microservice, giúp đảm bảo tính toàn vẹn dữ liệu ở cấp độ Enterprise.
 
-## 1. Cơ chế hoạt động (The Logic)
-Mọi thay đổi trong bảng `InventoryItems` (Snapshot) bây giờ đều phải có một bản ghi tương ứng trong bảng `InventoryLedgers` (Audit Trail).
+---
 
-| Hành động | Transaction Type | Quantity Change | Biến động vật lý |
+## 1. Kiến trúc Hệ Thống Audit
+
+Hệ thống sử dụng mô hình **Dual-Persistence**:
+*   **Snapshot (`InventoryItems`)**: Lưu trữ số dư hiện tại (Real-time balance) để phục vụ các thao tác bán hàng/giữ hàng nhanh chóng.
+*   **Ledger (`InventoryLedgers`)**: Lưu trữ lịch sử biến động bất biến (Immutable log). Mỗi bản ghi Ledger là một "bằng chứng" cho sự thay đổi trong Snapshot.
+
+### Thuật toán đối soát O(1)
+Thay vì SUM toàn bộ lịch sử (rất chậm), hệ thống sử dụng trường `BalanceAfter` trong Ledger:
+> **Quy tắc vàng**: `LatestLedger.BalanceAfter` == `CurrentSnapshot.QuantityOnHand`
+
+---
+
+## 2. Danh mục Nghiệp vụ (InventoryLedgerReason)
+
+Mỗi giao dịch trong kho đều được gắn mã lý do cụ thể để phục vụ báo cáo:
+
+| Mã (Enum) | Tên nghiệp vụ | DeltaQty | Ý nghĩa |
 | :--- | :--- | :--- | :--- |
-| Nhập kho (Receive) | `Inbound` | `+N` | Có (Tăng tồn kho) |
-| Giữ hàng (Reserve) | `Reservation` | `0` | Không (Chỉ thay đổi logic Reservation) |
-| Hủy giữ (Release) | `Release` | `0` | Không |
-| Hết hạn giữ (Expire)| `Expired` | `0` | Không |
-| Xuất kho (Consume) | `Outbound` | `-N` | Có (Giảm tồn kho) |
+| `InboundReceived` | Nhập kho | `+N` | Hàng thực tế đi vào bin từ NCC. |
+| `Reserve` | Giữ hàng | `0` | Chỉ thay đổi ReservedQty, không thay đổi vật lý. |
+| `Release` | Hủy giữ | `0` | Trả lại ReservedQty về khả dụng. |
+| `Ship` | Xuất kho | `-N` | Hàng thực tế đi ra khỏi kho (thường sau khi Consume). |
+| `Expired` | Hết hạn | `0` | Hệ thống tự động giải phóng hàng giữ do quá hạn. |
+| `AdjustIncrease` | Điều chỉnh tăng | `+N` | Thủ kho cân bằng lại sau khi phát hiện thiếu hụt. |
+| `AdjustDecrease` | Điều chỉnh giảm | `-N` | Thủ kho cân bằng lại sau khi phát hiện dư thừa. |
 
 ---
 
-## 2. Hướng dẫn Test luồng E2E
+## 3. Hướng dẫn Kiểm thử & Đối soát (Manual Verification)
 
-### Bước 1: Nhập hàng (Inbound)
-1.  Gửi request `Receive Inbound Item` trong Postman.
-2.  Kiểm tra Ledger qua API `Get Inventory Ledger`.
-    *   **Kỳ vọng**: Xuất hiện 1 dòng `Inbound` với `QuantityChange = +5` (ví dụ) và `BalanceAfter = 5`.
+### Kịch bản 1: Kiểm tra Traceability (Khả năng truy vết)
+1.  Thực hiện **Nhập hàng** (Inbound).
+2.  Lấy `inventoryItemId` từ response.
+3.  Gọi API **`Get Inventory Ledger`**.
+4.  **Verify**:
+    *   Trường `ReferenceId` phải khớp với `ReceiptId`.
+    *   Trường `ReferenceType` phải là `"Receipt"`.
+    *   Trường `BalanceAfter` phải bằng đúng số lượng bạn vừa nhập.
 
-### Bước 2: Giữ hàng (Reserve)
-1.  Gửi request `Reserve Stock`.
-2.  Kiểm tra Ledger.
-    *   **Kỳ vọng**: Xuất hiện 1 dòng `Reservation` với `QuantityChange = 0` và `BalanceAfter = 5`. 
-    *   *Lưu ý*: Lệnh giữ hàng không làm giảm số lượng thực tế trong kho nên `QuantityChange = 0`.
+### Kịch bản 2: Phát hiện sai lệch (Reconciliation)
+Đây là cách bạn kiểm tra xem hệ thống đối soát có hoạt động không:
 
-### Bước 3: Xuất hàng (Consume)
-1.  Gửi request `Consume Stock`.
-2.  Kiểm tra Ledger.
-    *   **Kỳ vọng**: Xuất hiện 1 dòng `Outbound` với `QuantityChange = -5` và `BalanceAfter = 0`.
+1.  **Phá hoại dữ liệu (Giả lập lỗi hệ thống)**:
+    ```sql
+    -- Giả sử SKU 'SKU001' đang có 100 cái. Hãy sửa nó thành 90 mà không qua Ledger.
+    UPDATE "InventoryItems" SET "QuantityOnHand" = 90 WHERE "Sku" = 'SKU001';
+    ```
+2.  **Kích hoạt đối soát**: Chạy request Postman **`Reconcile Inventory`**.
+3.  **Verify kết quả**:
+    *   API trả về `discrepanciesFound: 1`.
+    *   Truy vấn bảng báo cáo:
+        ```sql
+        SELECT * FROM "InventoryReconciliationReports" WHERE "Status" = 1; -- 1 = Pending
+        ```
+    *   **Kỳ vọng**: Bạn sẽ thấy một dòng báo cáo ghi rõ: `SnapshotQty = 90`, `LedgerQty = 100`, `Difference = -10`.
 
 ---
 
-## 3. Cách Verify "Chuẩn" (Data Integrity)
+## 4. Các câu lệnh SQL hữu ích cho Admin
 
-Để biết dữ liệu có khớp hay không, bạn hãy dùng SQL kiểm tra quy tắc:
-**Số dư hiện tại = Tổng các QuantityChange trong Ledger.**
-
-**Lệnh SQL kiểm tra:**
+### Truy vấn lịch sử biến động của 1 SKU tại 1 kho:
 ```sql
--- Lấy thông tin Snapshot
-SELECT "Sku", "QuantityOnHand" 
-FROM public."InventoryItems" 
-WHERE "Id" = 'ID_CUA_BAN';
-
--- Tính toán từ Ledger
-SELECT SUM("QuantityChange") as "CalculatedBalance" 
-FROM public."InventoryLedgers" 
-WHERE "InventoryItemId" = 'ID_CUA_BAN';
+SELECT "OccurredAt", "Reason", "DeltaQty", "BalanceAfter", "ReferenceId"
+FROM "InventoryLedgers"
+WHERE "Sku" = 'YOUR_SKU' AND "WarehouseId" = 'YOUR_WH_ID'
+ORDER BY "OccurredAt" DESC;
 ```
-**Kết quả**: `QuantityOnHand` phải LUÔN LUÔN bằng `CalculatedBalance`. Nếu hai số này lệch nhau, hệ thống đang gặp lỗi nghiêm trọng về tính toàn vẹn dữ liệu.
+
+### Tìm các báo cáo sai lệch chưa xử lý:
+```sql
+SELECT "Sku", "DetectedAt", "Difference", "SnapshotQty", "LedgerQty"
+FROM "InventoryReconciliationReports"
+WHERE "Status" = 1 -- Pending
+ORDER BY "DetectedAt" DESC;
+```
 
 ---
 
-## 4. Kiểm tra Traceability (Khả năng truy vết)
-Trong kết quả trả về của API Ledger, hãy chú ý các trường:
-*   `ReferenceId`: Sẽ khớp với `ReceiptId` (khi nhập) hoặc `OrderId` (khi xuất/giữ).
-*   `OperatorSub`: Sẽ khớp với ID người dùng đã thực hiện hành động đó.
-*   `CreatedAt`: Thời điểm chính xác xảy ra biến động.
-
-## 5. Lưu ý cho Postman
-1.  Hãy chạy request **`Get List Warehouses`** hoặc **`InventoryItems`** để lấy `inventoryItemId`.
-2.  Gán ID đó vào biến môi trường `{{inventoryItemId}}`.
-3.  Gọi **`Get Inventory Ledger`** để xem kết quả.
+## 5. Lưu ý quan trọng cho Tester
+*   Khi chạy Postman, hãy đảm bảo bạn đã **Re-import** bản mới nhất tôi vừa cập nhật.
+*   Biến môi trường `{{inventoryItemId}}` cần được cập nhật đúng để API `Get Ledger` hoạt động.
+*   Trạng thái `Expired` chỉ xuất hiện khi `ExpiredReservationCleanupWorker` (background task) chạy qua các bản ghi hết hạn.

@@ -129,11 +129,11 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
         // 4.6 Log to Ledger
         var ledger = InventoryLedger.Create(
-            inventoryItem.Id,
-            InventoryTransactionType.Inbound,
+            inventoryItem,
+            InventoryLedgerReason.InboundReceived,
             request.Quantity,
-            inventoryItem.QuantityOnHand,
             request.ReceiptId.ToString(),
+            "Receipt",
             request.ScannedBy);
             
         _context.InventoryLedgers.Add(ledger);

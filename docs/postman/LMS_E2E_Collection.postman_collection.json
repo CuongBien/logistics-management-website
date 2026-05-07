@@ -438,6 +438,34 @@
             }
           },
           "description": "Lấy toàn bộ lịch sử biến động (Inbound, Outbound, Reserve, Release...) của một Inventory Item cụ thể."
+        },
+        {
+          "name": "Reconcile Inventory",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"warehouseId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/inventory/reconcile",
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "reconcile"
+              ]
+            }
+          },
+          "description": "Kích hoạt đối soát toàn bộ kho hoặc theo WarehouseId. Phát hiện sai lệch giữa Snapshot và Ledger."
         }
       ]
     },

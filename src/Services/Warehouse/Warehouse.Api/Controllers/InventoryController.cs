@@ -5,6 +5,7 @@ using Warehouse.Application.Features.Inventory.Commands.ConsumeStock;
 using Warehouse.Application.Features.Inventory.Commands.ReleaseStock;
 using Warehouse.Application.Features.Inventory.Commands.ReserveStock;
 using Warehouse.Application.Features.Inventory.Queries.GetInventoryLedger;
+using Warehouse.Application.Features.Inventory.Commands.ReconcileInventory;
 
 namespace Warehouse.Api.Controllers;
 
@@ -50,6 +51,13 @@ public class InventoryController : ControllerBase
     public async Task<IActionResult> GetLedger(Guid inventoryItemId)
     {
         var result = await _mediator.Send(new GetInventoryLedgerQuery(inventoryItemId));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("reconcile")]
+    public async Task<IActionResult> Reconcile([FromBody] ReconcileInventoryCommand command)
+    {
+        var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 }
