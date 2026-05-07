@@ -14,6 +14,10 @@ public interface IApplicationDbContext
     DbSet<InboundReceiptLine> InboundReceiptLines { get; }
     DbSet<InboundBinAllocation> InboundBinAllocations { get; }
     DbSet<OperatorProfile> OperatorProfiles { get; }
+    DbSet<Role> Roles { get; }
+    DbSet<Permission> Permissions { get; }
+    DbSet<RolePermission> RolePermissions { get; }
+    DbSet<OperatorRoleAssignment> OperatorRoleAssignments { get; }
     DbSet<OperatorWarehouseScope> OperatorWarehouseScopes { get; }
     DbSet<ErpSkuMirror> ErpSkuMirrors { get; }
     DbSet<ErpWarehouseMirror> ErpWarehouseMirrors { get; }
