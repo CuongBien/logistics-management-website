@@ -84,6 +84,26 @@
   },
   "item": [
     {
+      "name": "STEP 0 – Setup Dev IAM",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{wms_url}}/api/dev/account/setup-admin",
+          "host": [
+            "{{wms_url}}"
+          ],
+          "path": [
+            "api",
+            "dev",
+            "account",
+            "setup-admin"
+          ]
+        },
+        "description": "Gán quyền Admin cho User hiện tại để có thể chạy các bước tiếp theo mà không bị lỗi 403 Forbidden."
+      }
+    },
+    {
       "name": "Layout Management",
       "item": [
         {
