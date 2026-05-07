@@ -13,17 +13,22 @@ public class InventoryLedgerConfiguration : IEntityTypeConfiguration<InventoryLe
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.InventoryItemId).IsRequired();
-        builder.Property(x => x.TransactionType).IsRequired();
-        builder.Property(x => x.QuantityChange).IsRequired();
-        builder.Property(x => x.BalanceAfter).IsRequired();
-        builder.Property(x => x.ReferenceId).IsRequired().HasMaxLength(100);
-        builder.Property(x => x.CreatedAt).IsRequired();
-
-        // Index quan trọng để truy vấn lịch sử biến động của 1 mặt hàng theo thời gian
-        builder.HasIndex(x => new { x.InventoryItemId, x.CreatedAt });
+        builder.Property(x => x.Sku).IsRequired().HasMaxLength(100);
+        builder.Property(x => x.WarehouseId).IsRequired();
+        builder.Property(x => x.BinId).IsRequired();
         
-        // Index để tra cứu theo mã tham chiếu (ví dụ tìm xem đơn hàng X đã ghi ledger chưa)
+        builder.Property(x => x.Reason).IsRequired();
+        builder.Property(x => x.DeltaQty).IsRequired();
+        builder.Property(x => x.BalanceAfter).IsRequired();
+        builder.Property(x => x.ReferenceId).HasMaxLength(100);
+        builder.Property(x => x.ReferenceType).HasMaxLength(50);
+        builder.Property(x => x.OccurredAt).IsRequired();
+
+        // Index theo SKU và Kho (từ draft của user)
+        builder.HasIndex(x => new { x.Sku, x.WarehouseId, x.OccurredAt });
+        
         builder.HasIndex(x => x.ReferenceId);
+        builder.HasIndex(x => x.CorrelationId);
 
         builder.HasOne(x => x.InventoryItem)
             .WithMany()

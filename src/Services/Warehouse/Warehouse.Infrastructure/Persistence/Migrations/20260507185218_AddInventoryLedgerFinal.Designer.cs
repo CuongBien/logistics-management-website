@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Warehouse.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace Warehouse.Infrastructure.Migrations
+namespace Warehouse.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(WMSDbContext))]
-    partial class WMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507185218_AddInventoryLedgerFinal")]
+    partial class AddInventoryLedgerFinal
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -723,51 +726,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.HasIndex("Sku", "WarehouseId", "OccurredAt");
 
                     b.ToTable("InventoryLedgers", (string)null);
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.InventoryReconciliationReport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BinId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("DetectedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("InventoryItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("LedgerQty")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ResolutionNotes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Sku")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("SnapshotQty")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("WarehouseId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DetectedAt");
-
-                    b.HasIndex("Sku", "Status");
-
-                    b.ToTable("InventoryReconciliationReports", (string)null);
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.InventoryReservation", b =>

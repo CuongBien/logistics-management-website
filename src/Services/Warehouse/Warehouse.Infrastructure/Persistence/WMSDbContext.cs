@@ -33,6 +33,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<OutboundOrder> OutboundOrders => Set<OutboundOrder>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<InventoryLedger> InventoryLedgers => Set<InventoryLedger>();
+    public DbSet<InventoryReconciliationReport> InventoryReconciliationReports => Set<InventoryReconciliationReport>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

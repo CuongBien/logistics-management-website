@@ -26,6 +26,7 @@ public interface IApplicationDbContext
     DbSet<OutboundOrder> OutboundOrders { get; }
     DbSet<Shipment> Shipments { get; }
     DbSet<InventoryLedger> InventoryLedgers { get; }
+    DbSet<InventoryReconciliationReport> InventoryReconciliationReports { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
