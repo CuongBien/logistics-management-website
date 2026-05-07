@@ -25,7 +25,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<OperatorRoleAssignment> OperatorRoleAssignments => Set<OperatorRoleAssignment>();
-    public DbSet<OperatorWarehouseScope> OperatorWarehouseScopes => Set<OperatorWarehouseScope>();
+
     public DbSet<ErpSkuMirror> ErpSkuMirrors => Set<ErpSkuMirror>();
     public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();
     public DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints => Set<ErpSyncCheckpoint>();
