@@ -20,6 +20,9 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<WMSDbContext>());
+        services.AddMemoryCache();
+        services.AddScoped<IOperatorAuthorizationService, Identity.OperatorAuthorizationService>();
+        
         services.Configure<ErpSyncOptions>(configuration.GetSection("ErpSync"));
         services.AddHttpClient<IErpMasterDataClient, ErpMasterDataClient>((sp, client) =>
         {
