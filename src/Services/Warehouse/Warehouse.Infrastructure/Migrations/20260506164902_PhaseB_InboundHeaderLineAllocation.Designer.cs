@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Warehouse.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Warehouse.Infrastructure.Persistence;
 namespace Warehouse.Infrastructure.Migrations
 {
     [DbContext(typeof(WMSDbContext))]
-    partial class WMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260506164902_PhaseB_InboundHeaderLineAllocation")]
+    partial class PhaseB_InboundHeaderLineAllocation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -698,47 +701,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.ToTable("operator_profiles", (string)null);
                 });
 
-            modelBuilder.Entity("Warehouse.Domain.Entities.OperatorRoleAssignment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("EffectiveFrom")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("EffectiveTo")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("OperatorProfileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("WarehouseId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ZoneId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.HasIndex("WarehouseId");
-
-                    b.HasIndex("ZoneId");
-
-                    b.HasIndex("OperatorProfileId", "WarehouseId", "RoleId", "ZoneId")
-                        .IsUnique();
-
-                    b.ToTable("OperatorRoleAssignments", (string)null);
-                });
-
             modelBuilder.Entity("Warehouse.Domain.Entities.OperatorWarehouseScope", b =>
                 {
                     b.Property<Guid>("Id")
@@ -799,98 +761,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.HasIndex("WarehouseId", "Status", "PlannedShipAt");
 
                     b.ToTable("OutboundOrders", (string)null);
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Resource")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("Permissions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            Action = "receive",
-                            Code = "inbound:receive",
-                            IsActive = true,
-                            Resource = "inbound"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000002"),
-                            Action = "force_close",
-                            Code = "inbound:force_close",
-                            IsActive = true,
-                            Resource = "inbound"
-                        });
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.Role", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("Roles", (string)null);
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.RolePermission", b =>
-                {
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("PermissionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("RoleId", "PermissionId");
-
-                    b.HasIndex("PermissionId");
-
-                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Shipment", b =>
@@ -1105,40 +975,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("Receipt");
                 });
 
-            modelBuilder.Entity("Warehouse.Domain.Entities.OperatorRoleAssignment", b =>
-                {
-                    b.HasOne("Warehouse.Domain.Entities.OperatorProfile", "OperatorProfile")
-                        .WithMany("RoleAssignments")
-                        .HasForeignKey("OperatorProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Role", "Role")
-                        .WithMany("Assignments")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Zone", "Zone")
-                        .WithMany()
-                        .HasForeignKey("ZoneId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("OperatorProfile");
-
-                    b.Navigation("Role");
-
-                    b.Navigation("Warehouse");
-
-                    b.Navigation("Zone");
-                });
-
             modelBuilder.Entity("Warehouse.Domain.Entities.OperatorWarehouseScope", b =>
                 {
                     b.HasOne("Warehouse.Domain.Entities.OperatorProfile", "OperatorProfile")
@@ -1156,25 +992,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("OperatorProfile");
 
                     b.Navigation("Warehouse");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.RolePermission", b =>
-                {
-                    b.HasOne("Warehouse.Domain.Entities.Permission", "Permission")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Role", "Role")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Zone", b =>
@@ -1205,21 +1022,7 @@ namespace Warehouse.Infrastructure.Migrations
 
             modelBuilder.Entity("Warehouse.Domain.Entities.OperatorProfile", b =>
                 {
-                    b.Navigation("RoleAssignments");
-
                     b.Navigation("WarehouseScopes");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
-                {
-                    b.Navigation("RolePermissions");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.Role", b =>
-                {
-                    b.Navigation("Assignments");
-
-                    b.Navigation("RolePermissions");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Warehouse", b =>

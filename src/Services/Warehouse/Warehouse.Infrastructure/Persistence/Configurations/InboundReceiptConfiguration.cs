@@ -15,6 +15,7 @@ public class InboundReceiptConfiguration : IEntityTypeConfiguration<InboundRecei
         builder.Property(ir => ir.TenantId).HasMaxLength(100).IsRequired();
         builder.Property(ir => ir.CustomerId).HasMaxLength(100).IsRequired();
         builder.Property(ir => ir.WarehouseId).IsRequired();
+        builder.Property(ir => ir.ReceiptNo).HasMaxLength(50).IsRequired();
         builder.Property(ir => ir.CreatedAt).IsRequired();
         builder.Property(ir => ir.SourceShipmentNo).HasMaxLength(100);
         builder.Property(ir => ir.OrderId).IsRequired();
@@ -28,6 +29,10 @@ public class InboundReceiptConfiguration : IEntityTypeConfiguration<InboundRecei
         builder.Property(ir => ir.IsDeleted).IsRequired();
         builder.Property(ir => ir.DeletedAt);
 
+        builder.HasIndex(ir => new { ir.TenantId, ir.ReceiptNo })
+               .IsUnique()
+               .HasFilter("\"IsDeleted\" = false");
+
         builder.HasIndex(ir => new { ir.TenantId, ir.CustomerId, ir.OrderId, ir.WarehouseId })
                .IsUnique()
                .HasFilter("\"IsDeleted\" = false");
@@ -35,7 +40,7 @@ public class InboundReceiptConfiguration : IEntityTypeConfiguration<InboundRecei
         builder.HasIndex(ir => ir.SourceShipmentNo);
         builder.HasIndex(ir => new { ir.WarehouseId, ir.CreatedAt }).IsDescending(false, true);
 
-        builder.HasMany(ir => ir.Items)
+        builder.HasMany(ir => ir.Lines)
             .WithOne(ii => ii.Receipt)
             .HasForeignKey(ii => ii.ReceiptId)
             .OnDelete(DeleteBehavior.Cascade);

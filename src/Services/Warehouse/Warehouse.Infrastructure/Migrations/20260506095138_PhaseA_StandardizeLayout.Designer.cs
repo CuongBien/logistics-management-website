@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Warehouse.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Warehouse.Infrastructure.Persistence;
 namespace Warehouse.Infrastructure.Migrations
 {
     [DbContext(typeof(WMSDbContext))]
-    partial class WMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260506095138_PhaseA_StandardizeLayout")]
+    partial class PhaseA_StandardizeLayout
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -206,12 +209,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Property<Guid?>("CurrentOrderId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -230,8 +227,7 @@ namespace Warehouse.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("WarehouseId", "BinCode")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .IsUnique();
 
                     b.HasIndex("ZoneId", "Status");
 
@@ -245,7 +241,6 @@ namespace Warehouse.Infrastructure.Migrations
                         {
                             Id = new Guid("44444444-4444-4444-4444-444444444444"),
                             BinCode = "BIN-A1-01",
-                            IsDeleted = false,
                             Status = "Available",
                             Version = 1,
                             WarehouseId = new Guid("11111111-1111-1111-1111-111111111111"),
@@ -255,7 +250,6 @@ namespace Warehouse.Infrastructure.Migrations
                         {
                             Id = new Guid("55555555-5555-5555-5555-555555555555"),
                             BinCode = "BIN-A1-02",
-                            IsDeleted = false,
                             Status = "Available",
                             Version = 1,
                             WarehouseId = new Guid("11111111-1111-1111-1111-111111111111"),
@@ -265,7 +259,6 @@ namespace Warehouse.Infrastructure.Migrations
                         {
                             Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
                             BinCode = "BIN-B1-01",
-                            IsDeleted = false,
                             Status = "Available",
                             Version = 1,
                             WarehouseId = new Guid("48b030da-e7ad-452f-90db-ddb01a613583"),
@@ -284,20 +277,13 @@ namespace Warehouse.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("WarehouseId", "BlockCode")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .IsUnique();
 
                     b.ToTable("Blocks", (string)null);
 
@@ -306,14 +292,12 @@ namespace Warehouse.Infrastructure.Migrations
                         {
                             Id = new Guid("22222222-2222-2222-2222-222222222222"),
                             BlockCode = "BLK-A",
-                            IsDeleted = false,
                             WarehouseId = new Guid("11111111-1111-1111-1111-111111111111")
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             BlockCode = "BLK-B",
-                            IsDeleted = false,
                             WarehouseId = new Guid("48b030da-e7ad-452f-90db-ddb01a613583")
                         });
                 });
@@ -451,31 +435,29 @@ namespace Warehouse.Infrastructure.Migrations
                     b.ToTable("erp_warehouses", (string)null);
                 });
 
-            modelBuilder.Entity("Warehouse.Domain.Entities.InboundBinAllocation", b =>
+            modelBuilder.Entity("Warehouse.Domain.Entities.InboundItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("BinId")
+                    b.Property<Guid?>("BinId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("ReceiptLineId")
+                    b.Property<Guid>("ReceiptId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("Sku")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -486,11 +468,11 @@ namespace Warehouse.Infrastructure.Migrations
 
                     b.HasIndex("BinId");
 
-                    b.HasIndex("ReceiptLineId", "BinId", "TenantId")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                    b.HasIndex("ReceiptId");
 
-                    b.ToTable("InboundBinAllocations", (string)null);
+                    b.HasIndex("TenantId", "CustomerId", "Sku");
+
+                    b.ToTable("InboundItems", (string)null);
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.InboundReceipt", b =>
@@ -507,19 +489,8 @@ namespace Warehouse.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("ReceiptNo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime?>("ReceivedAt")
                         .HasColumnType("timestamp with time zone");
@@ -545,70 +516,13 @@ namespace Warehouse.Infrastructure.Migrations
 
                     b.HasIndex("SourceShipmentNo");
 
-                    b.HasIndex("TenantId", "ReceiptNo")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
-
                     b.HasIndex("WarehouseId", "CreatedAt")
                         .IsDescending(false, true);
 
                     b.HasIndex("TenantId", "CustomerId", "OrderId", "WarehouseId")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .IsUnique();
 
                     b.ToTable("InboundReceipts", (string)null);
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.InboundReceiptLine", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CustomerId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ExpectedQuantity")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("ExpiryDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("LotNo")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("ReceiptId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ReceivedQuantity")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Sku")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("TenantId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReceiptId", "Sku")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
-
-                    b.ToTable("InboundReceiptLines", (string)null);
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.InventoryItem", b =>
@@ -698,47 +612,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.ToTable("operator_profiles", (string)null);
                 });
 
-            modelBuilder.Entity("Warehouse.Domain.Entities.OperatorRoleAssignment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("EffectiveFrom")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("EffectiveTo")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("OperatorProfileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("WarehouseId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ZoneId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.HasIndex("WarehouseId");
-
-                    b.HasIndex("ZoneId");
-
-                    b.HasIndex("OperatorProfileId", "WarehouseId", "RoleId", "ZoneId")
-                        .IsUnique();
-
-                    b.ToTable("OperatorRoleAssignments", (string)null);
-                });
-
             modelBuilder.Entity("Warehouse.Domain.Entities.OperatorWarehouseScope", b =>
                 {
                     b.Property<Guid>("Id")
@@ -801,98 +674,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.ToTable("OutboundOrders", (string)null);
                 });
 
-            modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Resource")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("Permissions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            Action = "receive",
-                            Code = "inbound:receive",
-                            IsActive = true,
-                            Resource = "inbound"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000002"),
-                            Action = "force_close",
-                            Code = "inbound:force_close",
-                            IsActive = true,
-                            Resource = "inbound"
-                        });
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.Role", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("Roles", (string)null);
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.RolePermission", b =>
-                {
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("PermissionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("RoleId", "PermissionId");
-
-                    b.HasIndex("PermissionId");
-
-                    b.ToTable("RolePermissions", (string)null);
-                });
-
             modelBuilder.Entity("Warehouse.Domain.Entities.Shipment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -907,9 +688,6 @@ namespace Warehouse.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("DestinationId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -919,14 +697,6 @@ namespace Warehouse.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ShipmentNo")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime?>("ShippedAt")
                         .HasColumnType("timestamp with time zone");
@@ -946,10 +716,6 @@ namespace Warehouse.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "ShipmentNo")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
-
                     b.HasIndex("WarehouseId", "Status", "ShippedAt");
 
                     b.ToTable("Shipments", (string)null);
@@ -966,12 +732,6 @@ namespace Warehouse.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("LocationText")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -985,8 +745,7 @@ namespace Warehouse.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .IsUnique();
 
                     b.ToTable("Warehouses", (string)null);
 
@@ -995,7 +754,6 @@ namespace Warehouse.Infrastructure.Migrations
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111111"),
                             Code = "HAN_01",
-                            IsDeleted = false,
                             LocationText = "Hanoi, Vietnam",
                             Name = "Hanoi Central Warehouse"
                         },
@@ -1003,7 +761,6 @@ namespace Warehouse.Infrastructure.Migrations
                         {
                             Id = new Guid("48b030da-e7ad-452f-90db-ddb01a613583"),
                             Code = "DAD_01",
-                            IsDeleted = false,
                             LocationText = "Danang, Vietnam",
                             Name = "Danang Central Warehouse"
                         });
@@ -1018,12 +775,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Property<Guid>("BlockId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("ZoneType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1031,8 +782,7 @@ namespace Warehouse.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BlockId", "ZoneType")
-                        .HasFilter("\"IsDeleted\" = false");
+                    b.HasIndex("BlockId", "ZoneType");
 
                     b.ToTable("Zones", (string)null);
 
@@ -1041,14 +791,12 @@ namespace Warehouse.Infrastructure.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333333"),
                             BlockId = new Guid("22222222-2222-2222-2222-222222222222"),
-                            IsDeleted = false,
                             ZoneType = "Storage"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
                             BlockId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            IsDeleted = false,
                             ZoneType = "Storage"
                         });
                 });
@@ -1075,68 +823,22 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("Warehouse.Domain.Entities.InboundBinAllocation", b =>
+            modelBuilder.Entity("Warehouse.Domain.Entities.InboundItem", b =>
                 {
                     b.HasOne("Warehouse.Domain.Entities.Bin", "Bin")
                         .WithMany()
                         .HasForeignKey("BinId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Warehouse.Domain.Entities.InboundReceiptLine", "ReceiptLine")
-                        .WithMany("Allocations")
-                        .HasForeignKey("ReceiptLineId")
+                    b.HasOne("Warehouse.Domain.Entities.InboundReceipt", "Receipt")
+                        .WithMany("Items")
+                        .HasForeignKey("ReceiptId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Bin");
 
-                    b.Navigation("ReceiptLine");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.InboundReceiptLine", b =>
-                {
-                    b.HasOne("Warehouse.Domain.Entities.InboundReceipt", "Receipt")
-                        .WithMany("Lines")
-                        .HasForeignKey("ReceiptId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Receipt");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.OperatorRoleAssignment", b =>
-                {
-                    b.HasOne("Warehouse.Domain.Entities.OperatorProfile", "OperatorProfile")
-                        .WithMany("RoleAssignments")
-                        .HasForeignKey("OperatorProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Role", "Role")
-                        .WithMany("Assignments")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Zone", "Zone")
-                        .WithMany()
-                        .HasForeignKey("ZoneId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("OperatorProfile");
-
-                    b.Navigation("Role");
-
-                    b.Navigation("Warehouse");
-
-                    b.Navigation("Zone");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.OperatorWarehouseScope", b =>
@@ -1158,25 +860,6 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("Warehouse.Domain.Entities.RolePermission", b =>
-                {
-                    b.HasOne("Warehouse.Domain.Entities.Permission", "Permission")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Warehouse.Domain.Entities.Role", "Role")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("Role");
-                });
-
             modelBuilder.Entity("Warehouse.Domain.Entities.Zone", b =>
                 {
                     b.HasOne("Warehouse.Domain.Entities.Block", "Block")
@@ -1195,31 +878,12 @@ namespace Warehouse.Infrastructure.Migrations
 
             modelBuilder.Entity("Warehouse.Domain.Entities.InboundReceipt", b =>
                 {
-                    b.Navigation("Lines");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.InboundReceiptLine", b =>
-                {
-                    b.Navigation("Allocations");
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.OperatorProfile", b =>
                 {
-                    b.Navigation("RoleAssignments");
-
                     b.Navigation("WarehouseScopes");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
-                {
-                    b.Navigation("RolePermissions");
-                });
-
-            modelBuilder.Entity("Warehouse.Domain.Entities.Role", b =>
-                {
-                    b.Navigation("Assignments");
-
-                    b.Navigation("RolePermissions");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Warehouse", b =>
