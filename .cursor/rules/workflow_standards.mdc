@@ -1,0 +1,45 @@
+---
+description: "SpecKit operational workflow standards for planning and delivery"
+alwaysApply: false
+---
+# Workflow Standards
+
+## Golden Path (Spec Kit + ECC)
+
+Follow this sequence for feature work to reduce rework:
+
+1. `/speckit-clarify` to resolve ambiguity in `spec.md` before planning.
+2. `/speckit-plan` to produce technical plan and data model.
+3. `/speckit-tasks` to generate executable task breakdown.
+4. `/speckit-analyze` to detect consistency, coverage, and constitution issues.
+5. `/speckit-checklist` to generate requirement-quality checklists (not implementation tests).
+6. Run Spec Test Bundle:
+   - `/speckit-test-coverage` for requirement-to-test mapping coverage
+   - `/speckit-test-gaps` to detect uncovered requirements
+   - `/speckit-test-plan` to define execution strategy before implementation/testing
+   - `/speckit-test-generate` when test scaffolding is required
+7. Execute implementation only after steps 1-6 are complete and reviewed.
+
+## Operational Rules
+
+- Do not skip `/speckit-clarify` unless user explicitly accepts higher rework risk.
+- Run `/speckit-analyze` only after `tasks.md` exists and is complete.
+- Treat constitution conflicts found by `/speckit-analyze` as CRITICAL blockers.
+- Run `/speckit-test-coverage` and `/speckit-test-gaps` after checklist generation as minimum testability gate.
+- Use `/speckit-test-plan` before coding when feature scope is medium/large or cross-module.
+- Use `/speckit-test-generate` to bootstrap tests from accepted acceptance criteria.
+- Keep all implementation work traceable to `tasks.md`.
+- Use feature branches for Spec Kit flows; avoid executing planning and tasks on non-feature branches.
+
+## Definition of Ready for Coding
+
+Coding starts only when all conditions are met:
+
+- `spec.md`, `plan.md`, and `tasks.md` are present for the active feature.
+- Clarifications are integrated into spec.
+- No unresolved CRITICAL analysis findings remain.
+- Checklist coverage exists for relevant requirement-quality areas.
+- Spec Test Bundle minimum gate is passed:
+  - `/speckit-test-coverage` completed
+  - `/speckit-test-gaps` completed with no blocking gaps
+- For medium/large features, `/speckit-test-plan` is completed before coding.

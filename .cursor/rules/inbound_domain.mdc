@@ -1,0 +1,44 @@
+---
+description: "Inbound domain rules for Warehouse module (DDD + data integrity)"
+alwaysApply: false
+---
+# Inbound Domain Rules
+
+## Bounded Context and Ownership
+
+- `InboundReceipt` and `InboundReceiptLine` belong to Inbound context.
+- `InventoryItem` and `DispositionLog` belong to Inventory context.
+- `DispositionLog` is an audit/history record, not a state mutation actor.
+- State changes must happen through domain behavior on `InventoryItem`, then emit/write log.
+
+## Status and Lifecycle
+
+- Use explicit lifecycle states for receipt processing.
+- Keep `Completed` and `CompletedWithExceptions` distinct.
+- Use explicit close commands (for example Force Close / Short Close) for partial completion scenarios.
+- Avoid hidden auto-close behavior that reduces auditability.
+
+## Quantity and Exception Integrity
+
+- Preserve invariant: total processed quantity must never exceed expected quantity.
+- Track rejected quantities and reasons explicitly.
+- Track shortage quantity when force-closing with incomplete receipt.
+- Treat exception data as first-class domain data, not optional comments.
+
+## Idempotency and Uniqueness
+
+- Use integration-origin keys for idempotency, not internal generated IDs.
+- Keep internal receipt identifier unique for local traceability.
+- Enforce composite uniqueness for external replay protection at database level.
+
+## Lot and Expiry Policy
+
+- Database fields for lot and expiry can be nullable by default.
+- Enforce mandatory lot/expiry via domain policy per SKU/UOM flags.
+- Do not apply global mandatory lot/expiry to all SKUs.
+
+## Implementation Constraints
+
+- Apply DDD encapsulation: no anemic entities for core inbound/inventory behavior.
+- Keep invariants inside entities/value objects where possible.
+- Maintain audit trail for all exception-related state transitions.
