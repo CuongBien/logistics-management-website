@@ -2,14 +2,14 @@
   "version": "0.8.7.dev0",
   "integration_state_schema": 1,
   "installed_integrations": [
-    "agy"
+    "cursor-agent"
   ],
   "integration_settings": {
-    "agy": {
+    "cursor-agent": {
       "script": "ps",
       "invoke_separator": "-"
     }
   },
-  "integration": "agy",
-  "default_integration": "agy"
+  "integration": "cursor-agent",
+  "default_integration": "cursor-agent"
 }

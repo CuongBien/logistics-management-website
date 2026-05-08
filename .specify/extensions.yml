@@ -122,6 +122,13 @@ hooks:
     prompt: Commit implementation changes?
     description: Auto-commit after implementation
     condition: null
+  - extension: test
+    command: speckit.test.gaps
+    enabled: true
+    optional: true
+    prompt: Check for untested spec requirements?
+    description: Scan for spec requirements with no matching tests after implementation
+    condition: null
   after_checklist:
   - extension: git
     command: speckit.git.commit

@@ -8,7 +8,7 @@
       "enabled": true,
       "priority": 10,
       "registered_commands": {
-        "agy": [
+        "cursor-agent": [
           "speckit.git.feature",
           "speckit.git.validate",
           "speckit.git.remote",
@@ -18,6 +18,41 @@
       },
       "registered_skills": [],
       "installed_at": "2026-04-17T00:14:37.296887+00:00"
+    },
+    "test": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:6c0c96c50bcf9af36d8d700f7142d0ae77ca95164948bbec8c8c81c53a978195",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "agy": [
+          "speckit.test.generate",
+          "speckit.test.coverage",
+          "speckit.test.gaps",
+          "speckit.test.plan"
+        ],
+        "codex": [
+          "speckit.test.generate",
+          "speckit.test.coverage",
+          "speckit.test.gaps",
+          "speckit.test.plan"
+        ],
+        "copilot": [
+          "speckit.test.generate",
+          "speckit.test.coverage",
+          "speckit.test.gaps",
+          "speckit.test.plan"
+        ],
+        "cursor-agent": [
+          "speckit.test.generate",
+          "speckit.test.coverage",
+          "speckit.test.gaps",
+          "speckit.test.plan"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-07T13:05:33.510360+00:00"
     }
   }
 }
