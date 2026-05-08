@@ -331,7 +331,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"SKU001\",\n    \"quantity\": 10,\n    \"referenceId\": \"ORD-123\",\n    \"referenceType\": 1\n}",
+              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"SKU001\",\n    \"quantity\": 10,\n    \"referenceId\": \"ORD-123\",\n    \"referenceType\": 1,\n    \"correlationId\": \"{{$guid}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -466,6 +466,34 @@
             }
           },
           "description": "Kích hoạt đối soát toàn bộ kho hoặc theo WarehouseId. Phát hiện sai lệch giữa Snapshot và Ledger."
+        },
+        {
+          "name": "Reserve Stock (Idempotent Test - Fixed ID)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"{{sku}}\",\n    \"quantity\": 1,\n    \"referenceId\": \"IDEM-TEST-001\",\n    \"correlationId\": \"FIXED-ID-12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{wms_url}}/api/inventory/reserve",
+              "host": [
+                "{{wms_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "reserve"
+              ]
+            }
+          },
+          "description": "Gửi request này nhiều lần với cùng correlationId 'FIXED-ID-12345'. Hệ thống sẽ chỉ thực hiện trừ kho 1 lần duy nhất."
         }
       ]
     },

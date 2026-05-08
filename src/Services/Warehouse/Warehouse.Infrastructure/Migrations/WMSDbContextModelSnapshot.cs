@@ -898,33 +898,100 @@ namespace Warehouse.Infrastructure.Migrations
 
                     b.Property<string>("CustomerId")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
-                    b.Property<Guid>("OrderId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Destination")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
-                    b.Property<DateTime?>("PlannedShipAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
+                    b.Property<string>("ExternalOrderId")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OrderNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("PlannedShipAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
                     b.Property<string>("TenantId")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ExternalOrderId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("OrderNo")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CustomerId");
+
                     b.HasIndex("WarehouseId", "Status", "PlannedShipAt");
 
                     b.ToTable("OutboundOrders", (string)null);
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OutboundOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PackedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PickedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RequestedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ReservedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ShippedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SkuCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Uom")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OutboundOrderId", "SkuCode")
+                        .IsUnique();
+
+                    b.ToTable("OutboundOrderLines", (string)null);
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
@@ -1009,6 +1076,44 @@ namespace Warehouse.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.PickTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FromBinId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OutboundOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PickedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PickerSub")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Qty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("WaveId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WaveId");
+
+                    b.HasIndex("FromBinId", "Status");
+
+                    b.HasIndex("OutboundOrderLineId", "Status");
+
+                    b.ToTable("PickTasks", (string)null);
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1057,60 +1162,96 @@ namespace Warehouse.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Carrier")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CustomerId")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("Destination")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("DestinationId")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("DestinationType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<int>("DestinationType")
+                        .HasColumnType("integer");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
+                    b.Property<string>("RouteId")
+                        .HasColumnType("text");
 
                     b.Property<string>("ShipmentNo")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime?>("ShippedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Status")
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<string>("TenantId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                    b.Property<string>("TrackingNo")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "ShipmentNo")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                    b.HasIndex("Destination");
+
+                    b.HasIndex("ShipmentNo")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CustomerId");
 
                     b.HasIndex("WarehouseId", "Status", "ShippedAt");
 
                     b.ToTable("Shipments", (string)null);
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.ShipmentItem", b =>
+                {
+                    b.Property<Guid>("ShipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OutboundOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ShipmentId", "OutboundOrderLineId");
+
+                    b.ToTable("ShipmentItems", (string)null);
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.ShipmentOrder", b =>
+                {
+                    b.Property<Guid>("ShipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OutboundOrderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ShipmentId", "OutboundOrderId");
+
+                    b.ToTable("ShipmentOrders", (string)null);
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Warehouse", b =>
@@ -1319,6 +1460,15 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("Zone");
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundOrderLine", b =>
+                {
+                    b.HasOne("Warehouse.Domain.Entities.OutboundOrder", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("OutboundOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.RolePermission", b =>
                 {
                     b.HasOne("Warehouse.Domain.Entities.Permission", "Permission")
@@ -1336,6 +1486,24 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("Permission");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.ShipmentItem", b =>
+                {
+                    b.HasOne("Warehouse.Domain.Entities.Shipment", null)
+                        .WithMany("Items")
+                        .HasForeignKey("ShipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.ShipmentOrder", b =>
+                {
+                    b.HasOne("Warehouse.Domain.Entities.Shipment", null)
+                        .WithMany("Orders")
+                        .HasForeignKey("ShipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Zone", b =>
@@ -1369,6 +1537,11 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("RoleAssignments");
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundOrder", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -1379,6 +1552,13 @@ namespace Warehouse.Infrastructure.Migrations
                     b.Navigation("Assignments");
 
                     b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.Shipment", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Orders");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Warehouse", b =>
