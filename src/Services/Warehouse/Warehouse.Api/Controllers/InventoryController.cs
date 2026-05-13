@@ -1,49 +1,63 @@
 using Logistics.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Warehouse.Application.Features.Inventory.Commands.CreateInventoryItem;
+using Warehouse.Application.Features.Inventory.Commands.ConsumeStock;
+using Warehouse.Application.Features.Inventory.Commands.ReleaseStock;
 using Warehouse.Application.Features.Inventory.Commands.ReserveStock;
-using Warehouse.Application.Features.Inventory.Dtos;
-using Warehouse.Application.Features.Inventory.Queries.GetInventoryBySku;
+using Warehouse.Application.Features.Inventory.Queries.GetInventoryLedger;
+using Warehouse.Application.Features.Inventory.Commands.ReconcileInventory;
 
 namespace Warehouse.Api.Controllers;
 
-public class InventoryController : ApiControllerBase
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class InventoryController : ControllerBase
 {
-    [HttpPost]
-    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Guid>> Create(CreateInventoryItemCommand command)
+    private readonly MediatR.IMediator _mediator;
+
+    public InventoryController(MediatR.IMediator mediator)
     {
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-        var customerId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(customerId))
-        {
-            return BadRequest(new { Code = "TenantOrCustomer.MissingClaim", Message = "Missing tenant/customer claim in access token." });
-        }
-
-        var finalCommand = command with { TenantId = tenantId, CustomerId = customerId };
-        var result = await Mediator.Send(finalCommand);
-        return ToActionResult(result);
-    }
-
-    [HttpGet("{sku}")]
-    [ProducesResponseType(typeof(InventoryItemDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<InventoryItemDto>> GetBySku(string sku)
-    {
-        var query = new GetInventoryBySkuQuery(sku);
-        var result = await Mediator.Send(query);
-        return ToActionResult(result);
+        _mediator = mediator;
     }
 
     [HttpPost("reserve")]
-    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<bool>> ReserveStock(ReserveStockCommand command)
+    public async Task<IActionResult> Reserve([FromBody] ReserveStockCommand command)
     {
-        var result = await Mediator.Send(command);
-        return ToActionResult(result);
+        command.TenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        command.OperatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("release")]
+    public async Task<IActionResult> Release([FromBody] ReleaseStockCommand command)
+    {
+        command.OperatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("consume")]
+    public async Task<IActionResult> Consume([FromBody] ConsumeStockCommand command)
+    {
+        command.OperatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpGet("{inventoryItemId}/ledger")]
+    public async Task<IActionResult> GetLedger(Guid inventoryItemId)
+    {
+        var result = await _mediator.Send(new GetInventoryLedgerQuery(inventoryItemId));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("reconcile")]
+    public async Task<IActionResult> Reconcile([FromBody] ReconcileInventoryCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 }

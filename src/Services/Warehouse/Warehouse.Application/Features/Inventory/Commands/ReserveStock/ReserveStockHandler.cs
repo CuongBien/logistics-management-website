@@ -1,50 +1,59 @@
 using Logistics.Core;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Warehouse.Application.Common.Interfaces;
-using Warehouse.Domain.Errors;
-using Warehouse.Domain.Exceptions;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Application.Features.Inventory.Commands.ReserveStock;
 
-internal sealed class ReserveStockHandler(
-    IApplicationDbContext context,
-    ILogger<ReserveStockHandler> logger
-    ) : IRequestHandler<ReserveStockCommand, Result<bool>>
+public class ReserveStockHandler : IRequestHandler<ReserveStockCommand, Result<Guid>>
 {
-    public async Task<Result<bool>> Handle(ReserveStockCommand request, CancellationToken cancellationToken)
+    private readonly IInventoryService _inventoryService;
+    private readonly IOperatorAuthorizationService _authService;
+
+    public ReserveStockHandler(
+        IInventoryService inventoryService,
+        IOperatorAuthorizationService authService)
     {
-        logger.LogInformation("Reserving stock for SKU: {Sku}, Quantity: {Qty}", request.Sku, request.Quantity);
+        _inventoryService = inventoryService;
+        _authService = authService;
+    }
 
-        var entity = await context.InventoryItems
-            .FirstOrDefaultAsync(x => x.Sku == request.Sku, cancellationToken);
-            
-        if (entity == null)
-        {
-            return Result<bool>.Failure(DomainErrors.Inventory.NotFound(request.Sku));
-        }
+    public async Task<Result<Guid>> Handle(ReserveStockCommand request, CancellationToken cancellationToken)
+    {
+        // 1. RBAC Check
+        var isAuthorized = await _authService.HasPermissionAsync(
+            request.OperatorSub ?? string.Empty,
+            request.WarehouseId, 
+            null, 
+            "inventory:reserve", 
+            cancellationToken);
 
+        if (!isAuthorized)
+            return Result<Guid>.Failure(new Error("Forbidden", "You do not have permission to reserve inventory."));
+
+        // 2. Perform Reservation
         try
         {
-            // Domain Logic
-            entity.ReserveStock(request.Quantity);
+            var reservationId = await _inventoryService.ReserveAsync(
+                request.TenantId ?? string.Empty,
+                request.WarehouseId,
+                request.Sku,
+                request.Quantity,
+                request.ReferenceId,
+                request.ReferenceType,
+                request.OperatorSub,
+                request.CorrelationId,
+                cancellationToken);
 
-            await context.SaveChangesAsync(cancellationToken);
-            logger.LogInformation("Stock reserved successfully for SKU: {Sku}", request.Sku);
-
-            return Result<bool>.Success(true);
+            return Result<Guid>.Success(reservationId);
         }
-        catch (InsufficientStockException ex)
+        catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Insufficient stock for SKU: {Sku}", request.Sku);
-            return Result<bool>.Failure(DomainErrors.Inventory.InsufficientStock(request.Sku));
+            return Result<Guid>.Failure(new Error("Inventory.InsufficientStock", ex.Message));
         }
-        catch (DbUpdateConcurrencyException ex)
+        catch (Exception ex)
         {
-             logger.LogWarning(ex, "Concurrency conflict for SKU: {Sku}", request.Sku);
-             // In real world, we might retry or return a specific concurrency error
-             return Result<bool>.Failure(new Error("Inventory.ConcurrencyConflict", "The inventory was modified by another transaction. Please retry."));
+            return Result<Guid>.Failure(new Error("Inventory.Error", ex.Message));
         }
     }
 }

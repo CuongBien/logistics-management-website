@@ -14,11 +14,16 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
 {
     private readonly IApplicationDbContext _context;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public SortOrderCommandHandler(IApplicationDbContext context, IPublishEndpoint publishEndpoint)
+    public SortOrderCommandHandler(
+        IApplicationDbContext context, 
+        IPublishEndpoint publishEndpoint,
+        IOperatorAuthorizationService authService)
     {
         _context = context;
         _publishEndpoint = publishEndpoint;
+        _authService = authService;
     }
 
     public async Task<Result> Handle(SortOrderCommand request, CancellationToken cancellationToken)
@@ -33,17 +38,6 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             return Result.Failure(new Error("Customer.Missing", "CustomerId is required for sorting operation."));
         }
 
-        var hasWarehouseScope = await _context.OperatorProfiles
-            .Where(x => x.TenantId == request.TenantId && x.OperatorSub == request.CustomerId && x.IsActive)
-            .SelectMany(x => x.WarehouseScopes)
-            .AnyAsync(x => x.WarehouseId == request.DestinationWarehouseId, cancellationToken);
-        if (!hasWarehouseScope)
-        {
-            return Result.Failure(new Error(
-                "Operator.ForbiddenWarehouseScope",
-                $"Operator '{request.CustomerId}' is not allowed to sort into warehouse '{request.DestinationWarehouseId}'."));
-        }
-
         // 1. Tìm Bin đang chứa OrderId
         var bin = await _context.Bins
             .Include(b => b.Zone)
@@ -53,6 +47,21 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         if (bin == null)
         {
             return Result.Failure(Error.NotFound("Bin.NotFound", $"No bin found containing Order ID {request.OrderId}"));
+        }
+
+        // 2. Check RBAC Permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.CustomerId, 
+            bin.WarehouseId, 
+            bin.ZoneId, 
+            "outbound:sort", 
+            cancellationToken);
+
+        if (!hasPermission)
+        {
+            return Result.Failure(new Error(
+                "Operator.Forbidden",
+                $"Operator '{request.CustomerId}' does not have permission 'outbound:sort' for warehouse '{bin.WarehouseId}' and zone '{bin.ZoneId}' (if applicable)."));
         }
 
         // 2. Bin.Status = Available (Giải phóng Bin)

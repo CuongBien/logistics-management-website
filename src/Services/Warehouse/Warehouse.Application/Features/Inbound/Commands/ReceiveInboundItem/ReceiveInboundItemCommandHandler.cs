@@ -12,11 +12,16 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 {
     private readonly IApplicationDbContext _context;
     private readonly MassTransit.IPublishEndpoint _publishEndpoint;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public ReceiveInboundItemCommandHandler(IApplicationDbContext context, MassTransit.IPublishEndpoint publishEndpoint)
+    public ReceiveInboundItemCommandHandler(
+        IApplicationDbContext context, 
+        MassTransit.IPublishEndpoint publishEndpoint,
+        IOperatorAuthorizationService authService)
     {
         _context = context;
         _publishEndpoint = publishEndpoint;
+        _authService = authService;
     }
 
     public async Task<Result> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
@@ -60,15 +65,18 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (bin.Zone == null || bin.Zone.Block == null)
             return Result.Failure(new Error("Bin.InvalidHierarchy", $"Bin with Code {request.BinCode} is missing zone/block hierarchy."));
 
-        var hasWarehouseScope = await _context.OperatorProfiles
-            .Where(x => x.TenantId == request.TenantId && x.OperatorSub == request.ScannedBy && x.IsActive)
-            .SelectMany(x => x.WarehouseScopes)
-            .AnyAsync(x => x.WarehouseId == bin.Zone.Block.WarehouseId, cancellationToken);
-        if (!hasWarehouseScope)
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.ScannedBy, 
+            bin.WarehouseId, 
+            bin.ZoneId, 
+            "inbound:receive", 
+            cancellationToken);
+
+        if (!hasPermission)
         {
             return Result.Failure(new Error(
-                "Operator.ForbiddenWarehouseScope",
-                $"Operator '{request.ScannedBy}' is not allowed to receive into warehouse '{bin.Zone.Block.WarehouseId}'."));
+                "Operator.Forbidden",
+                $"Operator '{request.ScannedBy}' does not have permission 'inbound:receive' for warehouse '{bin.WarehouseId}' and zone '{bin.ZoneId}' (if applicable)."));
         }
 
         // Find or create line for this SKU
@@ -118,6 +126,17 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         {
             inventoryItem.Restock(request.Quantity);
         }
+
+        // 4.6 Log to Ledger
+        var ledger = InventoryLedger.Create(
+            inventoryItem,
+            InventoryLedgerReason.InboundReceived,
+            request.Quantity,
+            request.ReceiptId.ToString(),
+            "Receipt",
+            request.ScannedBy);
+            
+        _context.InventoryLedgers.Add(ledger);
 
         // 5. Publish integration event ONLY if the receipt is fully received
         if (receipt.Status == InboundReceiptStatus.Received)

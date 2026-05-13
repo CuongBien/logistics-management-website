@@ -14,11 +14,16 @@ public class ForceCloseReceiptCommandHandler : IRequestHandler<ForceCloseReceipt
 {
     private readonly IApplicationDbContext _context;
     private readonly MassTransit.IPublishEndpoint _publishEndpoint;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public ForceCloseReceiptCommandHandler(IApplicationDbContext context, MassTransit.IPublishEndpoint publishEndpoint)
+    public ForceCloseReceiptCommandHandler(
+        IApplicationDbContext context, 
+        MassTransit.IPublishEndpoint publishEndpoint,
+        IOperatorAuthorizationService authService)
     {
         _context = context;
         _publishEndpoint = publishEndpoint;
+        _authService = authService;
     }
 
     public async Task<Result> Handle(ForceCloseReceiptCommand request, CancellationToken cancellationToken)
@@ -31,6 +36,21 @@ public class ForceCloseReceiptCommandHandler : IRequestHandler<ForceCloseReceipt
 
         if (!string.Equals(receipt.TenantId, request.TenantId, StringComparison.Ordinal))
             return Result.Failure(new Error("InboundReceipt.ForbiddenTenant", $"Receipt '{request.ReceiptId}' does not belong to tenant '{request.TenantId}'."));
+
+        // Check permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.ClosedBySub, 
+            receipt.WarehouseId, 
+            null, 
+            "inbound:force_close", 
+            cancellationToken);
+
+        if (!hasPermission)
+        {
+            return Result.Failure(new Error(
+                "Operator.Forbidden",
+                $"Operator '{request.ClosedBySub}' does not have permission 'inbound:force_close' for warehouse '{receipt.WarehouseId}'."));
+        }
 
         // Only allow Force Close if it's Pending or PartiallyReceived
         if (receipt.Status != InboundReceiptStatus.Pending && receipt.Status != InboundReceiptStatus.PartiallyReceived)

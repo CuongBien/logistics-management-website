@@ -9,8 +9,10 @@ public class OperatorProfile : Entity<Guid>, IAggregateRoot
     public string DisplayName { get; private set; } = default!;
     public bool IsActive { get; private set; }
 
-    private readonly List<OperatorWarehouseScope> _warehouseScopes = new();
-    public IReadOnlyCollection<OperatorWarehouseScope> WarehouseScopes => _warehouseScopes.AsReadOnly();
+
+
+    private readonly List<OperatorRoleAssignment> _roleAssignments = new();
+    public IReadOnlyCollection<OperatorRoleAssignment> RoleAssignments => _roleAssignments.AsReadOnly();
 
     private OperatorProfile() { }
 

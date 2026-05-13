@@ -10,16 +10,25 @@ public interface IApplicationDbContext
     DbSet<Zone> Zones { get; }
     DbSet<Bin> Bins { get; }
     DbSet<InventoryItem> InventoryItems { get; }
+    DbSet<InventoryReservation> InventoryReservations { get; }
     DbSet<InboundReceipt> InboundReceipts { get; }
     DbSet<InboundReceiptLine> InboundReceiptLines { get; }
     DbSet<InboundBinAllocation> InboundBinAllocations { get; }
     DbSet<OperatorProfile> OperatorProfiles { get; }
-    DbSet<OperatorWarehouseScope> OperatorWarehouseScopes { get; }
+    DbSet<Role> Roles { get; }
+    DbSet<Permission> Permissions { get; }
+    DbSet<RolePermission> RolePermissions { get; }
+    DbSet<OperatorRoleAssignment> OperatorRoleAssignments { get; }
+
     DbSet<ErpSkuMirror> ErpSkuMirrors { get; }
     DbSet<ErpWarehouseMirror> ErpWarehouseMirrors { get; }
     DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
     DbSet<OutboundOrder> OutboundOrders { get; }
     DbSet<OutboundOrderLine> OutboundOrderLines { get; }
     DbSet<Shipment> Shipments { get; }
+    DbSet<InventoryLedger> InventoryLedgers { get; }
+    DbSet<InventoryReconciliationReport> InventoryReconciliationReports { get; }
+    
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

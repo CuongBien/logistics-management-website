@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
-using Warehouse.Api.Infrastructure;
-using Warehouse.Api.Infrastructure.Swagger;
-using Warehouse.Application;
 using Warehouse.Infrastructure;
+using Warehouse.Api.Infrastructure;
+using Warehouse.Application;
+using Warehouse.Api.Infrastructure.Middlewares;
 using Microsoft.OpenApi.Models;
 using System.Collections.Generic;
 using OpenTelemetry.Resources;
@@ -119,6 +119,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseOperatorProvisioning();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 app.MapGet("/api/health", () => Results.Ok(new { status = "Healthy" }));

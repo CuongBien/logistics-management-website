@@ -17,11 +17,5 @@ public sealed class OperatorProfileConfiguration : IEntityTypeConfiguration<Oper
         builder.Property(x => x.IsActive).IsRequired();
 
         builder.HasIndex(x => new { x.TenantId, x.OperatorSub }).IsUnique();
-
-        builder
-            .HasMany(x => x.WarehouseScopes)
-            .WithOne(x => x.OperatorProfile)
-            .HasForeignKey(x => x.OperatorProfileId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }
