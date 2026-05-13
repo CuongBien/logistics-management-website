@@ -1,6 +1,7 @@
 using Logistics.Core;
 using System.ComponentModel.DataAnnotations;
 using Warehouse.Domain.Exceptions;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Domain.Entities;
 
@@ -14,6 +15,7 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
     public int QuantityOnHand { get; private set; }
     public int ReservedQty { get; private set; }
     public int AvailableQty => QuantityOnHand - ReservedQty;
+    public InventoryStatus Status { get; private set; }
     public DateTime? LastRestockedAt { get; private set; }
     public int Version { get; private set; }
 
@@ -34,6 +36,7 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
             Sku = sku,
             QuantityOnHand = initialQty,
             ReservedQty = 0,
+            Status = InventoryStatus.Available,
             Version = 1,
             LastRestockedAt = DateTime.UtcNow
         };
@@ -66,5 +69,15 @@ public class InventoryItem : Entity<Guid>, IAggregateRoot
         QuantityOnHand += quantity;
         LastRestockedAt = DateTime.UtcNow;
         Version++;
+    }
+
+    public DispositionLog ChangeStatus(InventoryStatus newStatus, DispositionStatus dispositionStatus, Guid? inboundLineId = null, string? notes = null)
+    {
+        if (Status == newStatus) return null!; // Or handle based on domain rules
+
+        Status = newStatus;
+        Version++;
+        
+        return new DispositionLog(Id, newStatus, dispositionStatus, inboundLineId, notes);
     }
 }

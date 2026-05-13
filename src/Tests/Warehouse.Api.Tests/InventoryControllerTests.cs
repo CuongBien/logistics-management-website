@@ -19,7 +19,9 @@ public class InventoryControllerTests
         var senderMock = new Mock<ISender>(MockBehavior.Strict);
         var controller = BuildController(senderMock.Object, Array.Empty<Claim>());
 
-        var result = await controller.Create(new CreateInventoryItemCommand("SKU-RED-TSHIRT", 10, null, null));
+        var warehouseId = Guid.NewGuid();
+        var binId = Guid.NewGuid();
+        var result = await controller.Create(new CreateInventoryItemCommand("SKU-RED-TSHIRT", 10, null, null, warehouseId, binId));
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
         senderMock.Verify(
@@ -42,14 +44,18 @@ public class InventoryControllerTests
         };
         var controller = BuildController(senderMock.Object, claims);
 
-        await controller.Create(new CreateInventoryItemCommand("SKU-RED-TSHIRT", 10, null, null));
+        var warehouseId = Guid.NewGuid();
+        var binId = Guid.NewGuid();
+        await controller.Create(new CreateInventoryItemCommand("SKU-RED-TSHIRT", 10, null, null, warehouseId, binId));
 
         senderMock.Verify(
             x => x.Send(
                 It.Is<CreateInventoryItemCommand>(c =>
                     c.TenantId == "tenant-a" &&
                     c.CustomerId == "customer-a" &&
-                    c.Sku == "SKU-RED-TSHIRT"),
+                    c.Sku == "SKU-RED-TSHIRT" &&
+                    c.WarehouseId == warehouseId &&
+                    c.BinId == binId),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

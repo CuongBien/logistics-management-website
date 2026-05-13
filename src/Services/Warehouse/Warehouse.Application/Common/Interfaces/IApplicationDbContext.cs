@@ -13,6 +13,7 @@ public interface IApplicationDbContext
     DbSet<InboundReceipt> InboundReceipts { get; }
     DbSet<InboundReceiptLine> InboundReceiptLines { get; }
     DbSet<InboundBinAllocation> InboundBinAllocations { get; }
+    DbSet<DispositionLog> DispositionLogs { get; }
     DbSet<OperatorProfile> OperatorProfiles { get; }
     DbSet<OperatorWarehouseScope> OperatorWarehouseScopes { get; }
     DbSet<ErpSkuMirror> ErpSkuMirrors { get; }

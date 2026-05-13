@@ -39,7 +39,7 @@ public class GetOutboundOrderByIdHandler : IRequestHandler<GetOutboundOrderByIdQ
             entity.OrderId,
             entity.TenantId,
             entity.CustomerId,
-            entity.DestinationWarehouseId,
+            entity.WarehouseId,
             entity.Status.ToString(),
             lines);
 

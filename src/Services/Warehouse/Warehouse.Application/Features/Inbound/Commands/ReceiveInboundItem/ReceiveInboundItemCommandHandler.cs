@@ -39,6 +39,13 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (receipt == null)
             return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
+        if (receipt.Status == InboundReceiptStatus.Completed || receipt.Status == InboundReceiptStatus.CompletedWithExceptions)
+        {
+            return Result.Failure(new Error(
+                "InboundReceipt.Immutable",
+                $"Cannot receive on receipt in status '{receipt.Status}'. Use a compensating workflow if a correction is required."));
+        }
+
         if (!string.Equals(receipt.TenantId, request.TenantId, StringComparison.Ordinal))
         {
             return Result.Failure(new Error(
@@ -46,8 +53,8 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
                 $"Receipt '{request.ReceiptId}' does not belong to tenant '{request.TenantId}'."));
         }
 
-        // 2. Validate OrderId belongs to this receipt
-        if (receipt.OrderId != request.OrderId)
+        // 2. Validate OrderId belongs to this receipt (using SourceRef)
+        if (receipt.SourceRef != request.OrderId.ToString())
             return Result.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));
 
         // 3. Load Bin by BinCode and WarehouseId (safety for multi-warehouse)
@@ -72,18 +79,26 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         }
 
         // Find or create line for this SKU
-        var line = receipt.Lines.FirstOrDefault(l => l.Sku == request.SkuCode);
+        var line = receipt.Lines.FirstOrDefault(l => l.SkuCode == request.SkuCode);
         if (line == null)
         {
             // Blind receipt scenario: line wasn't in ASN
-            line = new InboundReceiptLine(receipt.Id, request.TenantId, receipt.CustomerId, request.SkuCode, expectedQuantity: request.Quantity);
+            line = new InboundReceiptLine(receipt.Id, receipt.Lines.Count + 1, request.TenantId, receipt.CustomerId, request.SkuCode, "EA", request.Quantity);
             _context.InboundReceiptLines.Add(line);
             receipt.AddLine(line);
         }
 
-        line.AddReceivedQuantity(request.Quantity);
+        line.Receive(request.Quantity);
 
-        // Find or create Allocation
+        var sumAllocated = line.Allocations.Sum(a => a.AllocatedQty);
+        var projectedTotal = sumAllocated + request.Quantity;
+        if (projectedTotal > line.ReceivedQty)
+        {
+            return Result.Failure(new Error(
+                "InboundBinAllocation.ExceedsReceived",
+                $"Allocation total ({projectedTotal}) would exceed received quantity ({line.ReceivedQty}) for SKU '{request.SkuCode}'."));
+        }
+
         var allocation = line.Allocations.FirstOrDefault(a => a.BinId == bin.Id);
         if (allocation != null)
         {
@@ -92,15 +107,13 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         else
         {
             allocation = new InboundBinAllocation(line.Id, bin.Id, request.Quantity, request.TenantId);
+            line.AddAllocation(allocation);
             _context.InboundBinAllocations.Add(allocation);
         }
 
         // 4. Mark Bin as Occupied
         bin.AssignOrder(request.OrderId);
         
-        // Mark receipt as received. (In a real system, we'd check if all lines are fully received)
-        receipt.RecalculateStatus();
-
         // 4.5 Upsert InventoryItem
         var warehouseId = bin.Zone.Block.WarehouseId;
         var inventoryItem = await _context.InventoryItems
@@ -120,7 +133,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         }
 
         // 5. Publish integration event ONLY if the receipt is fully received
-        if (receipt.Status == InboundReceiptStatus.Received)
+        if (receipt.Status == InboundReceiptStatus.Completed || receipt.Status == InboundReceiptStatus.CompletedWithExceptions)
         {
             var integrationEvent = new ShipmentReceivedIntegrationEvent(
                 request.OrderId,

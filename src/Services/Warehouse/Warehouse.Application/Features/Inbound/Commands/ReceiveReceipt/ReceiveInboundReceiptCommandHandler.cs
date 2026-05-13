@@ -24,11 +24,11 @@ public class ReceiveInboundReceiptCommandHandler : IRequestHandler<ReceiveInboun
             return Result.Failure(new Error("InboundReceipt.NotFound",
                 $"Inbound receipt '{request.ReceiptId}' was not found."));
 
-        if (receipt.Status == InboundReceiptStatus.Received)
+        if (receipt.Status == InboundReceiptStatus.Completed || receipt.Status == InboundReceiptStatus.CompletedWithExceptions)
             return Result.Failure(new Error("InboundReceipt.AlreadyReceived",
                 "This receipt has already been marked as received."));
 
-        receipt.UpdateStatus(InboundReceiptStatus.Received);
+        receipt.StartReceiving();
 
         await _context.SaveChangesAsync(cancellationToken);
 
