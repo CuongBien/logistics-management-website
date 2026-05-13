@@ -77,3 +77,8 @@ tests/
 !src/Tests/**
 src/Tests/**/bin/
 src/Tests/**/obj/
+# Agent and Spec directories
+.agents/
+.specify/
+.obsidian/
+local_diff.txt
