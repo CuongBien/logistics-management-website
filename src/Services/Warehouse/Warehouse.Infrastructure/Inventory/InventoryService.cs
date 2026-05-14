@@ -55,7 +55,14 @@ public class InventoryService : IInventoryService
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (inventoryItem == null)
-                    throw new InsufficientStockException($"Insufficient stock for SKU {sku} in warehouse {warehouseId}");
+                {
+                    var totalAvailable = await _context.InventoryItems
+                        .Where(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.Sku == sku)
+                        .Select(x => x.QuantityOnHand - x.ReservedQty)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    throw new InsufficientStockException(sku, quantity, (int)totalAvailable);
+                }
 
                 // 2. Update Snapshot
                 inventoryItem.ReserveStock(quantity);

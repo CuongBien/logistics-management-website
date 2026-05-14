@@ -21,11 +21,14 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<InboundReceipt> InboundReceipts => Set<InboundReceipt>();
     public DbSet<InboundReceiptLine> InboundReceiptLines => Set<InboundReceiptLine>();
     public DbSet<InboundBinAllocation> InboundBinAllocations => Set<InboundBinAllocation>();
+    public DbSet<DispositionLog> DispositionLogs => Set<DispositionLog>();
+
     public DbSet<OperatorProfile> OperatorProfiles => Set<OperatorProfile>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<OperatorRoleAssignment> OperatorRoleAssignments => Set<OperatorRoleAssignment>();
+    public DbSet<OperatorWarehouseScope> OperatorWarehouseScopes => Set<OperatorWarehouseScope>();
 
     public DbSet<ErpSkuMirror> ErpSkuMirrors => Set<ErpSkuMirror>();
     public DbSet<ErpWarehouseMirror> ErpWarehouseMirrors => Set<ErpWarehouseMirror>();

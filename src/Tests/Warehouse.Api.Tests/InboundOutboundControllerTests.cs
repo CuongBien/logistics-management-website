@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Warehouse.Application.Common.Interfaces;
 using Warehouse.Api.Controllers;
 using Warehouse.Api.Controllers.Requests;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
@@ -22,7 +23,8 @@ public class InboundOutboundControllerTests
         var senderMock = new Mock<ISender>(MockBehavior.Strict);
         var controller = BuildInboundController(senderMock.Object, Array.Empty<Claim>());
 
-        var result = await controller.CreateReceipt(new CreateInboundReceiptCommand(Guid.NewGuid(), "tenant", "customer", "ASN-1"));
+        var warehouseId = Guid.NewGuid();
+        var result = await controller.CreateReceipt(new CreateInboundReceiptCommand(Guid.NewGuid(), "tenant", "customer", warehouseId, "ASN-1"));
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
         senderMock.Verify(x => x.Send(It.IsAny<CreateInboundReceiptCommand>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -148,15 +150,17 @@ public class InboundOutboundControllerTests
 
     private static InboundController BuildInboundController(ISender sender, IReadOnlyCollection<Claim> claims)
     {
+        var db = new Mock<IApplicationDbContext>();
         var services = new ServiceCollection();
         services.AddSingleton(sender);
+        services.AddSingleton(db.Object);
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services.BuildServiceProvider(),
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
         };
 
-        return new InboundController
+        return new InboundController(db.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
@@ -164,15 +168,17 @@ public class InboundOutboundControllerTests
 
     private static OutboundController BuildOutboundController(ISender sender, IReadOnlyCollection<Claim> claims)
     {
+        var db = new Mock<IApplicationDbContext>();
         var services = new ServiceCollection();
         services.AddSingleton(sender);
+        services.AddSingleton(db.Object);
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services.BuildServiceProvider(),
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
         };
 
-        return new OutboundController
+        return new OutboundController(db.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };

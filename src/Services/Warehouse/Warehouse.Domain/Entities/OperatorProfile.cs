@@ -14,6 +14,9 @@ public class OperatorProfile : Entity<Guid>, IAggregateRoot
     private readonly List<OperatorRoleAssignment> _roleAssignments = new();
     public IReadOnlyCollection<OperatorRoleAssignment> RoleAssignments => _roleAssignments.AsReadOnly();
 
+    private readonly List<OperatorWarehouseScope> _warehouseScopes = new();
+    public IReadOnlyCollection<OperatorWarehouseScope> WarehouseScopes => _warehouseScopes.AsReadOnly();
+
     private OperatorProfile() { }
 
     public OperatorProfile(string tenantId, string operatorSub, string displayName)

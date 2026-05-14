@@ -28,7 +28,7 @@ public class InboundController : ApiControllerBase
         var query = _context.InboundReceipts
             .Include(r => r.Lines)
             .ThenInclude(l => l.Allocations)
-            .Where(x => x.OrderId == orderId && x.TenantId == tenantId);
+            .Where(x => x.SourceRef == orderId.ToString() && x.TenantId == tenantId);
         
         if (warehouseId != Guid.Empty)
         {

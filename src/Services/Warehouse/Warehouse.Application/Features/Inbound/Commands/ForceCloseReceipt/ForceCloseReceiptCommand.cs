@@ -29,6 +29,7 @@ public class ForceCloseReceiptCommandHandler : IRequestHandler<ForceCloseReceipt
     public async Task<Result> Handle(ForceCloseReceiptCommand request, CancellationToken cancellationToken)
     {
         var receipt = await _context.InboundReceipts
+            .Include(r => r.Lines)
             .FirstOrDefaultAsync(r => r.Id == request.ReceiptId, cancellationToken);
 
         if (receipt == null)
@@ -52,23 +53,28 @@ public class ForceCloseReceiptCommandHandler : IRequestHandler<ForceCloseReceipt
                 $"Operator '{request.ClosedBySub}' does not have permission 'inbound:force_close' for warehouse '{receipt.WarehouseId}'."));
         }
 
-        // Only allow Force Close if it's Pending or PartiallyReceived
-        if (receipt.Status != InboundReceiptStatus.Pending && receipt.Status != InboundReceiptStatus.PartiallyReceived)
+        // Only allow Force Close if it's Pending or Receiving
+        if (receipt.Status != InboundReceiptStatus.Pending && receipt.Status != InboundReceiptStatus.Receiving)
         {
             return Result.Failure(new Error("InboundReceipt.CannotForceClose", $"Cannot force close receipt in status {receipt.Status}."));
         }
 
-        // Force Close the receipt
-        receipt.ForceClose();
+        // Force Close the receipt lines
+        foreach (var line in receipt.Lines)
+        {
+            line.ForceClose();
+        }
 
         // Emit integration event so OMS knows this is "closed" despite not being fully received.
-        var integrationEvent = new ShipmentReceivedIntegrationEvent(
-            receipt.OrderId,
-            receipt.WarehouseId.ToString(),
-            request.ClosedBySub
-        );
-
-        await _publishEndpoint.Publish(integrationEvent, cancellationToken);
+        if (Guid.TryParse(receipt.SourceRef, out Guid orderId))
+        {
+            var integrationEvent = new ShipmentReceivedIntegrationEvent(
+                orderId,
+                receipt.WarehouseId.ToString(),
+                request.ClosedBySub
+            );
+            await _publishEndpoint.Publish(integrationEvent, cancellationToken);
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

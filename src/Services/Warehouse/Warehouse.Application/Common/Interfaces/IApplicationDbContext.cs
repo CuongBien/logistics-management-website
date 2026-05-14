@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Warehouse.Domain.Entities;
 
 namespace Warehouse.Application.Common.Interfaces;
@@ -14,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<InboundReceipt> InboundReceipts { get; }
     DbSet<InboundReceiptLine> InboundReceiptLines { get; }
     DbSet<InboundBinAllocation> InboundBinAllocations { get; }
+    DbSet<DispositionLog> DispositionLogs { get; }
     DbSet<OperatorProfile> OperatorProfiles { get; }
     DbSet<Role> Roles { get; }
     DbSet<Permission> Permissions { get; }
@@ -30,5 +32,6 @@ public interface IApplicationDbContext
     DbSet<InventoryReconciliationReport> InventoryReconciliationReports { get; }
     
 
+    ChangeTracker ChangeTracker { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

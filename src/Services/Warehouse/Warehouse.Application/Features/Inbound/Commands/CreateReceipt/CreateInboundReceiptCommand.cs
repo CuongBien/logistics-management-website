@@ -6,7 +6,7 @@ using Warehouse.Domain.Entities;
 
 namespace Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 
-public record ExpectedReceiptLine(string SkuCode, int ExpectedQuantity);
+public record ExpectedReceiptLine(string SkuCode, int ExpectedQuantity, string Uom = "EA");
 
 public record CreateInboundReceiptCommand(Guid OrderId, string TenantId, string CustomerId, Guid WarehouseId, string? SourceShipmentNo, List<ExpectedReceiptLine>? ExpectedLines = null) : IRequest<Result<Guid>>;
 
@@ -35,7 +35,7 @@ public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundR
         // Kiểm tra xem đã có Receipt cho Shipment này tại Kho này chưa
         var existing = await _context.InboundReceipts
             .FirstOrDefaultAsync(
-                r => r.SourceShipmentNo == sourceShipmentNo && r.WarehouseId == request.WarehouseId && r.TenantId == request.TenantId,
+                r => r.ShipmentNo == sourceShipmentNo && r.WarehouseId == request.WarehouseId && r.TenantId == request.TenantId,
                 cancellationToken);
 
         if (existing is not null)
@@ -43,13 +43,14 @@ public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundR
                 $"An inbound receipt for shipment '{sourceShipmentNo}' at warehouse '{request.WarehouseId}' already exists."));
 
         var receiptNo = $"RCV-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
-        var receipt = new InboundReceipt(request.OrderId, request.TenantId, request.CustomerId, request.WarehouseId, receiptNo, sourceShipmentNo);
+        var receipt = new InboundReceipt(request.TenantId, request.CustomerId, request.WarehouseId, receiptNo, "PURCHASE_ORDER", request.OrderId.ToString(), sourceShipmentNo);
         
         if (request.ExpectedLines != null && request.ExpectedLines.Any())
         {
+            int lineNo = 1;
             foreach (var expectedLine in request.ExpectedLines)
             {
-                var line = new InboundReceiptLine(receipt.Id, request.TenantId, request.CustomerId, expectedLine.SkuCode, expectedLine.ExpectedQuantity);
+                var line = new InboundReceiptLine(receipt.Id, lineNo++, request.TenantId, request.CustomerId, expectedLine.SkuCode, expectedLine.Uom, expectedLine.ExpectedQuantity);
                 receipt.AddLine(line);
                 _context.InboundReceiptLines.Add(line);
             }
