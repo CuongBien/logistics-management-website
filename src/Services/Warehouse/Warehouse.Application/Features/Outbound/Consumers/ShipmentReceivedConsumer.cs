@@ -41,7 +41,7 @@ public sealed class ShipmentReceivedConsumer : IConsumer<ShipmentReceivedIntegra
             .FirstOrDefaultAsync(x => 
                 x.WarehouseId == outboundOrder.WarehouseId && 
                 x.DestinationId == destinationId && 
-                x.Status == ShipmentStatus.Dispatched, context.CancellationToken);
+                x.Status == ShipmentStatus.Shipped, context.CancellationToken);
 
         if (shipment == null)
         {

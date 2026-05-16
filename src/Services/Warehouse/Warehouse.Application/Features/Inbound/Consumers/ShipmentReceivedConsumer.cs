@@ -38,7 +38,7 @@ public sealed class ShipmentReceivedConsumer : IConsumer<ShipmentReceivedIntegra
 
         // 2. Find the Shipment by ShipmentNo
         var shipment = await _context.Shipments
-            .FirstOrDefaultAsync(x => x.ShipmentNo == receipt.SourceShipmentNo && x.Status == ShipmentStatus.Dispatched, context.CancellationToken);
+            .FirstOrDefaultAsync(x => x.ShipmentNo == receipt.SourceShipmentNo && x.Status == ShipmentStatus.Shipped, context.CancellationToken);
 
         if (shipment == null)
         {
