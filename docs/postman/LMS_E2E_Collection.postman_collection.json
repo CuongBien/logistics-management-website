@@ -1,1281 +1,1705 @@
 {
-  "info": {
-    "name": "Logistics E2E – Full Flow",
-    "_postman_id": "lms-e2e-collection-v1",
-    "description": "Postman Collection kiểm thử End-to-End toàn bộ luồng vận chuyển: Tạo đơn → Nhập kho → Phân loại xuất kho.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    {
-      "key": "oms_url",
-      "value": "http://localhost:5000",
-      "type": "string"
+    "info": {
+        "name": "Logistics E2E – Full Flow",
+        "_postman_id": "lms-e2e-collection-v1",
+        "description": "Postman Collection kiểm thử End-to-End toàn bộ luồng vận chuyển: Tạo đơn → Nhập kho → Phân loại xuất kho.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
-    {
-      "key": "wms_url",
-      "value": "http://localhost:5051",
-      "type": "string"
-    },
-    {
-      "key": "orderId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "receiptId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "tenantId",
-      "value": "default-tenant",
-      "type": "string"
-    },
-    {
-      "key": "customerId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "skuCode",
-      "value": "SKU-RED-TSHIRT",
-      "type": "string"
-    },
-    {
-      "key": "sourceShipmentNo",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "correlationId",
-      "value": "corr-postman-e2e-001",
-      "type": "string"
-    },
-    {
-      "key": "historyCountBeforeInvalid",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "warehouseId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "blockId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "zoneId",
-      "value": "",
-      "type": "string"
-    }
-  ],
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{token}}",
-        "type": "string"
-      }
-    ]
-  },
-  "item": [
-    {
-      "name": "STEP 0 – Setup Dev IAM",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{wms_url}}/api/dev/account/setup-admin",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "dev",
-            "account",
-            "setup-admin"
-          ]
-        },
-        "description": "Gán quyền Admin cho User hiện tại để có thể chạy các bước tiếp theo mà không bị lỗi 403 Forbidden."
-      }
-    },
-    {
-      "name": "User & Role Management",
-      "item": [
+    "variable": [
         {
-          "name": "Assign Role to Warehouse",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"operatorSub\": \"SUB_CUA_NHAN_VIEN\",\n    \"roleCode\": \"manager\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{wms_url}}/api/roleassignment",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "roleassignment"
-              ]
-            }
-          },
-          "description": "Gán một Role (ví dụ: manager, admin) cho một nhân viên tại một Kho cụ thể để phân quyền."
+            "key": "oms_url",
+            "value": "http://127.0.0.1:5000",
+            "type": "string"
+        },
+        {
+            "key": "wms_url",
+            "value": "http://127.0.0.1:5051",
+            "type": "string"
+        },
+        {
+            "key": "orderId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "receiptId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "tenantId",
+            "value": "default-tenant",
+            "type": "string"
+        },
+        {
+            "key": "customerId",
+            "value": "default-customer",
+            "type": "string"
+        },
+        {
+            "key": "skuCode",
+            "value": "SKU-RED-TSHIRT",
+            "type": "string"
+        },
+        {
+            "key": "sourceShipmentNo",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "correlationId",
+            "value": "corr-postman-e2e-001",
+            "type": "string"
+        },
+        {
+            "key": "historyCountBeforeInvalid",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "warehouseId",
+            "value": "b61a8f61-5238-4a18-809c-335cc293a025",
+            "type": "string"
+        },
+        {
+            "key": "blockId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "zoneId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "sku",
+            "value": "SKU-RED-TSHIRT",
+            "type": "string"
+        },
+        {
+            "key": "binId",
+            "value": "f0aa75ad-78a3-4d30-972c-d2e422457f1e",
+            "type": "string"
+        },
+        {
+            "key": "shipmentId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "manualShipmentId",
+            "value": "",
+            "type": "string"
         }
-      ]
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+            }
+        ]
     },
-    {
-      "name": "Layout Management",
-      "item": [
+    "item": [
         {
-          "name": "GET List Warehouses",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{wms_url}}/api/Warehouse",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "Warehouse"
-              ]
+            "name": "STEP 0 – Setup Dev IAM",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                    "raw": "{{wms_url}}/api/dev/account/setup-admin",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "dev",
+                        "account",
+                        "setup-admin"
+                    ]
+                },
+                "description": "Gán quyền Admin cho User hiện tại để có thể chạy các bước tiếp theo mà không bị lỗi 403 Forbidden."
             }
-          }
         },
         {
-          "name": "POST Create Warehouse",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const res = pm.response.json();",
-                  "pm.collectionVariables.set('warehouseId', res.value || res);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"New Test Warehouse\",\n  \"code\": \"W_NEW_{{$randomInt}}\",\n  \"locationText\": \"HCM City\"\n}"
-            },
-            "url": {
-              "raw": "{{wms_url}}/api/Warehouse",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "Warehouse"
-              ]
-            }
-          }
-        },
-        {
-          "name": "POST Create Block",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const res = pm.response.json();",
-                  "pm.collectionVariables.set('blockId', res.value || res);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "\"BLK-C\""
-            },
-            "url": {
-              "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/blocks",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "Warehouse",
-                "{{warehouseId}}",
-                "blocks"
-              ]
-            }
-          }
-        },
-        {
-          "name": "POST Create Zone",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const res = pm.response.json();",
-                  "pm.collectionVariables.set('zoneId', res.value || res);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "0"
-            },
-            "url": {
-              "raw": "{{wms_url}}/api/Warehouse/blocks/{{blockId}}/zones",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "Warehouse",
-                "blocks",
-                "{{blockId}}",
-                "zones"
-              ]
-            }
-          }
-        },
-        {
-          "name": "POST Create Bin",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"binCode\": \"BIN-C1-01\"\n}"
-            },
-            "url": {
-              "raw": "{{wms_url}}/api/Warehouse/zones/{{zoneId}}/bins",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "Warehouse",
-                "zones",
-                "{{zoneId}}",
-                "bins"
-              ]
-            }
-          }
-        },
-        {
-          "name": "GET Warehouse Hierarchy",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/hierarchy",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "Warehouse",
-                "{{warehouseId}}",
-                "hierarchy"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Inventory Management",
-      "item": [
-        {
-          "name": "Reserve Stock",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"SKU001\",\n    \"quantity\": 10,\n    \"referenceId\": \"ORD-123\",\n    \"referenceType\": 1,\n    \"correlationId\": \"{{$guid}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+            "name": "WMS Standard Outbound (Refactored)",
+            "item": [
+                {
+                    "name": "Step 1: Create Outbound Order",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const res = pm.response.json(); const id = res.value || res.id || res; pm.collectionVariables.set('orderId', id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{$guid}}\",\n    \"orderNo\": \"ORD-STD-{{$timestamp}}\",\n    \"destinationAddress\": \"99 Standard St\",\n    \"destinationCity\": \"Da Nang\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Step 2: Allocate Stock",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/allocate",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{orderId}}",
+                                "allocate"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Step 3: Pick Order (Wave)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"waveId\": \"WAVE-STD-001\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/pick",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{orderId}}",
+                                "pick"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Step 3.5: GET Pick Tasks",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const res = pm.response.json(); if(res.length>0) pm.collectionVariables.set('pickTaskId', res[0].id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/pick-tasks",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{orderId}}",
+                                "pick-tasks"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Step 4: Confirm Pick Task",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/pick-tasks/{{pickTaskId}}/confirm",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "pick-tasks",
+                                "{{pickTaskId}}",
+                                "confirm"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Step 5: Pack Order",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/pack",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{orderId}}",
+                                "pack"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Step 6: Load Order into Shipment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/ship",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{orderId}}",
+                                "ship"
+                            ]
+                        }
+                    },
+                    "description": "Đưa đơn hàng lên xe. Trạng thái đơn sẽ là LOADED (10), Chuyến xe là LOADING (2)."
+                },
+                {
+                    "name": "Step 7: Dispatch Shipment (Final)",
+                    "description": "Xe chính thức rời kho. Trạng thái -> SHIPPED, Trừ tồn kho thực tế.",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId}}/dispatch",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "shipments",
+                                "{{shipmentId}}",
+                                "dispatch"
+                            ]
+                        }
+                    }
                 }
-              }
-            },
-            "url": {
-              "raw": "{{wms_url}}/api/inventory/reserve",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "inventory",
-                "reserve"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const res = pm.response.json();",
-                  "if (res.isSuccess) {",
-                  "    pm.collectionVariables.set('reservationId', res.value);",
-                  "}"
+            ]
+        },
+        {
+            "name": "User & Role Management",
+            "item": [
+                {
+                    "name": "Assign Role to Warehouse",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"operatorSub\": \"SUB_CUA_NHAN_VIEN\",\n    \"roleCode\": \"manager\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/roleassignment",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "roleassignment"
+                            ]
+                        }
+                    },
+                    "description": "Gán một Role (ví dụ: manager, admin) cho một nhân viên tại một Kho cụ thể để phân quyền."
+                }
+            ]
+        },
+        {
+            "name": "Layout Management",
+            "item": [
+                {
+                    "name": "GET List Warehouses",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{wms_url}}/api/Warehouse",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouse"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "POST Create Warehouse",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const res = pm.response.json();",
+                                    "pm.collectionVariables.set('warehouseId', res.value || res);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"New Test Warehouse\",\n  \"code\": \"W_NEW_{{$randomInt}}\",\n  \"locationText\": \"HCM City\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/Warehouse",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouse"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "POST Create Block",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const res = pm.response.json();",
+                                    "pm.collectionVariables.set('blockId', res.value || res);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "\"BLK-C\""
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/blocks",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouse",
+                                "{{warehouseId}}",
+                                "blocks"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "POST Create Zone",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const res = pm.response.json();",
+                                    "pm.collectionVariables.set('zoneId', res.value || res);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "0"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/Warehouse/blocks/{{blockId}}/zones",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouse",
+                                "blocks",
+                                "{{blockId}}",
+                                "zones"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "POST Create Bin",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"binCode\": \"BIN-C1-01\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/Warehouse/zones/{{zoneId}}/bins",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouse",
+                                "zones",
+                                "{{zoneId}}",
+                                "bins"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "GET Warehouse Hierarchy",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{wms_url}}/api/Warehouse/{{warehouseId}}/hierarchy",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouse",
+                                "{{warehouseId}}",
+                                "hierarchy"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Inventory Management",
+            "item": [
+                {
+                    "name": "Reserve Stock",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"SKU001\",\n    \"quantity\": 10,\n    \"referenceId\": \"ORD-123\",\n    \"referenceType\": 1,\n    \"correlationId\": \"{{$guid}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inventory/reserve",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inventory",
+                                "reserve"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const res = pm.response.json();",
+                                    "if (res.isSuccess) {",
+                                    "    pm.collectionVariables.set('reservationId', res.value);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Release Stock",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"reservationId\": \"{{reservationId}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inventory/release",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inventory",
+                                "release"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Consume Stock",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"reservationId\": \"{{reservationId}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inventory/consume",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inventory",
+                                "consume"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Inventory Ledger",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{wms_url}}/api/inventory/{{inventoryItemId}}/ledger",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inventory",
+                                "{{inventoryItemId}}",
+                                "ledger"
+                            ]
+                        }
+                    },
+                    "description": "Lấy toàn bộ lịch sử biến động (Inbound, Outbound, Reserve, Release...) của một Inventory Item cụ thể."
+                },
+                {
+                    "name": "Reconcile Inventory",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": null\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inventory/reconcile",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inventory",
+                                "reconcile"
+                            ]
+                        }
+                    },
+                    "description": "Kích hoạt đối soát toàn bộ kho hoặc theo WarehouseId. Phát hiện sai lệch giữa Snapshot và Ledger."
+                },
+                {
+                    "name": "Reserve Stock (Idempotent Test - Fixed ID)",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"{{sku}}\",\n    \"quantity\": 1,\n    \"referenceId\": \"IDEM-TEST-001\",\n    \"correlationId\": \"FIXED-ID-12345\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inventory/reserve",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inventory",
+                                "reserve"
+                            ]
+                        }
+                    },
+                    "description": "Gửi request này nhiều lần với cùng correlationId 'FIXED-ID-12345'. Hệ thống sẽ chỉ thực hiện trừ kho 1 lần duy nhất."
+                }
+            ]
+        },
+        {
+            "name": "STEP 1 – Tạo đơn hàng (Ordering)",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "// Tự động decode JWT để lấy 'sub' làm consignorId",
+                            "const token = pm.collectionVariables.get('token');",
+                            "if (token) {",
+                            "  const payload = JSON.parse(atob(token.split('.')[1]));",
+                            "  pm.collectionVariables.set('consignorId', payload.sub);",
+                            "  pm.collectionVariables.set('customerId', payload.sub);",
+                            "  const tenant = payload.tenant_id || payload.tenant || 'default-tenant';",
+                            "  pm.collectionVariables.set('tenantId', tenant);",
+                            "  console.log('👤 consignorId/customerId (sub):', payload.sub);",
+                            "  console.log('🏷 tenantId:', tenant);",
+                            "}"
+                        ]
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200/201', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                            "const body = pm.response.json();",
+                            "const id = body.value || body;",
+                            "pm.collectionVariables.set('orderId', id);",
+                            "console.log('✅ orderId saved:', id);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "X-Correlation-Id",
+                        "value": "{{correlationId}}"
+                    }
                 ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Release Stock",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"reservationId\": \"{{reservationId}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+                "url": {
+                    "raw": "{{oms_url}}/api/Orders",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "Orders"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"skuCodes\": [\n    \"{{skuCode}}\"\n  ],\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
                 }
-              }
             },
-            "url": {
-              "raw": "{{wms_url}}/api/inventory/release",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "inventory",
-                "release"
-              ]
-            }
-          }
+            "response": []
         },
         {
-          "name": "Consume Stock",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"reservationId\": \"{{reservationId}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+            "name": "STEP 1b – Pickup hàng (Ordering)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "console.log('✅ Order moved to PickedUp with correlationId:', pm.collectionVariables.get('correlationId'));"
+                        ]
+                    }
                 }
-              }
-            },
-            "url": {
-              "raw": "{{wms_url}}/api/inventory/consume",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "inventory",
-                "consume"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Inventory Ledger",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{wms_url}}/api/inventory/{{inventoryItemId}}/ledger",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "inventory",
-                "{{inventoryItemId}}",
-                "ledger"
-              ]
-            }
-          },
-          "description": "Lấy toàn bộ lịch sử biến động (Inbound, Outbound, Reserve, Release...) của một Inventory Item cụ thể."
-        },
-        {
-          "name": "Reconcile Inventory",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"warehouseId\": null\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+            ],
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/pickup",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "orders",
+                        "{{orderId}}",
+                        "actions",
+                        "pickup"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"driverId\": \"driver_01\"\n}"
                 }
-              }
             },
-            "url": {
-              "raw": "{{wms_url}}/api/inventory/reconcile",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "inventory",
-                "reconcile"
-              ]
-            }
-          },
-          "description": "Kích hoạt đối soát toàn bộ kho hoặc theo WarehouseId. Phát hiện sai lệch giữa Snapshot và Ledger."
+            "response": []
         },
         {
-          "name": "Reserve Stock (Idempotent Test - Fixed ID)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sku\": \"{{sku}}\",\n    \"quantity\": 1,\n    \"referenceId\": \"IDEM-TEST-001\",\n    \"correlationId\": \"FIXED-ID-12345\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+            "name": "STEP 2a – Tạo phiếu nhập kho (Warehouse)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const id = pm.response.json();",
+                            "pm.collectionVariables.set('receiptId', id);",
+                            "const requestBody = JSON.parse(pm.request.body.raw);",
+                            "pm.collectionVariables.set('sourceShipmentNo', requestBody.sourceShipmentNo);",
+                            "console.log('✅ receiptId saved:', id);"
+                        ]
+                    }
                 }
-              }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\",\n  \"expectedLines\": [\n    {\n      \"skuCode\": \"{{skuCode}}\",\n      \"expectedQuantity\": 10\n    }\n  ]\n}"
+                }
             },
-            "url": {
-              "raw": "{{wms_url}}/api/inventory/reserve",
-              "host": [
-                "{{wms_url}}"
-              ],
-              "path": [
-                "api",
-                "inventory",
-                "reserve"
-              ]
-            }
-          },
-          "description": "Gửi request này nhiều lần với cùng correlationId 'FIXED-ID-12345'. Hệ thống sẽ chỉ thực hiện trừ kho 1 lần duy nhất."
-        }
-      ]
-    },
-    {
-      "name": "STEP 1 – Tạo đơn hàng (Ordering)",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "// Tự động decode JWT để lấy 'sub' làm consignorId",
-              "const token = pm.collectionVariables.get('token');",
-              "if (token) {",
-              "  const payload = JSON.parse(atob(token.split('.')[1]));",
-              "  pm.collectionVariables.set('consignorId', payload.sub);",
-              "  pm.collectionVariables.set('customerId', payload.sub);",
-              "  const tenant = payload.tenant_id || payload.tenant || 'default-tenant';",
-              "  pm.collectionVariables.set('tenantId', tenant);",
-              "  console.log('👤 consignorId/customerId (sub):', payload.sub);",
-              "  console.log('🏷 tenantId:', tenant);",
-              "}"
-            ]
-          }
+            "response": []
         },
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200/201', () => pm.expect([200, 201]).to.include(pm.response.code));",
-              "const body = pm.response.json();",
-              "const id = body.value || body;",
-              "pm.collectionVariables.set('orderId', id);",
-              "console.log('✅ orderId saved:', id);"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "X-Correlation-Id",
-            "value": "{{correlationId}}"
-          }
-        ],
-        "url": {
-          "raw": "{{oms_url}}/api/Orders",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "Orders"
-          ]
+            "name": "STEP 2b.1 – Receive Partial Quantity (Warehouse)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "console.log('✅ Received 5 items (Partial)');"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/receive",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts",
+                        "{{receiptId}}",
+                        "receive"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-C1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"skuCodes\": [\n    \"{{skuCode}}\"\n  ],\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 1b – Pickup hàng (Ordering)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "console.log('✅ Order moved to PickedUp with correlationId:', pm.collectionVariables.get('correlationId'));"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/pickup",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "orders",
-            "{{orderId}}",
-            "actions",
-            "pickup"
-          ]
+            "name": "STEP 2b.2 – Check Receipt Status (PartiallyReceived)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const body = pm.response.json();",
+                            "pm.test('Status is PartiallyReceived (2)', () => pm.expect(body.status).to.eql('PartiallyReceived'));",
+                            "console.log('✅ Status is PartiallyReceived as expected.');"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts",
+                        "by-order",
+                        "{{orderId}}"
+                    ]
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"driverId\": \"driver_01\"\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 2a – Tạo phiếu nhập kho (Warehouse)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const id = pm.response.json();",
-              "pm.collectionVariables.set('receiptId', id);",
-              "const requestBody = JSON.parse(pm.request.body.raw);",
-              "pm.collectionVariables.set('sourceShipmentNo', requestBody.sourceShipmentNo);",
-              "console.log('✅ receiptId saved:', id);"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts"
-          ]
+            "name": "STEP 2b.3 – Receive Remaining Quantity (Warehouse)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "console.log('✅ Received remaining 5 items (Full)');"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/receive",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts",
+                        "{{receiptId}}",
+                        "receive"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-C1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\",\n  \"expectedLines\": [\n    {\n      \"skuCode\": \"{{skuCode}}\",\n      \"expectedQuantity\": 10\n    }\n  ]\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 2b.1 – Receive Partial Quantity (Warehouse)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "console.log('✅ Received 5 items (Partial)');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/receive",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts",
-            "{{receiptId}}",
-            "receive"
-          ]
+            "name": "STEP 2b.4 – Check Receipt Status (Received)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const body = pm.response.json();",
+                            "pm.test('Status is Received (3)', () => pm.expect(body.status).to.eql('Received'));",
+                            "console.log('✅ Status is Received as expected. ShipmentReceivedIntegrationEvent should be published.');"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts",
+                        "by-order",
+                        "{{orderId}}"
+                    ]
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-C1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 2b.2 – Check Receipt Status (PartiallyReceived)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "pm.test('Status is PartiallyReceived (2)', () => pm.expect(body.status).to.eql('PartiallyReceived'));",
-              "console.log('✅ Status is PartiallyReceived as expected.');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts",
-            "by-order",
-            "{{orderId}}"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 2b.3 – Receive Remaining Quantity (Warehouse)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "console.log('✅ Received remaining 5 items (Full)');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/receive",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts",
-            "{{receiptId}}",
-            "receive"
-          ]
+            "name": "STEP 2b.5 - Force Close Receipt (Short Shipment)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/force-close",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts",
+                        "{{receiptId}}",
+                        "force-close"
+                    ]
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-C1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 5\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 2b.4 – Check Receipt Status (Received)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "pm.test('Status is Received (3)', () => pm.expect(body.status).to.eql('Received'));",
-              "console.log('✅ Status is Received as expected. ShipmentReceivedIntegrationEvent should be published.');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts",
-            "by-order",
-            "{{orderId}}"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 2b.5 - Force Close Receipt (Short Shipment)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/force-close",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts",
-            "{{receiptId}}",
-            "force-close"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 3 – Phân loại / Xuất kho (Warehouse)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const req = JSON.parse(pm.request.body.raw);",
-              "const expectedOrderId = pm.collectionVariables.get('orderId');",
-              "pm.test('Sort uses current orderId', () => pm.expect(req.orderId).to.eql(expectedOrderId));",
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "console.log('🔎 STEP3 request orderId=', req.orderId, 'expected=', expectedOrderId);",
-              "console.log('✅ Order sorted! ShipmentSortedIntegrationEvent published → Saga → AwaitingDispatch');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{wms_url}}/api/outbound/sort",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "outbound",
-            "sort"
-          ]
+            "name": "STEP 3a – Lấy ID Phiếu nhập kho tại Kho Đích (Warehouse)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const body = pm.response.json();",
+                            "pm.collectionVariables.set('destReceiptId', body.id);",
+                            "console.log('✅ destReceiptId saved:', body.id);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}?warehouseId=48b030da-e7ad-452f-90db-ddb01a613583",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts",
+                        "by-order",
+                        "{{orderId}}"
+                    ],
+                    "query": [
+                        {
+                            "key": "warehouseId",
+                            "value": "48b030da-e7ad-452f-90db-ddb01a613583"
+                        }
+                    ]
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"destinationWarehouseId\": \"48b030da-e7ad-452f-90db-ddb01a613583\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"sourceShipmentNo\": \"{{sourceShipmentNo}}\"\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 3a – Lấy ID Phiếu nhập kho tại Kho Đích (Warehouse)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "pm.collectionVariables.set('destReceiptId', body.id);",
-              "console.log('✅ destReceiptId saved:', body.id);"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId}}?warehouseId=48b030da-e7ad-452f-90db-ddb01a613583",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts",
-            "by-order",
-            "{{orderId}}"
-          ],
-          "query": [
-            {
-              "key": "warehouseId",
-              "value": "48b030da-e7ad-452f-90db-ddb01a613583"
-            }
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 3b – Nhận hàng tại Kho Đích (Warehouse)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "console.log('✅ Kho đích đã nhận hàng! Event ShipmentReceivedIntegrationEvent được phát ra');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{wms_url}}/api/inbound/receipts/{{destReceiptId}}/receive",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "inbound",
-            "receipts",
-            "{{destReceiptId}}",
-            "receive"
-          ]
+            "name": "STEP 3b – Nhận hàng tại Kho Đích (Warehouse)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "console.log('✅ Kho đích đã nhận hàng! Event ShipmentReceivedIntegrationEvent được phát ra');"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts/{{destReceiptId}}/receive",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts",
+                        "{{destReceiptId}}",
+                        "receive"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-B1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 10\n}"
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-B1-01\",\n  \"scannedBy\": \"{{customerId}}\",\n  \"quantity\": 10\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 3c – Verify Shipment = Delivered (Warehouse)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const shipments = pm.response.json();",
-              "const expectedOrderId = pm.collectionVariables.get('orderId');",
-              "// Find shipment where DestinationId is our destination warehouse and it's from the original warehouse",
-              "const targetShipment = shipments.find(s => s.destinationId === '48b030da-e7ad-452f-90db-ddb01a613583');",
-              "if (targetShipment) {",
-              "    pm.test('Shipment Status is Delivered', () => pm.expect(targetShipment.status).to.eql(2)); // 2 = Delivered",
-              "} else {",
-              "    pm.test('Shipment found', () => pm.expect(true).to.be.false);",
-              "}"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{wms_url}}/api/outbound/shipments",
-          "host": [
-            "{{wms_url}}"
-          ],
-          "path": [
-            "api",
-            "outbound",
-            "shipments"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 4 – Verify: Kiểm tra trạng thái Order (Ordering)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "const val = body.value;",
-              "const status = val?.status;",
-              "console.log('📦 Order status:', status);",
-              "pm.test('Order status is AwaitingDispatch', () => pm.expect(status).to.eql('AwaitingDispatch'));",
-              "const sub = pm.collectionVariables.get('consignorId');",
-              "if (sub) {",
-              "  pm.test('createdByOperatorId matches JWT sub', () => pm.expect(val.createdByOperatorId).to.eql(sub));",
-              "  pm.test('updatedByOperatorId matches JWT sub', () => pm.expect(val.updatedByOperatorId).to.eql(sub));",
-              "} else {",
-              "  console.log('⚠️ consignorId not set; skip actor assertions');",
-              "}",
-              "const c = val?.consignee;",
-              "if (c && c.address) {",
-              "  pm.collectionVariables.set('e2eConsigneeFullName', c.fullName);",
-              "  pm.collectionVariables.set('e2eConsigneePhone', c.phone);",
-              "  pm.collectionVariables.set('e2eConsigneeStreet', c.address.street);",
-              "  pm.collectionVariables.set('e2eConsigneeCity', c.address.city);",
-              "  pm.collectionVariables.set('e2eConsigneeState', c.address.state);",
-              "  pm.collectionVariables.set('e2eConsigneeCountry', c.address.country);",
-              "  pm.collectionVariables.set('e2eConsigneeZipCode', c.address.zipCode);",
-              "  console.log('📌 Stored inline consignee snapshot for STEP 4b parity');",
-              "}"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{oms_url}}/api/Orders/{{orderId}}",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "Orders",
-            "{{orderId}}"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 4b – Verify OrderConsignees parity (Ordering)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "const v = body.value;",
-              "pm.test('OrderConsignee row has fields', () => {",
-              "  pm.expect(v.fullName).to.be.a('string').and.not.empty;",
-              "  pm.expect(v.phone).to.be.a('string').and.not.empty;",
-              "  pm.expect(v.street).to.be.a('string').and.not.empty;",
-              "  pm.expect(v.city).to.be.a('string').and.not.empty;",
-              "  pm.expect(v.country).to.be.a('string').and.not.empty;",
-              "  pm.expect(v.zipCode).to.be.a('string').and.not.empty;",
-              "});",
-              "const fn = pm.collectionVariables.get('e2eConsigneeFullName');",
-              "if (fn) {",
-              "  pm.test('Parity fullName', () => pm.expect(v.fullName).to.eql(fn));",
-              "  pm.test('Parity phone', () => pm.expect(v.phone).to.eql(pm.collectionVariables.get('e2eConsigneePhone')));",
-              "  pm.test('Parity street', () => pm.expect(v.street).to.eql(pm.collectionVariables.get('e2eConsigneeStreet')));",
-              "  pm.test('Parity city', () => pm.expect(v.city).to.eql(pm.collectionVariables.get('e2eConsigneeCity')));",
-              "  pm.test('Parity state', () => pm.expect(v.state).to.eql(pm.collectionVariables.get('e2eConsigneeState')));",
-              "  pm.test('Parity country', () => pm.expect(v.country).to.eql(pm.collectionVariables.get('e2eConsigneeCountry')));",
-              "  pm.test('Parity zipCode', () => pm.expect(v.zipCode).to.eql(pm.collectionVariables.get('e2eConsigneeZipCode')));",
-              "} else {",
-              "  console.log('⚠️ No inline consignee snapshot; parity field tests only');",
-              "}",
-              "console.log('✅ OrderConsignees parity OK for orderId=', v.orderId);"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{oms_url}}/api/Orders/{{orderId}}/consignee",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "Orders",
-            "{{orderId}}",
-            "consignee"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP QA – Invalid receive endpoint on Ordering returns 404",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
-              "console.log('✅ QA check passed: POST /actions/receive returned 404 as expected');",
-              "console.log('QA response body:', pm.response.text());"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/receive",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "orders",
-            "{{orderId}}",
-            "actions",
-            "receive"
-          ]
+            "name": "STEP 3c – Verify Shipment = Delivered (Warehouse)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const shipments = pm.response.json();",
+                            "const expectedOrderId = pm.collectionVariables.get('orderId');",
+                            "// Find shipment where DestinationId is our destination warehouse and it's from the original warehouse",
+                            "const targetShipment = shipments.find(s => s.destinationId === '48b030da-e7ad-452f-90db-ddb01a613583');",
+                            "if (targetShipment) {",
+                            "    pm.test('Shipment Status is Delivered', () => pm.expect(targetShipment.status).to.eql(2)); // 2 = Delivered",
+                            "} else {",
+                            "    pm.test('Shipment found', () => pm.expect(true).to.be.false);",
+                            "}"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{wms_url}}/api/outbound/shipments",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "outbound",
+                        "shipments"
+                    ]
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 5 – Verify status history fields (Ordering)",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "const rows = body.value || body;",
-              "pm.test('History is array', () => pm.expect(Array.isArray(rows)).to.eql(true));",
-              "pm.test('History has records', () => pm.expect(rows.length).to.be.greaterThan(0));",
-              "pm.collectionVariables.set('historyCountBeforeInvalid', String(rows.length));",
-              "const pickupRow = rows.find(r => r.statusTo === 'PickedUp');",
-              "pm.test('Has PickedUp transition row', () => pm.expect(!!pickupRow).to.eql(true));",
-              "if (pickupRow) {",
-              "  pm.test('Source exists on PickedUp row', () => pm.expect(pickupRow.source).to.be.a('string').and.not.empty);",
-              "  pm.test('ChangedByOperatorId or system fallback', () => pm.expect(!!pickupRow.changedByOperatorId || pickupRow.source === 'system').to.eql(true));",
-              "  pm.test('CorrelationId persisted or nullable by design', () => {",
-              "    const expected = pm.collectionVariables.get('correlationId');",
-              "    if (pickupRow.correlationId) {",
-              "      pm.expect(pickupRow.correlationId).to.eql(expected);",
-              "    } else {",
-              "      pm.expect(pickupRow.correlationId).to.be.oneOf([null, undefined, '']);",
-              "      console.log('ℹ️ correlationId is nullable on current transition path');",
-              "    }",
-              "  });",
-              "}",
-              "console.log('✅ StatusHistory checked. rows=', rows.length);"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{oms_url}}/api/Orders/{{orderId}}/status-history",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "Orders",
-            "{{orderId}}",
-            "status-history"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 6 – Invalid transition deliver from AwaitingDispatch (Ordering)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
-              "console.log('✅ Invalid transition rejected as expected');",
-              "console.log('Response body:', pm.response.text());"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/deliver",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "orders",
-            "{{orderId}}",
-            "actions",
-            "deliver"
-          ]
+            "name": "STEP 4 – Verify: Kiểm tra trạng thái Order (Ordering)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const body = pm.response.json();",
+                            "const val = body.value;",
+                            "const status = val?.status;",
+                            "console.log('📦 Order status:', status);",
+                            "pm.test('Order status is AwaitingDispatch', () => pm.expect(status).to.eql('AwaitingDispatch'));",
+                            "const sub = pm.collectionVariables.get('consignorId');",
+                            "if (sub) {",
+                            "  pm.test('createdByOperatorId matches JWT sub', () => pm.expect(val.createdByOperatorId).to.eql(sub));",
+                            "  pm.test('updatedByOperatorId matches JWT sub', () => pm.expect(val.updatedByOperatorId).to.eql(sub));",
+                            "} else {",
+                            "  console.log('⚠️ consignorId not set; skip actor assertions');",
+                            "}",
+                            "const c = val?.consignee;",
+                            "if (c && c.address) {",
+                            "  pm.collectionVariables.set('e2eConsigneeFullName', c.fullName);",
+                            "  pm.collectionVariables.set('e2eConsigneePhone', c.phone);",
+                            "  pm.collectionVariables.set('e2eConsigneeStreet', c.address.street);",
+                            "  pm.collectionVariables.set('e2eConsigneeCity', c.address.city);",
+                            "  pm.collectionVariables.set('e2eConsigneeState', c.address.state);",
+                            "  pm.collectionVariables.set('e2eConsigneeCountry', c.address.country);",
+                            "  pm.collectionVariables.set('e2eConsigneeZipCode', c.address.zipCode);",
+                            "  console.log('📌 Stored inline consignee snapshot for STEP 4b parity');",
+                            "}"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{oms_url}}/api/Orders/{{orderId}}",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "Orders",
+                        "{{orderId}}"
+                    ]
+                }
+            },
+            "response": []
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"proofOfDeliveryUrl\": \"https://example.com/pod-invalid-transition\"\n}"
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "STEP 7 – Verify invalid transition did not create history row",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "const rows = body.value || body;",
-              "const before = Number(pm.collectionVariables.get('historyCountBeforeInvalid') || '0');",
-              "pm.test('History count unchanged after invalid transition', () => pm.expect(rows.length).to.eql(before));",
-              "const hasDelivered = rows.some(r => r.statusTo === 'Delivered');",
-              "pm.test('No Delivered row added by invalid transition', () => pm.expect(hasDelivered).to.eql(false));",
-              "console.log('✅ Invalid transition did not create history. before=', before, 'after=', rows.length);"
+            "name": "STEP 4b – Verify OrderConsignees parity (Ordering)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const body = pm.response.json();",
+                            "const v = body.value;",
+                            "pm.test('OrderConsignee row has fields', () => {",
+                            "  pm.expect(v.fullName).to.be.a('string').and.not.empty;",
+                            "  pm.expect(v.phone).to.be.a('string').and.not.empty;",
+                            "  pm.expect(v.street).to.be.a('string').and.not.empty;",
+                            "  pm.expect(v.city).to.be.a('string').and.not.empty;",
+                            "  pm.expect(v.country).to.be.a('string').and.not.empty;",
+                            "  pm.expect(v.zipCode).to.be.a('string').and.not.empty;",
+                            "});",
+                            "const fn = pm.collectionVariables.get('e2eConsigneeFullName');",
+                            "if (fn) {",
+                            "  pm.test('Parity fullName', () => pm.expect(v.fullName).to.eql(fn));",
+                            "  pm.test('Parity phone', () => pm.expect(v.phone).to.eql(pm.collectionVariables.get('e2eConsigneePhone')));",
+                            "  pm.test('Parity street', () => pm.expect(v.street).to.eql(pm.collectionVariables.get('e2eConsigneeStreet')));",
+                            "  pm.test('Parity city', () => pm.expect(v.city).to.eql(pm.collectionVariables.get('e2eConsigneeCity')));",
+                            "  pm.test('Parity state', () => pm.expect(v.state).to.eql(pm.collectionVariables.get('e2eConsigneeState')));",
+                            "  pm.test('Parity country', () => pm.expect(v.country).to.eql(pm.collectionVariables.get('e2eConsigneeCountry')));",
+                            "  pm.test('Parity zipCode', () => pm.expect(v.zipCode).to.eql(pm.collectionVariables.get('e2eConsigneeZipCode')));",
+                            "} else {",
+                            "  console.log('⚠️ No inline consignee snapshot; parity field tests only');",
+                            "}",
+                            "console.log('✅ OrderConsignees parity OK for orderId=', v.orderId);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{oms_url}}/api/Orders/{{orderId}}/consignee",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "Orders",
+                        "{{orderId}}",
+                        "consignee"
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "STEP QA – Invalid receive endpoint on Ordering returns 404",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+                            "console.log('✅ QA check passed: POST /actions/receive returned 404 as expected');",
+                            "console.log('QA response body:', pm.response.text());"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/receive",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "orders",
+                        "{{orderId}}",
+                        "actions",
+                        "receive"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{}"
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "STEP 5 – Verify status history fields (Ordering)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const body = pm.response.json();",
+                            "const rows = body.value || body;",
+                            "pm.test('History is array', () => pm.expect(Array.isArray(rows)).to.eql(true));",
+                            "pm.test('History has records', () => pm.expect(rows.length).to.be.greaterThan(0));",
+                            "pm.collectionVariables.set('historyCountBeforeInvalid', String(rows.length));",
+                            "const pickupRow = rows.find(r => r.statusTo === 'PickedUp');",
+                            "pm.test('Has PickedUp transition row', () => pm.expect(!!pickupRow).to.eql(true));",
+                            "if (pickupRow) {",
+                            "  pm.test('Source exists on PickedUp row', () => pm.expect(pickupRow.source).to.be.a('string').and.not.empty);",
+                            "  pm.test('ChangedByOperatorId or system fallback', () => pm.expect(!!pickupRow.changedByOperatorId || pickupRow.source === 'system').to.eql(true));",
+                            "  pm.test('CorrelationId persisted or nullable by design', () => {",
+                            "    const expected = pm.collectionVariables.get('correlationId');",
+                            "    if (pickupRow.correlationId) {",
+                            "      pm.expect(pickupRow.correlationId).to.eql(expected);",
+                            "    } else {",
+                            "      pm.expect(pickupRow.correlationId).to.be.oneOf([null, undefined, '']);",
+                            "      console.log('ℹ️ correlationId is nullable on current transition path');",
+                            "    }",
+                            "  });",
+                            "}",
+                            "console.log('✅ StatusHistory checked. rows=', rows.length);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{oms_url}}/api/Orders/{{orderId}}/status-history",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "Orders",
+                        "{{orderId}}",
+                        "status-history"
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "STEP 6 – Invalid transition deliver from AwaitingDispatch (Ordering)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                            "console.log('✅ Invalid transition rejected as expected');",
+                            "console.log('Response body:', pm.response.text());"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/deliver",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "orders",
+                        "{{orderId}}",
+                        "actions",
+                        "deliver"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"proofOfDeliveryUrl\": \"https://example.com/pod-invalid-transition\"\n}"
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "STEP 7 – Verify invalid transition did not create history row",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const body = pm.response.json();",
+                            "const rows = body.value || body;",
+                            "const before = Number(pm.collectionVariables.get('historyCountBeforeInvalid') || '0');",
+                            "pm.test('History count unchanged after invalid transition', () => pm.expect(rows.length).to.eql(before));",
+                            "const hasDelivered = rows.some(r => r.statusTo === 'Delivered');",
+                            "pm.test('No Delivered row added by invalid transition', () => pm.expect(hasDelivered).to.eql(false));",
+                            "console.log('✅ Invalid transition did not create history. before=', before, 'after=', rows.length);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{oms_url}}/api/Orders/{{orderId}}/status-history",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "Orders",
+                        "{{orderId}}",
+                        "status-history"
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "WMS Advanced Testing (Edge Cases)",
+            "item": [
+                {
+                    "name": "Scenario 1: Consolidation (Same Destination)",
+                    "description": "Test gom 2 đơn hàng vào cùng 1 chuyến xe.",
+                    "item": [
+                        {
+                            "name": "Step 1: Create Order A",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json(); pm.collectionVariables.set('orderId_A', res.value || res);"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{$guid}}\",\n    \"orderNo\": \"CONSOL-A-{$timestamp}\",\n    \"destinationAddress\": \"123 Same St\",\n    \"destinationCity\": \"Da Nang\",\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step 6: Ship Order A",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_A}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_A}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step 1: Create Order B",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json(); pm.collectionVariables.set('orderId_B', res.value || res);"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{$guid}}\",\n    \"orderNo\": \"CONSOL-B-{$timestamp}\",\n    \"destinationAddress\": \"123 Same St\",\n    \"destinationCity\": \"Da Nang\",\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step 6: Ship Order B",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_B}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_B}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Scenario 2: Manual Shipment Assignment",
+                    "description": "Gán đơn hàng vào một ShipmentId cụ thể có sẵn.",
+                    "item": [
+                        {
+                            "name": "Step A: Create Empty Shipment (Pre-condition)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json(); pm.collectionVariables.set('manualShipmentId', res.value || res.id);"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"shipmentNo\": \"MANUAL-{{$timestamp}}\",\n    \"destinationId\": \"MANUAL-DEST-001\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/dev/shipments/create-manual",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "dev",
+                                        "shipments",
+                                        "create-manual"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step B: Load Order into Manual Shipment",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"shipmentId\": \"{{manualShipmentId}}\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Scenario 3: Idempotency (Double Ship)",
+                    "description": "Nhấn Ship 2 lần để đảm bảo không trừ kho 2 lần.",
+                    "item": [
+                        {
+                            "name": "Step 6: Ship Order (Repeat 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step 6: Ship Order (Repeat 2)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
             ]
-          }
         }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{oms_url}}/api/Orders/{{orderId}}/status-history",
-          "host": [
-            "{{oms_url}}"
-          ],
-          "path": [
-            "api",
-            "Orders",
-            "{{orderId}}",
-            "status-history"
-          ]
-        }
-      },
-      "response": []
-    }
-  ]
+    ]
 }
