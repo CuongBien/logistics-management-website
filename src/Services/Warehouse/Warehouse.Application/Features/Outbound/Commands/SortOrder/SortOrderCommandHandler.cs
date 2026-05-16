@@ -81,7 +81,16 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             
         if (outboundOrder == null)
         {
-            outboundOrder = new OutboundOrder(request.OrderId, request.TenantId, request.CustomerId, sourceWarehouseId, null);
+            outboundOrder = new OutboundOrder(
+                request.OrderId, 
+                request.TenantId, 
+                request.CustomerId, 
+                sourceWarehouseId, 
+                orderNo: $"SORTED-{request.OrderId.ToString()[..8].ToUpper()}",
+                destinationAddress: null,
+                destinationCity: null,
+                priority: 0,
+                allowPartial: true);
             outboundOrder.UpdateStatus(OutboundOrderStatus.Shipped);
             _context.OutboundOrders.Add(outboundOrder);
 
