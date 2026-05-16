@@ -23,8 +23,15 @@ public interface IApplicationDbContext
     DbSet<ErpSkuMirror> ErpSkuMirrors { get; }
     DbSet<ErpWarehouseMirror> ErpWarehouseMirrors { get; }
     DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
+    
+    // Outbound
     DbSet<OutboundOrder> OutboundOrders { get; }
+    DbSet<OutboundOrderLine> OutboundOrderLines { get; }
+    DbSet<PickTask> PickTasks { get; }
     DbSet<Shipment> Shipments { get; }
+    DbSet<ShipmentItem> ShipmentItems { get; }
+    DbSet<ShipmentOrder> ShipmentOrders { get; }
+
     DbSet<InventoryLedger> InventoryLedgers { get; }
     DbSet<InventoryReconciliationReport> InventoryReconciliationReports { get; }
     

@@ -55,7 +55,15 @@ public class InventoryService : IInventoryService
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (inventoryItem == null)
-                    throw new InsufficientStockException($"Insufficient stock for SKU {sku} in warehouse {warehouseId}");
+                {
+                    // Lấy số lượng khả dụng thực tế để báo lỗi chi tiết
+                    var available = await _context.InventoryItems
+                        .Where(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.Sku == sku)
+                        .Select(x => x.QuantityOnHand - x.ReservedQty)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    throw new InsufficientStockException(sku, quantity, available);
+                }
 
                 // 2. Update Snapshot
                 inventoryItem.ReserveStock(quantity);
@@ -92,9 +100,6 @@ public class InventoryService : IInventoryService
             {
                 _logger.LogWarning(ex, "Concurrency conflict for SKU: {Sku} on attempt {Attempt}", sku, attempt);
                 if (attempt == maxRetries) throw;
-                
-                // Tránh các transaction dở dang trong context nếu có
-                _context.ChangeTracker.Clear();
                 
                 await Task.Delay(50 * attempt, cancellationToken);
             }
