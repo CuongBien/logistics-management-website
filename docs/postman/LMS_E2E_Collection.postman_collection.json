@@ -17,6 +17,11 @@
             "type": "string"
         },
         {
+            "key": "masterdata_url",
+            "value": "http://127.0.0.1:5052",
+            "type": "string"
+        },
+        {
             "key": "orderId",
             "value": "",
             "type": "string"
@@ -87,7 +92,7 @@
             "type": "string"
         },
         {
-            "key": "manualShipmentId",
+            "key": "outboundOrderId",
             "value": "",
             "type": "string"
         }
@@ -103,6 +108,29 @@
         ]
     },
     "item": [
+        {
+            "name": "Master Data (Partners)",
+            "item": [
+                {
+                    "name": "Create Partner",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"code\": \"PARTNER-001\",\n  \"name\": \"Công ty TNHH MTV Tiếp Vận\",\n  \"type\": 1,\n  \"phone\": \"0901234567\",\n  \"address\": \"123 Nguyen Trai\",\n  \"city\": \"Ho Chi Minh\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{masterdata_url}}/api/Partners",
+                            "host": ["{{masterdata_url}}"],
+                            "path": ["api", "Partners"]
+                        }
+                    }
+                }
+            ]
+        },
         {
             "name": "STEP 0 – Setup Dev IAM",
             "request": {
@@ -133,7 +161,7 @@
                             "listen": "test",
                             "script": {
                                 "exec": [
-                                    "const res = pm.response.json(); const id = res.value || res.id || res; pm.collectionVariables.set('orderId', id);"
+                                    "const res = pm.response.json(); const id = res.value || res.id || res; pm.collectionVariables.set('outboundOrderId', id);"
                                 ]
                             }
                         }
@@ -148,7 +176,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{$guid}}\",\n    \"orderNo\": \"ORD-STD-{{$timestamp}}\",\n    \"destinationAddress\": \"99 Standard St\",\n    \"destinationCity\": \"Da Nang\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                            "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId}}\",\n    \"orderNo\": \"ORD-STD-{{$timestamp}}\",\n    \"destinationAddress\": \"99 Standard St\",\n    \"destinationCity\": \"Da Nang\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
                         },
                         "url": {
                             "raw": "{{wms_url}}/api/outbound/orders",
@@ -168,7 +196,7 @@
                     "request": {
                         "method": "POST",
                         "url": {
-                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/allocate",
+                            "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/allocate",
                             "host": [
                                 "{{wms_url}}"
                             ],
@@ -176,7 +204,7 @@
                                 "api",
                                 "outbound",
                                 "orders",
-                                "{{orderId}}",
+                                "{{outboundOrderId}}",
                                 "allocate"
                             ]
                         }
@@ -197,7 +225,7 @@
                             "raw": "{\n    \"waveId\": \"WAVE-STD-001\"\n}"
                         },
                         "url": {
-                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/pick",
+                            "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/pick",
                             "host": [
                                 "{{wms_url}}"
                             ],
@@ -205,7 +233,7 @@
                                 "api",
                                 "outbound",
                                 "orders",
-                                "{{orderId}}",
+                                "{{outboundOrderId}}",
                                 "pick"
                             ]
                         }
@@ -226,7 +254,7 @@
                     "request": {
                         "method": "GET",
                         "url": {
-                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/pick-tasks",
+                            "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/pick-tasks",
                             "host": [
                                 "{{wms_url}}"
                             ],
@@ -234,7 +262,7 @@
                                 "api",
                                 "outbound",
                                 "orders",
-                                "{{orderId}}",
+                                "{{outboundOrderId}}",
                                 "pick-tasks"
                             ]
                         }
@@ -264,7 +292,7 @@
                     "request": {
                         "method": "POST",
                         "url": {
-                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/pack",
+                            "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/pack",
                             "host": [
                                 "{{wms_url}}"
                             ],
@@ -272,7 +300,7 @@
                                 "api",
                                 "outbound",
                                 "orders",
-                                "{{orderId}}",
+                                "{{outboundOrderId}}",
                                 "pack"
                             ]
                         }
@@ -293,7 +321,7 @@
                             "raw": "{}"
                         },
                         "url": {
-                            "raw": "{{wms_url}}/api/outbound/orders/{{orderId}}/ship",
+                            "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/ship",
                             "host": [
                                 "{{wms_url}}"
                             ],
@@ -301,7 +329,7 @@
                                 "api",
                                 "outbound",
                                 "orders",
-                                "{{orderId}}",
+                                "{{outboundOrderId}}",
                                 "ship"
                             ]
                         }
@@ -785,7 +813,7 @@
                 },
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"skuCodes\": [\n    \"{{skuCode}}\"\n  ],\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
+                    "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"skuCodes\": [\n    \"{{skuCode}}\"\n  ],\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"saveToContacts\": true,\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"partnerId\": \"{{partnerId}}\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
                 }
             },
             "response": []
