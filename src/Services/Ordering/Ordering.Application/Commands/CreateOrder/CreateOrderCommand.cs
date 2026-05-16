@@ -11,8 +11,9 @@ public record CreateOrderCommand(
     decimal CodAmount,
     decimal ShippingFee,
     decimal Weight,
-    string? Note) : IRequest<Result<Guid>>;
+    string? Note,
+    bool SaveToContacts = false) : IRequest<Result<Guid>>;
 
-public record ConsigneeDto(string FullName, string Phone, AddressDto Address);
+public record ConsigneeDto(string FullName, string Phone, AddressDto Address, string? PartnerId = null);
 
 public record AddressDto(string Street, string City, string State, string Country, string ZipCode);

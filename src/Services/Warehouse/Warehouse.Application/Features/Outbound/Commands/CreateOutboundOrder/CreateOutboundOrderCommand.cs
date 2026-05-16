@@ -16,4 +16,5 @@ public record CreateOutboundOrderCommand(
     int Priority,
     bool AllowPartial,
     DateTime? PlannedShipAt,
-    List<OutboundOrderLineItem> Lines) : IRequest<Result<Guid>>;
+    List<OutboundOrderLineItem> Lines,
+    string? PartnerId = null) : IRequest<Result<Guid>>;

@@ -68,8 +68,8 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
         }
         else
         {
-            // Chế độ Auto: Tìm hoặc tạo dựa trên địa chỉ
-            var destinationKey = order.DestinationCity ?? order.DestinationAddress ?? "UNKNOWN";
+            // Chế độ Auto: Tìm hoặc tạo dựa trên địa chỉ (Ưu tiên PartnerId để gom đơn chính xác)
+            var destinationKey = order.PartnerId ?? order.DestinationCity ?? order.DestinationAddress ?? "UNKNOWN";
             shipment = await _context.Shipments
                 .Include(s => s.Orders)
                 .Include(s => s.Items)

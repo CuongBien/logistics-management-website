@@ -50,7 +50,8 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
             request.DestinationAddress,
             request.DestinationCity,
             request.Priority,
-            request.AllowPartial);
+            request.AllowPartial,
+            request.PartnerId);
 
         // Map Lines (enforces unique SKU per order inside the entity)
         try
