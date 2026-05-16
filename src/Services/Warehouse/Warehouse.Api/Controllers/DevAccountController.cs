@@ -7,6 +7,7 @@ namespace Warehouse.Api.Controllers;
 
 [ApiController]
 [Route("api/dev/account")]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class DevAccountController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
@@ -22,11 +23,21 @@ public class DevAccountController : ControllerBase
     [HttpPost("setup-admin")]
     public async Task<IActionResult> SetupAdmin()
     {
+        // Kiểm tra nhiều loại claim ID phổ biến
         var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
-                 ?? User.FindFirst("sub")?.Value;
+                 ?? User.FindFirst("sub")?.Value
+                 ?? User.FindFirst("oid")?.Value // Azure AD
+                 ?? User.Identity?.Name;
         
         if (string.IsNullOrEmpty(sub))
-            return BadRequest("Token missing sub claim");
+        {
+            var claims = User.Claims.Select(c => $"{c.Type}: {c.Value}").ToList();
+            return BadRequest(new { 
+                Error = "Token missing sub/nameid claim", 
+                AvailableClaims = claims,
+                IsAuthenticated = User.Identity?.IsAuthenticated 
+            });
+        }
 
         var profile = await _context.OperatorProfiles.FirstOrDefaultAsync(p => p.OperatorSub == sub);
         if (profile == null)

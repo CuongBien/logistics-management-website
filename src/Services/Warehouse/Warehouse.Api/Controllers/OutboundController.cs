@@ -4,6 +4,7 @@ using Warehouse.Application.Features.Outbound.Commands.SortOrder;
 using Warehouse.Application.Common.Interfaces;
 using Warehouse.Api.Controllers.Requests;
 using Logistics.Core;
+using Warehouse.Domain.Entities;
 
 namespace Warehouse.Api.Controllers;
 
@@ -74,5 +75,90 @@ public class OutboundController : ApiControllerBase
 
         var result = await Mediator.Send(finalCommand);
         return ToActionResult(result);
+    }
+
+    [HttpPost("orders")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<Guid>> CreateOrder([FromBody] CreateOutboundOrderRequest request)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var customerId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var command = new Warehouse.Application.Features.Outbound.Commands.CreateOutboundOrder.CreateOutboundOrderCommand(
+            tenantId, 
+            customerId, 
+            request.WarehouseId, 
+            request.OrderId, 
+            request.OrderNo,
+            request.DestinationAddress,
+            request.DestinationCity,
+            request.Priority,
+            request.AllowPartial,
+            request.PlannedShipAt, 
+            request.Lines);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("orders/{id:guid}/allocate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> AllocateOrder(Guid id)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.AllocateStock.AllocateStockCommand(id, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("orders/{id:guid}/pick")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> PickOrder(Guid id, [FromBody] PickOrderRequest? request)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.PickStock.PickStockCommand(id, request?.WaveId);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("pick-tasks/{taskId:guid}/confirm")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> ConfirmPick(Guid taskId)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.PickStock.ConfirmPickCommand(taskId, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpGet("orders/{id:guid}/pick-tasks")]
+    public async Task<ActionResult<List<PickTask>>> GetPickTasksByOrder(Guid id)
+    {
+        // Query trực tiếp từ DbContext để đơn giản hóa việc test
+        var tasks = await _context.PickTasks
+            .Include(pt => pt.OutboundOrderLine)
+            .Where(pt => pt.OutboundOrderLine.OutboundOrderId == id)
+            .ToListAsync();
+            
+        return Ok(tasks);
+    }
+
+    [HttpPost("orders/{id:guid}/pack")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> PackOrder(Guid id)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.PackOrder.PackOrderCommand(id, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("orders/{id:guid}/ship")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> ShipOrder(Guid id, [FromBody] ShipOrderRequest? request)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.ShipOrder.ShipOrderCommand(
+            id, 
+            CurrentUserClaims.GetCustomerId(User) ?? string.Empty,
+            request?.ShipmentId);
+            
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("shipments/{id:guid}/dispatch")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> DispatchShipment(Guid id)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.DispatchShipment.DispatchShipmentCommand(id, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
     }
 }
