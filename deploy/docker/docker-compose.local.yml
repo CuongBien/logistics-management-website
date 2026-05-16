@@ -207,6 +207,26 @@ services:
     networks:
       - lms-network
 
+  masterdata.api:
+    image: lms-masterdata-api
+    build:
+      context: ../../
+      dockerfile: src/Services/MasterData/MasterData.Api/Dockerfile
+    container_name: lms-masterdata-api
+    ports:
+      - "5052:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_master_dev;Username=postgres;Password=postgres
+      - MessageBroker__RabbitMQ__Host=rabbitmq
+      - MessageBroker__RabbitMQ__Username=lms
+      - MessageBroker__RabbitMQ__Password=lms123
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - lms-network
+
   web.bff.api:
     image: lms-web-bff-api
     build:
@@ -219,6 +239,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ReverseProxy__Clusters__oms-cluster__Destinations__oms-destination__Address=http://ordering.api:8080
       - ReverseProxy__Clusters__wms-cluster__Destinations__wms-destination__Address=http://warehouse.api:8080
+      - ReverseProxy__Clusters__masterdata-cluster__Destinations__masterdata-destination__Address=http://masterdata.api:8080
       - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
       - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
       - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
@@ -226,6 +247,7 @@ services:
     depends_on:
       - ordering.api
       - warehouse.api
+      - masterdata.api
     networks:
       - lms-network
 

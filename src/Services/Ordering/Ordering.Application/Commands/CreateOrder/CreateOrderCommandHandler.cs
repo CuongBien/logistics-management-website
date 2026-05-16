@@ -4,16 +4,21 @@ using Microsoft.EntityFrameworkCore;
 using Ordering.Application.Common.Interfaces;
 using Ordering.Domain.Entities;
 using Ordering.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace Ordering.Application.Commands.CreateOrder;
 
 public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly MassTransit.IPublishEndpoint _publishEndpoint;
+    private readonly ILogger<CreateOrderCommandHandler> _logger;
 
-    public CreateOrderCommandHandler(IApplicationDbContext context)
+    public CreateOrderCommandHandler(IApplicationDbContext context, MassTransit.IPublishEndpoint publishEndpoint, ILogger<CreateOrderCommandHandler> logger)
     {
         _context = context;
+        _publishEndpoint = publishEndpoint;
+        _logger = logger;
     }
 
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -42,7 +47,8 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
         var consignee = new Consignee(
             request.Consignee.FullName,
             request.Consignee.Phone,
-            address);
+            address,
+            request.Consignee.PartnerId);
 
         // 2. Create Order Aggregate (auto-generates WaybillCode)
         var orderResult = Order.Create(
@@ -68,7 +74,22 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
             return Result<Guid>.Failure(confirmResult.Error);
         }
 
-        // 4. Persist
+        // 4. Handle SaveToContacts (Async - Must be before SaveChanges for Outbox)
+        if (request.SaveToContacts)
+        {
+            _logger.LogInformation("Publishing NewPartnerEncounteredIntegrationEvent for phone {Phone}", request.Consignee.Phone);
+            await _publishEndpoint.Publish(new EventBus.Messages.Events.NewPartnerEncounteredIntegrationEvent
+            {
+                TenantId = request.TenantId,
+                Name = request.Consignee.FullName,
+                Phone = request.Consignee.Phone,
+                Address = request.Consignee.Address.Street,
+                City = request.Consignee.Address.City,
+                PartnerId = request.Consignee.PartnerId
+            }, cancellationToken);
+        }
+
+        // 5. Persist
         _context.Orders.Add(order);
         await _context.SaveChangesAsync(cancellationToken);
 
