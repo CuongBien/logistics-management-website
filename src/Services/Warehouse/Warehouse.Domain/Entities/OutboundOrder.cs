@@ -25,6 +25,7 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
 {
     public string TenantId { get; private set; } = default!;
     public string CustomerId { get; private set; } = default!;
+    public string? PartnerId { get; private set; }
     public Guid WarehouseId { get; private set; }
     public Guid OrderId { get; private set; } // OMS Order ID Reference
     public string OrderNo { get; private set; } = default!; // Human readable No
@@ -55,7 +56,8 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         string? destinationAddress = null,
         string? destinationCity = null,
         int priority = 0,
-        bool allowPartial = true)
+        bool allowPartial = true,
+        string? partnerId = null)
     {
         Id = orderId;
         OrderId = orderId;
@@ -65,6 +67,7 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         OrderNo = orderNo;
         DestinationAddress = destinationAddress;
         DestinationCity = destinationCity;
+        PartnerId = partnerId;
         Destination = destinationCity ?? destinationAddress; // Fallback
         Priority = priority;
         AllowPartial = allowPartial;
@@ -81,9 +84,10 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         string? destinationAddress = null,
         string? destinationCity = null,
         int priority = 0,
-        bool allowPartial = true)
+        bool allowPartial = true,
+        string? partnerId = null)
     {
-        return new OutboundOrder(orderId, tenantId, customerId, warehouseId, orderNo, destinationAddress, destinationCity, priority, allowPartial);
+        return new OutboundOrder(orderId, tenantId, customerId, warehouseId, orderNo, destinationAddress, destinationCity, priority, allowPartial, partnerId);
     }
 
     public void UpdateStatus(OutboundOrderStatus newStatus)

@@ -655,6 +655,9 @@ namespace Ordering.Infrastructure.Migrations
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)");
 
+                            b1.Property<string>("PartnerId")
+                                .HasColumnType("text");
+
                             b1.Property<string>("Phone")
                                 .IsRequired()
                                 .HasMaxLength(20)

@@ -7,8 +7,9 @@ public class Consignee : ValueObject
     public string FullName { get; private set; }
     public string Phone { get; private set; }
     public Address Address { get; private set; }
+    public string? PartnerId { get; private set; } // Liên kết tới MasterData Partner
 
-    public Consignee(string fullName, string phone, Address address)
+    public Consignee(string fullName, string phone, Address address, string? partnerId = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(fullName);
         ArgumentException.ThrowIfNullOrEmpty(phone);
@@ -17,6 +18,7 @@ public class Consignee : ValueObject
         FullName = fullName;
         Phone = phone;
         Address = address;
+        PartnerId = partnerId;
     }
 
     // EF Core
