@@ -10,6 +10,7 @@ public class MasterDataDbContext : DbContext, IApplicationDbContext
     public MasterDataDbContext(DbContextOptions<MasterDataDbContext> options) : base(options) { }
 
     public DbSet<Partner> Partners => Set<Partner>();
+    public DbSet<ConsolidationRule> ConsolidationRules => Set<ConsolidationRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

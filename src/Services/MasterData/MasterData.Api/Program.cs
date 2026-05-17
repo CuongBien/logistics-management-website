@@ -55,15 +55,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<MasterDataDbContext>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
         if (context.Database.IsNpgsql())
         {
             context.Database.Migrate();
         }
+        await MasterDataDbContextSeed.SeedAsync(context, logger);
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "An error occurred while migrating/seeding the database.");
     }
 }
 

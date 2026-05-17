@@ -39,14 +39,16 @@ public class NewPartnerEncounteredConsumer : IConsumer<NewPartnerEncounteredInte
                 PartnerType.Consignee,
                 msg.Phone,
                 msg.Address,
-                msg.City
+                msg.City,
+                msg.Latitude,
+                msg.Longitude
             );
             _context.Partners.Add(partner);
         }
         else
         {
             _logger.LogInformation("Updating existing partner {PartnerId} in master data", partner.Id);
-            partner.UpdateInfo(msg.Name, msg.Phone, msg.Address, msg.City);
+            partner.UpdateInfo(msg.Name, msg.Phone, msg.Address, msg.City, msg.Latitude, msg.Longitude);
         }
 
         await _context.SaveChangesAsync(context.CancellationToken);
