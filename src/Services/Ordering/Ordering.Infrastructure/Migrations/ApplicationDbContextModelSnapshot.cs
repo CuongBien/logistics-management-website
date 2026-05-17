@@ -655,6 +655,12 @@ namespace Ordering.Infrastructure.Migrations
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)");
 
+                            b1.Property<double?>("Latitude")
+                                .HasColumnType("double precision");
+
+                            b1.Property<double?>("Longitude")
+                                .HasColumnType("double precision");
+
                             b1.Property<string>("PartnerId")
                                 .HasColumnType("text");
 

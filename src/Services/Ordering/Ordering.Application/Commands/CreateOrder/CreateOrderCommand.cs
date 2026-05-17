@@ -14,6 +14,6 @@ public record CreateOrderCommand(
     string? Note,
     bool SaveToContacts = false) : IRequest<Result<Guid>>;
 
-public record ConsigneeDto(string FullName, string Phone, AddressDto Address, string? PartnerId = null);
+public record ConsigneeDto(string FullName, string Phone, AddressDto Address, string? PartnerId = null, double? Latitude = null, double? Longitude = null);
 
 public record AddressDto(string Street, string City, string State, string Country, string ZipCode);

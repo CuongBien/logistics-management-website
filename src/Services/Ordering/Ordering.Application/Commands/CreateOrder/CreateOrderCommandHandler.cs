@@ -48,7 +48,9 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
             request.Consignee.FullName,
             request.Consignee.Phone,
             address,
-            request.Consignee.PartnerId);
+            request.Consignee.PartnerId,
+            request.Consignee.Latitude,
+            request.Consignee.Longitude);
 
         // 2. Create Order Aggregate (auto-generates WaybillCode)
         var orderResult = Order.Create(
@@ -85,7 +87,9 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
                 Phone = request.Consignee.Phone,
                 Address = request.Consignee.Address.Street,
                 City = request.Consignee.Address.City,
-                PartnerId = request.Consignee.PartnerId
+                PartnerId = request.Consignee.PartnerId,
+                Latitude = request.Consignee.Latitude,
+                Longitude = request.Consignee.Longitude
             }, cancellationToken);
         }
 
