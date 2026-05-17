@@ -1777,7 +1777,7 @@
                                         "setup-admin"
                                     ]
                                 },
-                                "description": "Gán quyền Admin cho User hiện tại để có thể chạy các bước tiếp theo mà không bị lỗi 403 Forbidden."
+                                "description": "Assign Admin permission to current User."
                             }
                         },
                         {
@@ -1885,82 +1885,6 @@
                                     ]
                                 }
                             }
-                        },
-                        {
-                            "name": "Step A0: Create Customer Order (OMS)",
-                            "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"tenantId\": \"tenant-default\",\n    \"consignorId\": \"cust-default\",\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 150.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 1: Cross-Province Next-Hop Routing (Can Tho to Hai Phong)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Hai Phong\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    }\n}"
-                                },
-                                "url": {
-                                    "raw": "{{oms_url}}/api/Orders",
-                                    "host": [
-                                        "{{oms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "Orders"
-                                    ]
-                                }
-                            },
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "const response = pm.response.json();",
-                                            "pm.collectionVariables.set(\"orderId_1\", response.value);"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "name": "Step A0: Create Customer Order (OMS)",
-                            "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"tenantId\": \"tenant-default\",\n    \"consignorId\": \"cust-default\",\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 150.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 1: Cross-Province Next-Hop Routing (Can Tho to Hai Phong)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Hai Phong\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    }\n}"
-                                },
-                                "url": {
-                                    "raw": "{{oms_url}}/api/Orders",
-                                    "host": [
-                                        "{{oms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "Orders"
-                                    ]
-                                }
-                            },
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "const response = pm.response.json();",
-                                            "pm.collectionVariables.set(\"orderId_1\", response.value);"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ]
                         },
                         {
                             "name": "Step B: Create Smart Outbound Order (Ready for Dispatch)",
@@ -2132,6 +2056,56 @@
                                     ]
                                 }
                             }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_1}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_1}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_1_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_1_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_1_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
                         }
                     ]
                 },
@@ -2156,7 +2130,7 @@
                                         "setup-admin"
                                     ]
                                 },
-                                "description": "Gán quyền Admin cho User hiện tại để có thể chạy các bước tiếp theo mà không bị lỗi 403 Forbidden."
+                                "description": "Assign Admin permission to current User."
                             }
                         },
                         {
@@ -2264,82 +2238,6 @@
                                     ]
                                 }
                             }
-                        },
-                        {
-                            "name": "Step A0: Create Customer Order (OMS)",
-                            "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"tenantId\": \"tenant-default\",\n    \"consignorId\": \"cust-default\",\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 10.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 2: Same Next-Hop Consolidation (Can Tho to Hanoi)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Hanoi\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HN-006\",\n        \"latitude\": 21.028511,\n        \"longitude\": 105.804817,\n        \"address\": {\n            \"street\": \"10 Hoang Hoa Tham\",\n            \"city\": \"Hanoi\",\n            \"state\": \"Hanoi Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"100000\"\n        }\n    }\n}"
-                                },
-                                "url": {
-                                    "raw": "{{oms_url}}/api/Orders",
-                                    "host": [
-                                        "{{oms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "Orders"
-                                    ]
-                                }
-                            },
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "const response = pm.response.json();",
-                                            "pm.collectionVariables.set(\"orderId_2\", response.value);"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "name": "Step A0: Create Customer Order (OMS)",
-                            "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"tenantId\": \"tenant-default\",\n    \"consignorId\": \"cust-default\",\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 10.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 2: Same Next-Hop Consolidation (Can Tho to Hanoi)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Hanoi\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HN-006\",\n        \"latitude\": 21.028511,\n        \"longitude\": 105.804817,\n        \"address\": {\n            \"street\": \"10 Hoang Hoa Tham\",\n            \"city\": \"Hanoi\",\n            \"state\": \"Hanoi Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"100000\"\n        }\n    }\n}"
-                                },
-                                "url": {
-                                    "raw": "{{oms_url}}/api/Orders",
-                                    "host": [
-                                        "{{oms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "Orders"
-                                    ]
-                                }
-                            },
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "const response = pm.response.json();",
-                                            "pm.collectionVariables.set(\"orderId_2\", response.value);"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ]
                         },
                         {
                             "name": "Step B: Create Smart Outbound Order (Ready for Dispatch)",
@@ -2511,6 +2409,56 @@
                                     ]
                                 }
                             }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_2}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_2}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_2_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_2_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_2_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
                         }
                     ]
                 },
@@ -2535,7 +2483,7 @@
                                         "setup-admin"
                                     ]
                                 },
-                                "description": "Gán quyền Admin cho User hiện tại để có thể chạy các bước tiếp theo mà không bị lỗi 403 Forbidden."
+                                "description": "Assign Admin permission to current User."
                             }
                         },
                         {
@@ -2643,82 +2591,6 @@
                                     ]
                                 }
                             }
-                        },
-                        {
-                            "name": "Step A0: Create Customer Order (OMS)",
-                            "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"tenantId\": \"tenant-default\",\n    \"consignorId\": \"cust-default\",\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 18000.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 3: Capacity Limit Exceeded (Exceeds Container 25T Limit)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Heavy Hanoi\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HN-006\",\n        \"latitude\": 21.028511,\n        \"longitude\": 105.804817,\n        \"address\": {\n            \"street\": \"12 Hoang Hoa Tham\",\n            \"city\": \"Hanoi\",\n            \"state\": \"Hanoi Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"100000\"\n        }\n    }\n}"
-                                },
-                                "url": {
-                                    "raw": "{{oms_url}}/api/Orders",
-                                    "host": [
-                                        "{{oms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "Orders"
-                                    ]
-                                }
-                            },
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "const response = pm.response.json();",
-                                            "pm.collectionVariables.set(\"orderId_3\", response.value);"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "name": "Step A0: Create Customer Order (OMS)",
-                            "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"tenantId\": \"tenant-default\",\n    \"consignorId\": \"cust-default\",\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 18000.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 3: Capacity Limit Exceeded (Exceeds Container 25T Limit)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Heavy Hanoi\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HN-006\",\n        \"latitude\": 21.028511,\n        \"longitude\": 105.804817,\n        \"address\": {\n            \"street\": \"12 Hoang Hoa Tham\",\n            \"city\": \"Hanoi\",\n            \"state\": \"Hanoi Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"100000\"\n        }\n    }\n}"
-                                },
-                                "url": {
-                                    "raw": "{{oms_url}}/api/Orders",
-                                    "host": [
-                                        "{{oms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "Orders"
-                                    ]
-                                }
-                            },
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "const response = pm.response.json();",
-                                            "pm.collectionVariables.set(\"orderId_3\", response.value);"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ]
                         },
                         {
                             "name": "Step B: Create Smart Outbound Order (Ready for Dispatch)",
@@ -2890,26 +2762,690 @@
                                     ]
                                 }
                             }
-                        }
-                    ]
-                },
-                {
-                    "name": "Scenario 4: Verify Shipments and Next-Hop Destinations",
-                    "description": "Lấy danh sách shipments để xác minh toạ độ đích, gom đơn và tải trọng thực tế.",
-                    "item": [
+                        },
                         {
-                            "name": "GET Shipments List",
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
                             "request": {
                                 "method": "GET",
                                 "url": {
-                                    "raw": "{{wms_url}}/api/outbound/shipments",
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_3}}/shipment",
                                     "host": [
                                         "{{wms_url}}"
                                     ],
                                     "path": [
                                         "api",
                                         "outbound",
-                                        "shipments"
+                                        "orders",
+                                        "{{orderId_3}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_3_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_3_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_3_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Scenario 4: Multi-Leg Hub Transit (Can Tho -> HCM -> Hanoi -> Hai Phong)",
+                    "description": "Đơn đi Hải Phong (~1500km) sẽ được định tuyến tự động chặng chặng chặng đầu sang kho HCM Mega Hub (WH-SG-002) thay vì đi thẳng tới Hải Phòng.",
+                    "item": [
+                        {
+                            "name": "Step A00: Setup Dev IAM (Assign Warehouse Admin)",
+                            "request": {
+                                "method": "POST",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/dev/account/setup-admin",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "dev",
+                                        "account",
+                                        "setup-admin"
+                                    ]
+                                },
+                                "description": "Assign Admin permission to current User."
+                            }
+                        },
+                        {
+                            "name": "Step A0: Create Customer Order (OMS)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"tenantId\": \"tenant-default\",\n    \"consignorId\": \"cust-default\",\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 150.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 1: Cross-Province Next-Hop Routing (Can Tho to Hai Phong)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Hai Phong\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    }\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/Orders",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "Orders"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"orderId_4\", response.value);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step A1: Create Inbound Receipt (Pre-notification)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"tenantId\": \"tenant-default\",\n    \"customerId\": \"cust-default\",\n    \"warehouseId\": \"b61a8f61-5238-4a18-809c-335cc293a025\",\n    \"sourceShipmentNo\": \"ASN-1-{{$timestamp}}\",\n    \"expectedLines\": [\n        {\n            \"skuCode\": \"SKU-RED-TSHIRT\",\n            \"expectedQuantity\": 150\n        }\n    ]\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"receiptId_4\", response);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step A2: Scan & Receive Package into Bin (Inbound Scan)",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"skuCode\": \"SKU-RED-TSHIRT\",\n    \"binCode\": \"BIN-A1-01\",\n    \"quantity\": 150\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId_4}}/receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "{{receiptId_4}}",
+                                        "receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step B: Create Smart Outbound Order (Ready for Dispatch)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_4}}\",\n    \"orderNo\": \"ORD-SMART-HP-111-{{$timestamp}}\",\n    \"destinationAddress\": \"50 Lach Tray, Hai Phong City\",\n    \"destinationCity\": \"Hai Phong\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HP-007\",\n    \"latitude\": 20.844912,\n    \"longitude\": 106.688079,\n    \"weight\": 150.0,\n    \"volume\": 0.45,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step C: Allocate Stock",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/allocate",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "allocate"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step D: Pick Order (Wave)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"waveId\": \"WAVE-SMART-001\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/pick",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "pick"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step E: GET Pick Tasks",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json(); if(res.length>0) pm.collectionVariables.set('pickTaskId1', res[0].id);"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/pick-tasks",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "pick-tasks"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step F: Confirm Pick Task",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/pick-tasks/{{pickTaskId1}}/confirm",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "pick-tasks",
+                                        "{{pickTaskId1}}",
+                                        "confirm"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step G: Pack Order",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/pack",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "pack"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step H: Trigger Smart Auto Ship (Chặng 1: Can Tho -> HCM)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1: Can Tho -> HCM)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_4_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1: Can Tho -> HCM)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_4_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_4_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step I: Receive Transit at HCM Mega Hub",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/orders/{{orderId_4}}/transit-receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "transit-receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step J: Trigger Smart Auto Ship at HCM Mega Hub (Chặng 2: HCM -> Hanoi)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step J1: Get Loaded Shipment (Chặng 2: HCM -> Hanoi)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_4_j\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step J2: Dispatch Shipment (Chặng 2: HCM -> Hanoi)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_4_j}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_4_j}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step K: Receive Transit at Hanoi Mega Hub",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/orders/{{orderId_4}}/transit-receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "transit-receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step L: Trigger Smart Auto Ship at Hanoi Mega Hub (Chặng 3: Hanoi -> Hai Phong)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step L1: Get Loaded Shipment (Chặng 3: Hanoi -> Hai Phong)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_4_l\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step L2: Dispatch Shipment (Chặng 3: Hanoi -> Hai Phong)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_4_l}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_4_l}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step M0: Create Final Inbound Receipt at Hai Phong Hub (Pre-notification)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"tenantId\": \"tenant-default\",\n    \"customerId\": \"cust-default\",\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"sourceShipmentNo\": \"ASN-FINAL-4-{{$timestamp}}\",\n    \"expectedLines\": [\n        {\n            \"skuCode\": \"SKU-RED-TSHIRT\",\n            \"expectedQuantity\": 150\n        }\n    ]\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"receiptId_4_final\", response);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step M: Final Inbound Receive at Hai Phong Hub",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"skuCode\": \"SKU-RED-TSHIRT\",\n    \"binCode\": \"BIN-A1-01\",\n    \"quantity\": 150\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId_4_final}}/receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "{{receiptId_4_final}}",
+                                        "receive"
                                     ]
                                 }
                             }
