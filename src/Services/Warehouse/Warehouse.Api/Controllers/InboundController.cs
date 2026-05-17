@@ -5,6 +5,7 @@ using Warehouse.Application.Common.Interfaces;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
+using Warehouse.Application.Features.Inbound.Commands.ReceiveTransitShipment;
 using Warehouse.Api.Controllers.Requests;
 
 namespace Warehouse.Api.Controllers;
@@ -112,6 +113,27 @@ public class InboundController : ApiControllerBase
         }
 
         var command = new Warehouse.Application.Features.Inbound.Commands.ForceCloseReceipt.ForceCloseReceiptCommand(receiptId, tenantId, operatorSub);
+        var result = await Mediator.Send(command);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Nhận hàng trung chuyển tại kho trung gian (Transit Hub)
+    /// </summary>
+    [HttpPost("orders/{orderId:guid}/transit-receive")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<bool>> ReceiveTransitShipment(Guid orderId, [FromBody] ReceiveTransitShipmentRequest request)
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(operatorSub))
+        {
+            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
+        }
+
+        var command = new ReceiveTransitShipmentCommand(orderId, request.WarehouseId, operatorSub);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }
