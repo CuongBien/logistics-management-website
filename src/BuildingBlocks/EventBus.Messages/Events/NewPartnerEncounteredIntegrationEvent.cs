@@ -10,4 +10,6 @@ public record NewPartnerEncounteredIntegrationEvent : IntegrationEvent
     public string? Address { get; init; }
     public string? City { get; init; }
     public string? PartnerId { get; init; }
+    public double? Latitude { get; init; }
+    public double? Longitude { get; init; }
 }
