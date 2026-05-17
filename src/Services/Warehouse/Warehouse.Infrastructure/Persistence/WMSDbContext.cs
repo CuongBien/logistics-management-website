@@ -37,6 +37,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
 
     public DbSet<InventoryLedger> InventoryLedgers => Set<InventoryLedger>();
     public DbSet<InventoryReconciliationReport> InventoryReconciliationReports => Set<InventoryReconciliationReport>();
+    public DbSet<WarehouseRoute> WarehouseRoutes => Set<WarehouseRoute>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

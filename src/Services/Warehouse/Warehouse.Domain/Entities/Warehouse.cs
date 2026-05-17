@@ -26,6 +26,15 @@ public class Warehouse : Entity<Guid>, IAggregateRoot, ISoftDelete
         IsDeleted = false;
     }
 
+    public Warehouse(Guid id, string name, string code, string locationText)
+    {
+        Id = id;
+        Name = name;
+        Code = code;
+        LocationText = locationText;
+        IsDeleted = false;
+    }
+
     public void Delete()
     {
         IsDeleted = true;

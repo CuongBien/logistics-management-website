@@ -41,6 +41,14 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
     public string? DestinationAddress { get; private set; }
     public string? DestinationCity { get; private set; }
 
+    // GPS Coordinates
+    public double? Latitude { get; private set; }
+    public double? Longitude { get; private set; }
+
+    // Physical constraints
+    public decimal Weight { get; private set; }
+    public decimal Volume { get; private set; }
+
     private readonly List<OutboundOrderLine> _lines = new();
     public virtual IReadOnlyCollection<OutboundOrderLine> Lines => _lines.AsReadOnly();
 
@@ -57,7 +65,11 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         string? destinationCity = null,
         int priority = 0,
         bool allowPartial = true,
-        string? partnerId = null)
+        string? partnerId = null,
+        double? latitude = null,
+        double? longitude = null,
+        decimal weight = 0,
+        decimal volume = 0)
     {
         Id = orderId;
         OrderId = orderId;
@@ -71,6 +83,10 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         Destination = destinationCity ?? destinationAddress; // Fallback
         Priority = priority;
         AllowPartial = allowPartial;
+        Latitude = latitude;
+        Longitude = longitude;
+        Weight = weight;
+        Volume = volume <= 0 ? weight * 0.003m : volume; // Default estimate CBM from weight
         Status = OutboundOrderStatus.Draft;
         CreatedAt = DateTime.UtcNow;
     }
@@ -85,9 +101,13 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         string? destinationCity = null,
         int priority = 0,
         bool allowPartial = true,
-        string? partnerId = null)
+        string? partnerId = null,
+        double? latitude = null,
+        double? longitude = null,
+        decimal weight = 0,
+        decimal volume = 0)
     {
-        return new OutboundOrder(orderId, tenantId, customerId, warehouseId, orderNo, destinationAddress, destinationCity, priority, allowPartial, partnerId);
+        return new OutboundOrder(orderId, tenantId, customerId, warehouseId, orderNo, destinationAddress, destinationCity, priority, allowPartial, partnerId, latitude, longitude, weight, volume);
     }
 
     public void UpdateStatus(OutboundOrderStatus newStatus)
