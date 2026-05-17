@@ -159,6 +159,18 @@ public class OutboundController : ApiControllerBase
         return ToActionResult(await Mediator.Send(command));
     }
 
+    [HttpGet("orders/{id:guid}/shipment")]
+    public async Task<ActionResult> GetShipmentByOrder(Guid id)
+    {
+        var shipmentOrder = await _context.ShipmentOrders
+            .Include(x => x.Shipment)
+            .OrderByDescending(x => x.Shipment.CreatedAt)
+            .FirstOrDefaultAsync(x => x.OutboundOrderId == id);
+            
+        if (shipmentOrder == null) return NotFound(new { Message = $"Shipment not found for Outbound Order {id}." });
+        return Ok(new { ShipmentId = shipmentOrder.ShipmentId });
+    }
+
     [HttpPost("shipments/{id:guid}/dispatch")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> DispatchShipment(Guid id)

@@ -39,7 +39,7 @@ public sealed class DispatchShipmentCommandHandler : IRequestHandler<DispatchShi
         if (shipment == null)
             return Result<bool>.Failure(Error.NotFound("Shipment.NotFound", "Shipment not found"));
 
-        if (shipment.Status == ShipmentStatus.Shipped)
+        if (shipment.Status == ShipmentStatus.Shipped || shipment.Status == ShipmentStatus.Delivered)
             return Result<bool>.Success(true);
 
         _logger.LogInformation("Dispatching Shipment {ShipmentNo} with {OrderCount} orders", shipment.ShipmentNo, shipment.Orders.Count);
