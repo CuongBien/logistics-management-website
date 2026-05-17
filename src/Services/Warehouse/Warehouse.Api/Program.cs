@@ -137,15 +137,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<Warehouse.Infrastructure.Persistence.WMSDbContext>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
         if (context.Database.IsNpgsql())
         {
             context.Database.Migrate();
         }
+        await Warehouse.Infrastructure.Persistence.WMSDbContextSeed.SeedAsync(context, logger);
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "An error occurred while migrating/seeding the database.");
     }
 }
 

@@ -94,7 +94,12 @@ public class OutboundController : ApiControllerBase
             request.Priority,
             request.AllowPartial,
             request.PlannedShipAt, 
-            request.Lines);
+            request.Lines,
+            request.PartnerId,
+            request.Latitude,
+            request.Longitude,
+            request.Weight,
+            request.Volume);
         return ToActionResult(await Mediator.Send(command));
     }
 
