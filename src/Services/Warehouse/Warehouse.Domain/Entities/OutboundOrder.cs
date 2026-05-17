@@ -115,6 +115,11 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         Status = newStatus;
     }
 
+    public void UpdateWarehouse(Guid newWarehouseId)
+    {
+        WarehouseId = newWarehouseId;
+    }
+
     public void AddLine(string sku, int requestedQty, string uom)
     {
         if (Status != OutboundOrderStatus.Draft)

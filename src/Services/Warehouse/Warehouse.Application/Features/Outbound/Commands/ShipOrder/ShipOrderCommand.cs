@@ -81,7 +81,6 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
                     w.Code == order.DestinationCity ||
                     w.Name.Contains(order.DestinationCity, StringComparison.OrdinalIgnoreCase));
             }
-
             if (destWh != null && sourceWh != null)
             {
                 var route = await _context.WarehouseRoutes
@@ -89,16 +88,11 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
 
                 if (route != null)
                 {
-                    var hops = route.GetParsedHops();
-                    if (hops.Count > 0)
+                    var nextHopWh = warehouses.FirstOrDefault(w => w.Id == route.NextHopWarehouseId);
+                    if (nextHopWh != null)
                     {
-                        var nextHopId = hops[0];
-                        var nextHopWh = warehouses.FirstOrDefault(w => w.Id == nextHopId);
-                        if (nextHopWh != null)
-                        {
-                            destinationKey = nextHopWh.Id.ToString();
-                            _logger.LogInformation("Multi-Hop Route found. Next hop for order {OrderId} is Warehouse: {NextHopCode}", order.Id, nextHopWh.Code);
-                        }
+                        destinationKey = nextHopWh.Id.ToString();
+                        _logger.LogInformation("Multi-Hop Next-Hop Matrix match found. Next hop for order {OrderId} is Warehouse: {NextHopCode}", order.Id, nextHopWh.Code);
                     }
                 }
             }
