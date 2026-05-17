@@ -40,7 +40,11 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
             return Result<Guid>.Success(existingOrder.Id);
         }
 
-        // Create Entity
+        // Calculate heuristic fallback for Weight and Volume if they are not provided
+        var totalQty = request.Lines.Sum(l => l.Quantity);
+        decimal estimatedWeight = request.Weight ?? (totalQty * 1.5m); // Default to 1.5kg per item
+        decimal estimatedVolume = request.Volume ?? (estimatedWeight * 0.003m); // Estimate CBM (0.003 CBM per kg)
+
         var outboundOrder = OutboundOrder.Create(
             request.TenantId,
             request.CustomerId,
@@ -51,7 +55,11 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
             request.DestinationCity,
             request.Priority,
             request.AllowPartial,
-            request.PartnerId);
+            request.PartnerId,
+            request.Latitude,
+            request.Longitude,
+            estimatedWeight,
+            estimatedVolume);
 
         // Map Lines (enforces unique SKU per order inside the entity)
         try

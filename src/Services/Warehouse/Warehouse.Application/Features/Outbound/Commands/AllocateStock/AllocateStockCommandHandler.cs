@@ -39,7 +39,15 @@ public sealed class AllocateStockCommandHandler : IRequestHandler<AllocateStockC
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", $"Order {request.OutboundOrderId} not found"));
         }
 
-        if (order.Status != OutboundOrderStatus.Draft && order.Status != OutboundOrderStatus.PendingAllocation)
+        if (order.Status == OutboundOrderStatus.Allocated)
+        {
+            _logger.LogInformation("Order {OrderId} is already fully allocated.", order.Id);
+            return Result<bool>.Success(true);
+        }
+
+        if (order.Status != OutboundOrderStatus.Draft && 
+            order.Status != OutboundOrderStatus.PendingAllocation && 
+            order.Status != OutboundOrderStatus.PartiallyAllocated)
         {
             return Result<bool>.Failure(new Error("OutboundOrder.InvalidStatus", $"Cannot allocate order in status {order.Status}"));
         }

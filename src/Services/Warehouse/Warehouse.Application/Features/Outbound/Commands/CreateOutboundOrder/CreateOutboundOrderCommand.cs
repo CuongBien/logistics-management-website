@@ -17,4 +17,8 @@ public record CreateOutboundOrderCommand(
     bool AllowPartial,
     DateTime? PlannedShipAt,
     List<OutboundOrderLineItem> Lines,
-    string? PartnerId = null) : IRequest<Result<Guid>>;
+    string? PartnerId = null,
+    double? Latitude = null,
+    double? Longitude = null,
+    decimal? Weight = null,
+    decimal? Volume = null) : IRequest<Result<Guid>>;
