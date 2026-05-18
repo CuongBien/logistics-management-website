@@ -1898,7 +1898,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_1}}\",\n    \"orderNo\": \"ORD-SMART-HP-111-{{$timestamp}}\",\n    \"destinationAddress\": \"50 Lach Tray, Hai Phong City\",\n    \"destinationCity\": \"Hai Phong\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HP-007\",\n    \"latitude\": 20.844912,\n    \"longitude\": 106.688079,\n    \"weight\": 150.0,\n    \"volume\": 0.45,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_1}}\",\n    \"orderNo\": \"ORD-SMART-HP-111-{{$timestamp}}\",\n    \"destinationAddress\": \"50 Lach Tray, Hai Phong City\",\n    \"destinationCity\": \"Hai Phong\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HP-007\",\n    \"latitude\": 20.844912,\n    \"longitude\": 106.688079,\n    \"weight\": 150.0,\n    \"volume\": 0.45,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 150,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/outbound/orders",
@@ -2251,7 +2251,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_2}}\",\n    \"orderNo\": \"ORD-SMART-HN-222-{{$timestamp}}\",\n    \"destinationAddress\": \"10 Hoang Hoa Tham, Hanoi City\",\n    \"destinationCity\": \"Hanoi\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HN-006\",\n    \"latitude\": 21.028511,\n    \"longitude\": 105.804817,\n    \"weight\": 200.0,\n    \"volume\": 0.6,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_2}}\",\n    \"orderNo\": \"ORD-SMART-HN-222-{{$timestamp}}\",\n    \"destinationAddress\": \"10 Hoang Hoa Tham, Hanoi City\",\n    \"destinationCity\": \"Hanoi\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HN-006\",\n    \"latitude\": 21.028511,\n    \"longitude\": 105.804817,\n    \"weight\": 200.0,\n    \"volume\": 0.6,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 10,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/outbound/orders",
@@ -2459,6 +2459,106 @@
                                     ]
                                 }
                             }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_2}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_2}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_2_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_2_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_2_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_2}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_2}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_2_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_2_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_2_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
                         }
                     ]
                 },
@@ -2604,7 +2704,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_3}}\",\n    \"orderNo\": \"ORD-HEAVY-HN-333-{{$timestamp}}\",\n    \"destinationAddress\": \"12 Hoang Hoa Tham, Hanoi City\",\n    \"destinationCity\": \"Hanoi\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HN-006\",\n    \"latitude\": 21.028511,\n    \"longitude\": 105.804817,\n    \"weight\": 26000.0,\n    \"volume\": 78.0,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_3}}\",\n    \"orderNo\": \"ORD-HEAVY-HN-333-{{$timestamp}}\",\n    \"destinationAddress\": \"12 Hoang Hoa Tham, Hanoi City\",\n    \"destinationCity\": \"Hanoi\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HN-006\",\n    \"latitude\": 21.028511,\n    \"longitude\": 105.804817,\n    \"weight\": 26000.0,\n    \"volume\": 78.0,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 18000,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/outbound/orders",
@@ -2812,6 +2912,106 @@
                                     ]
                                 }
                             }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_3}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_3}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_3_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_3_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_3_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_3}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_3}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_3_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_3_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_3_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
                         }
                     ]
                 },
@@ -2957,7 +3157,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_4}}\",\n    \"orderNo\": \"ORD-SMART-HP-111-{{$timestamp}}\",\n    \"destinationAddress\": \"50 Lach Tray, Hai Phong City\",\n    \"destinationCity\": \"Hai Phong\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HP-007\",\n    \"latitude\": 20.844912,\n    \"longitude\": 106.688079,\n    \"weight\": 150.0,\n    \"volume\": 0.45,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_4}}\",\n    \"orderNo\": \"ORD-SMART-HP-111-{{$timestamp}}\",\n    \"destinationAddress\": \"50 Lach Tray, Hai Phong City\",\n    \"destinationCity\": \"Hai Phong\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HP-007\",\n    \"latitude\": 20.844912,\n    \"longitude\": 106.688079,\n    \"weight\": 150.0,\n    \"volume\": 0.45,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 150,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/outbound/orders",
@@ -3167,11 +3367,11 @@
                             }
                         },
                         {
-                            "name": "Step H3: View Tracking Timeline (In Transit 1)",
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1: Can Tho -> HCM)",
                             "request": {
                                 "method": "GET",
                                 "url": {
-                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/shipment",
                                     "host": [
                                         "{{wms_url}}"
                                     ],
@@ -3180,7 +3380,88 @@
                                         "outbound",
                                         "orders",
                                         "{{orderId_4}}",
-                                        "tracking-timeline"
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_4_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1: Can Tho -> HCM)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_4_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_4_h}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1: Can Tho -> HCM)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_4_h\", res.shipmentId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step H2: Dispatch Shipment (Chặng 1: Can Tho -> HCM)",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_4_h}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_4_h}}",
+                                        "dispatch"
                                     ]
                                 }
                             }
@@ -3197,7 +3478,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\"\n}"
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"receivedItems\": {\n        \"SKU-RED-TSHIRT\": 140\n    }\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/inbound/orders/{{orderId_4}}/transit-receive",
@@ -3289,25 +3570,6 @@
                                         "shipments",
                                         "{{shipmentId_4_j}}",
                                         "dispatch"
-                                    ]
-                                }
-                            }
-                        },
-                        {
-                            "name": "Step J3: View Tracking Timeline (In Transit 2)",
-                            "request": {
-                                "method": "GET",
-                                "url": {
-                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
-                                    "host": [
-                                        "{{wms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "outbound",
-                                        "orders",
-                                        "{{orderId_4}}",
-                                        "tracking-timeline"
                                     ]
                                 }
                             }
@@ -3421,25 +3683,6 @@
                             }
                         },
                         {
-                            "name": "Step L3: View Tracking Timeline (In Transit 3)",
-                            "request": {
-                                "method": "GET",
-                                "url": {
-                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
-                                    "host": [
-                                        "{{wms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "outbound",
-                                        "orders",
-                                        "{{orderId_4}}",
-                                        "tracking-timeline"
-                                    ]
-                                }
-                            }
-                        },
-                        {
                             "name": "Step M0: Create Final Inbound Receipt at Hai Phong Hub (Pre-notification)",
                             "request": {
                                 "method": "POST",
@@ -3451,7 +3694,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"tenantId\": \"tenant-default\",\n    \"customerId\": \"cust-default\",\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"sourceShipmentNo\": \"ASN-FINAL-4-{{$timestamp}}\",\n    \"expectedLines\": [\n        {\n            \"skuCode\": \"SKU-RED-TSHIRT\",\n            \"expectedQuantity\": 150\n        }\n    ]\n}"
+                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"tenantId\": \"tenant-default\",\n    \"customerId\": \"cust-default\",\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"sourceShipmentNo\": \"ASN-FINAL-4-{{$timestamp}}\",\n    \"expectedLines\": [\n        {\n            \"skuCode\": \"SKU-RED-TSHIRT\",\n            \"expectedQuantity\": 140\n        }\n    ]\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/inbound/receipts",
@@ -3490,7 +3733,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"skuCode\": \"SKU-RED-TSHIRT\",\n    \"binCode\": \"BIN-A1-01\",\n    \"quantity\": 150\n}"
+                                    "raw": "{\n    \"orderId\": \"{{orderId_4}}\",\n    \"skuCode\": \"SKU-RED-TSHIRT\",\n    \"binCode\": \"BIN-A1-01\",\n    \"quantity\": 140\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId_4_final}}/receive",
@@ -3508,23 +3751,130 @@
                             }
                         },
                         {
-                            "name": "Step N: View Final Tracking Timeline (Delivered)",
+                            "name": "Step N: Query Transit Discrepancies",
                             "request": {
                                 "method": "GET",
                                 "url": {
-                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
+                                    "raw": "{{wms_url}}/api/inbound/transit-discrepancies?orderId={{orderId_4}}",
                                     "host": [
                                         "{{wms_url}}"
                                     ],
                                     "path": [
                                         "api",
-                                        "outbound",
-                                        "orders",
-                                        "{{orderId_4}}",
-                                        "tracking-timeline"
+                                        "inbound",
+                                        "transit-discrepancies"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "orderId",
+                                            "value": "{{orderId_4}}"
+                                        }
                                     ]
                                 }
-                            }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.test(\"Should find exactly 1 transit discrepancy report\", () => {",
+                                            "    pm.expect(res.length).to.equal(1);",
+                                            "    const item = res[0];",
+                                            "    pm.expect(item.sku).to.equal(\"SKU-RED-TSHIRT\");",
+                                            "    pm.expect(item.shippedQty).to.equal(150);",
+                                            "    pm.expect(item.receivedQty).to.equal(140);",
+                                            "    pm.expect(item.discrepancyQty).to.equal(10);",
+                                            "    pm.expect(item.status).to.equal(1); // PendingInvestigation",
+                                            "    pm.collectionVariables.set(\"discrepancyId_4\", item.id);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step O: Resolve Transit Discrepancy (Manager/Admin)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"newStatus\": 2,\n    \"notes\": \"Driver accepted liability for 10 lost items.\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/transit-discrepancies/{{discrepancyId_4}}/resolve",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "transit-discrepancies",
+                                        "{{discrepancyId_4}}",
+                                        "resolve"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Should resolve discrepancy successfully\", () => {",
+                                            "    pm.expect(pm.response.json()).to.be.true;",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Step P: Verify Discrepancy Status is DriverLiability",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/transit-discrepancies?orderId={{orderId_4}}",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "transit-discrepancies"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "orderId",
+                                            "value": "{{orderId_4}}"
+                                        }
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const res = pm.response.json();",
+                                            "pm.test(\"Should be updated to DriverLiability status\", () => {",
+                                            "    pm.expect(res.length).to.equal(1);",
+                                            "    const item = res[0];",
+                                            "    pm.expect(item.status).to.equal(2); // DriverLiability",
+                                            "    pm.expect(item.notes).to.contain(\"Driver accepted liability\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
                         }
                     ]
                 }

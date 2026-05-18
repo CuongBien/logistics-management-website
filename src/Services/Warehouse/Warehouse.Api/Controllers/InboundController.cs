@@ -2,10 +2,14 @@ using Logistics.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Warehouse.Application.Common.Interfaces;
+using Warehouse.Domain.Entities;
+using Warehouse.Domain.Enums;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveTransitShipment;
+using Warehouse.Application.Features.Inbound.Queries.GetTransitDiscrepancies;
+using Warehouse.Application.Features.Inbound.Commands.ResolveTransitDiscrepancy;
 using Warehouse.Api.Controllers.Requests;
 
 namespace Warehouse.Api.Controllers;
@@ -133,7 +137,47 @@ public class InboundController : ApiControllerBase
             return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
         }
 
-        var command = new ReceiveTransitShipmentCommand(orderId, request.WarehouseId, operatorSub);
+        var command = new ReceiveTransitShipmentCommand(orderId, request.WarehouseId, operatorSub, request.ReceivedItems);
+        var result = await Mediator.Send(command);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Truy vấn danh sách chênh lệch/hao hụt hàng hóa trung chuyển
+    /// </summary>
+    [HttpGet("transit-discrepancies")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<TransitDiscrepancy>>> GetTransitDiscrepancies(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? orderId,
+        [FromQuery] Guid? shipmentId,
+        [FromQuery] Warehouse.Domain.Enums.TransitDiscrepancyStatus? status)
+    {
+        var query = new GetTransitDiscrepanciesQuery(warehouseId, orderId, shipmentId, status);
+        var result = await Mediator.Send(query);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Giải quyết biên bản chênh lệch/hao hụt trung chuyển (Yêu cầu quyền inbound:resolve_discrepancy)
+    /// </summary>
+    [HttpPost("transit-discrepancies/{id:guid}/resolve")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<bool>> ResolveTransitDiscrepancy(
+        Guid id, 
+        [FromBody] ResolveTransitDiscrepancyRequest request)
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(operatorSub))
+        {
+            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
+        }
+
+        var command = new ResolveTransitDiscrepancyCommand(id, request.NewStatus, operatorSub, request.Notes);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }
