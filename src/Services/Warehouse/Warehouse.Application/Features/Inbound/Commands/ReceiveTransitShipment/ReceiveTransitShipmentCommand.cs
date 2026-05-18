@@ -8,19 +8,30 @@ using Warehouse.Domain.Enums;
 
 namespace Warehouse.Application.Features.Inbound.Commands.ReceiveTransitShipment;
 
-public record ReceiveTransitShipmentCommand(Guid OrderId, Guid WarehouseId, string OperatorId) : IRequest<Result<bool>>;
+public record ReceiveTransitShipmentCommand(
+    Guid OrderId, 
+    Guid WarehouseId, 
+    string OperatorId, 
+    Dictionary<string, int>? ReceivedItems = null
+) : IRequest<Result<bool>>;
 
 public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTransitShipmentCommand, Result<bool>>
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<ReceiveTransitShipmentCommandHandler> _logger;
     private readonly IOperatorAuthorizationService _authService;
+    private readonly MassTransit.IPublishEndpoint _publishEndpoint;
 
-    public ReceiveTransitShipmentCommandHandler(IApplicationDbContext context, ILogger<ReceiveTransitShipmentCommandHandler> logger, IOperatorAuthorizationService authService)
+    public ReceiveTransitShipmentCommandHandler(
+        IApplicationDbContext context, 
+        ILogger<ReceiveTransitShipmentCommandHandler> logger, 
+        IOperatorAuthorizationService authService,
+        MassTransit.IPublishEndpoint publishEndpoint)
     {
         _context = context;
         _logger = logger;
         _authService = authService;
+        _publishEndpoint = publishEndpoint;
     }
 
     public async Task<Result<bool>> Handle(ReceiveTransitShipmentCommand request, CancellationToken cancellationToken)
@@ -95,7 +106,18 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
         // Unload/Receive each item into intermediate hub inventory
         foreach (var line in order.Lines)
         {
-            int qtyToReceive = line.RequestedQty;
+            int shippedQty = line.RequestedQty;
+            int qtyToReceive = shippedQty;
+
+            if (request.ReceivedItems != null && request.ReceivedItems.TryGetValue(line.Sku, out var customQty))
+            {
+                qtyToReceive = customQty;
+            }
+
+            if (qtyToReceive < 0 || qtyToReceive > shippedQty)
+            {
+                return Result<bool>.Failure(new Error("TransitReceive.InvalidQuantity", $"Received quantity for SKU {line.Sku} ({qtyToReceive}) must be between 0 and shipped quantity ({shippedQty})."));
+            }
 
             // 4.1 Find or create Inbound Receipt Line
             var receiptLine = receipt.Lines.FirstOrDefault(l => l.Sku == line.Sku);
@@ -105,8 +127,10 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                 _context.InboundReceiptLines.Add(receiptLine);
                 receipt.AddLine(receiptLine);
             }
-
-            receiptLine.AddReceivedQuantity(qtyToReceive);
+            else
+            {
+                receiptLine.AddReceivedQuantity(qtyToReceive);
+            }
 
             // 4.2 Add Inbound Allocation
             var allocation = new InboundBinAllocation(receiptLine.Id, bin.Id, qtyToReceive, order.TenantId);
@@ -139,6 +163,37 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                 request.OperatorId);
             
             _context.InventoryLedgers.Add(ledger);
+
+            // Check and handle discrepancy
+            if (qtyToReceive < shippedQty)
+            {
+                var discrepancy = new TransitDiscrepancy(
+                    order.Id,
+                    shipment.Id,
+                    request.WarehouseId,
+                    line.Sku,
+                    shippedQty,
+                    qtyToReceive,
+                    shipment.Carrier ?? "N/A",
+                    request.OperatorId
+                );
+                _context.TransitDiscrepancies.Add(discrepancy);
+                line.UpdateRequestedQuantity(qtyToReceive);
+
+                // Publish integration event
+                await _publishEndpoint.Publish(new EventBus.Messages.Events.TransitDiscrepancyDetectedIntegrationEvent(
+                    discrepancy.Id,
+                    order.Id,
+                    shipment.Id,
+                    request.WarehouseId,
+                    line.Sku,
+                    shippedQty,
+                    qtyToReceive,
+                    shippedQty - qtyToReceive,
+                    shipment.Carrier ?? "N/A",
+                    request.OperatorId
+                ), cancellationToken);
+            }
 
             // 4.5 Reset shipped quantity to allow next-leg shipment
             line.UpdateShipped(0);
