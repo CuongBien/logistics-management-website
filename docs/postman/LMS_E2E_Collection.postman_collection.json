@@ -3537,6 +3537,52 @@
                             ]
                         },
                         {
+                            "name": "Step O-2: Verify Double Resolve Discrepancy Fails (BUG-06 Guard)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"newStatus\": 5,\n    \"notes\": \"Attempt to resolve again - should be blocked by domain state machine.\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/transit-discrepancies/{{discrepancyId_4}}/resolve",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "transit-discrepancies",
+                                        "{{discrepancyId_4}}",
+                                        "resolve"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Should fail to resolve already resolved discrepancy (BUG-06)\", () => {",
+                                            "    pm.expect(pm.response.code).to.be.oneOf([400, 500]);",
+                                            "    if (pm.response.code === 400 || pm.response.code === 500) {",
+                                            "        const body = pm.response.text();",
+                                            "        pm.expect(body).to.contain(\"Cannot resolve discrepancy\");",
+                                            "    }",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
                             "name": "Step P: Verify Discrepancy Status is OverageReturnedToOrigin",
                             "request": {
                                 "method": "GET",
