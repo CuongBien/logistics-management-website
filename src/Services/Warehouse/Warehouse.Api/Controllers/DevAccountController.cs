@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Warehouse.Application.Common.Interfaces;
 using Warehouse.Domain.Entities;
 
@@ -11,10 +12,12 @@ namespace Warehouse.Api.Controllers;
 public class DevAccountController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMemoryCache _cache;
 
-    public DevAccountController(IApplicationDbContext context)
+    public DevAccountController(IApplicationDbContext context, IMemoryCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     /// <summary>
@@ -78,6 +81,7 @@ public class DevAccountController : ControllerBase
         }
 
         await _context.SaveChangesAsync(HttpContext.RequestAborted);
+        _cache.Remove($"permissions_{sub}");
         return Ok(new { Message = "Admin rights granted for all warehouses.", OperatorSub = sub });
     }
 }

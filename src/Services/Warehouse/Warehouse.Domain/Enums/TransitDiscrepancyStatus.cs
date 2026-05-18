@@ -5,5 +5,7 @@ public enum TransitDiscrepancyStatus
     PendingInvestigation = 1,
     DriverLiability = 2,
     WarehouseWriteOff = 3,
-    Resolved = 4
+    Resolved = 4,
+    OverageAbsorbed = 5,
+    OverageReturnedToOrigin = 6
 }
