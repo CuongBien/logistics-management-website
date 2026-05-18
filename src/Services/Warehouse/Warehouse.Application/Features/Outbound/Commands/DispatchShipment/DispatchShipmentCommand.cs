@@ -16,15 +16,18 @@ public sealed class DispatchShipmentCommandHandler : IRequestHandler<DispatchShi
     private readonly IApplicationDbContext _context;
     private readonly IInventoryService _inventoryService;
     private readonly ILogger<DispatchShipmentCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
     public DispatchShipmentCommandHandler(
         IApplicationDbContext context,
         IInventoryService inventoryService,
-        ILogger<DispatchShipmentCommandHandler> logger)
+        ILogger<DispatchShipmentCommandHandler> logger,
+        IOperatorAuthorizationService authService)
     {
         _context = context;
         _inventoryService = inventoryService;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<bool>> Handle(DispatchShipmentCommand request, CancellationToken cancellationToken)
@@ -38,6 +41,18 @@ public sealed class DispatchShipmentCommandHandler : IRequestHandler<DispatchShi
 
         if (shipment == null)
             return Result<bool>.Failure(Error.NotFound("Shipment.NotFound", "Shipment not found"));
+
+        // Check permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.OperatorId,
+            shipment.WarehouseId,
+            null,
+            "outbound:dispatch",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<bool>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:dispatch' for warehouse '{shipment.WarehouseId}'."));
+        }
 
         if (shipment.Status == ShipmentStatus.Shipped || shipment.Status == ShipmentStatus.Delivered)
             return Result<bool>.Success(true);

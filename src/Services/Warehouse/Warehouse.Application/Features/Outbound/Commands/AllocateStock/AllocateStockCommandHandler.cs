@@ -15,15 +15,18 @@ public sealed class AllocateStockCommandHandler : IRequestHandler<AllocateStockC
     private readonly IApplicationDbContext _context;
     private readonly IInventoryService _inventoryService;
     private readonly ILogger<AllocateStockCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
     public AllocateStockCommandHandler(
         IApplicationDbContext context,
         IInventoryService inventoryService,
-        ILogger<AllocateStockCommandHandler> logger)
+        ILogger<AllocateStockCommandHandler> logger,
+        IOperatorAuthorizationService authService)
     {
         _context = context;
         _inventoryService = inventoryService;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<bool>> Handle(AllocateStockCommand request, CancellationToken cancellationToken)
@@ -37,6 +40,18 @@ public sealed class AllocateStockCommandHandler : IRequestHandler<AllocateStockC
         if (order == null)
         {
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", $"Order {request.OutboundOrderId} not found"));
+        }
+
+        // Check permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.OperatorId,
+            order.WarehouseId,
+            null,
+            "outbound:allocate",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<bool>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:allocate' for warehouse '{order.WarehouseId}'."));
         }
 
         if (order.Status == OutboundOrderStatus.Allocated)

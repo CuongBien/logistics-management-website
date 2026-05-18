@@ -12,17 +12,31 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<CreateOutboundOrderCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public CreateOutboundOrderCommandHandler(IApplicationDbContext context, ILogger<CreateOutboundOrderCommandHandler> logger)
+    public CreateOutboundOrderCommandHandler(IApplicationDbContext context, ILogger<CreateOutboundOrderCommandHandler> logger, IOperatorAuthorizationService authService)
     {
         _context = context;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<Guid>> Handle(CreateOutboundOrderCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating outbound order {OrderId} for tenant {TenantId} at warehouse {WarehouseId}", 
             request.OrderId, request.TenantId, request.WarehouseId);
+
+        // Check permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.CustomerId,
+            request.WarehouseId,
+            null,
+            "outbound:create",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<Guid>.Failure(new Error("Forbidden", $"Operator '{request.CustomerId}' does not have permission 'outbound:create' for warehouse '{request.WarehouseId}'."));
+        }
 
         if (request.Lines == null || !request.Lines.Any())
         {

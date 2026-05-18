@@ -17,11 +17,13 @@ public sealed class PackOrderCommandHandler : IRequestHandler<PackOrderCommand, 
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<PackOrderCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public PackOrderCommandHandler(IApplicationDbContext context, ILogger<PackOrderCommandHandler> logger)
+    public PackOrderCommandHandler(IApplicationDbContext context, ILogger<PackOrderCommandHandler> logger, IOperatorAuthorizationService authService)
     {
         _context = context;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<bool>> Handle(PackOrderCommand request, CancellationToken cancellationToken)
@@ -34,6 +36,18 @@ public sealed class PackOrderCommandHandler : IRequestHandler<PackOrderCommand, 
 
         if (order == null)
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", "Order not found"));
+
+        // Check permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.OperatorId,
+            order.WarehouseId,
+            null,
+            "outbound:pack",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<bool>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:pack' for warehouse '{order.WarehouseId}'."));
+        }
 
         if (order.Status == OutboundOrderStatus.Packed)
             return Result<bool>.Success(true);

@@ -19,15 +19,18 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
     private readonly IApplicationDbContext _context;
     private readonly IInventoryService _inventoryService;
     private readonly ILogger<ShipOrderCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
     public ShipOrderCommandHandler(
         IApplicationDbContext context, 
         IInventoryService inventoryService,
-        ILogger<ShipOrderCommandHandler> logger)
+        ILogger<ShipOrderCommandHandler> logger,
+        IOperatorAuthorizationService authService)
     {
         _context = context;
         _inventoryService = inventoryService;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<bool>> Handle(ShipOrderCommand request, CancellationToken cancellationToken)
@@ -41,6 +44,18 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
 
         if (order == null)
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", "Order not found"));
+
+        // Check permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.OperatorId,
+            order.WarehouseId,
+            null,
+            "outbound:load",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<bool>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:load' for warehouse '{order.WarehouseId}'."));
+        }
 
         if (order.Status == OutboundOrderStatus.Shipped || order.Status == OutboundOrderStatus.Delivered)
             return Result<bool>.Success(true);

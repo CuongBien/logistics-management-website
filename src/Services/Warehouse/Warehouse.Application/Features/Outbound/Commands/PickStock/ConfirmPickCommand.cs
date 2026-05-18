@@ -17,11 +17,13 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<ConfirmPickCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public ConfirmPickCommandHandler(IApplicationDbContext context, ILogger<ConfirmPickCommandHandler> logger)
+    public ConfirmPickCommandHandler(IApplicationDbContext context, ILogger<ConfirmPickCommandHandler> logger, IOperatorAuthorizationService authService)
     {
         _context = context;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<bool>> Handle(ConfirmPickCommand request, CancellationToken cancellationToken)
@@ -34,6 +36,19 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
         if (pickTask == null)
             return Result<bool>.Failure(Error.NotFound("PickTask.NotFound", "Pick task not found"));
 
+        // Check permission
+        var order = pickTask.OutboundOrderLine.OutboundOrder;
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.OperatorId,
+            order.WarehouseId,
+            null,
+            "outbound:pick",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<bool>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:pick' for warehouse '{order.WarehouseId}'."));
+        }
+
         if (pickTask.Status == PickTaskStatus.Completed)
             return Result<bool>.Success(true); // Idempotent
 
@@ -45,7 +60,6 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
         line.UpdatePicked(line.PickedQty + pickTask.Quantity);
 
         // Check if all lines are fully picked
-        var order = line.OutboundOrder;
         
         // Update Order Status
         var allFullyPicked = order.Lines.All(l => l.PickedQty >= l.RequestedQty);
