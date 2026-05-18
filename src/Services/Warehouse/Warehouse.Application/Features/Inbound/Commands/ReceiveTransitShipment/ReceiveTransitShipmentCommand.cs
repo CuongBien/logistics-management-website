@@ -132,7 +132,7 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
             // 4.4 Create Inventory Ledger Log
             var ledger = InventoryLedger.Create(
                 inventoryItem,
-                InventoryLedgerReason.InboundReceived,
+                InventoryLedgerReason.TransitReceived,
                 qtyToReceive,
                 receipt.Id.ToString(),
                 "Receipt",
