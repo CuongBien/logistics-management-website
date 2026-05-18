@@ -63,6 +63,7 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
 
         bool allReceived = true;
         bool anyReceived = false;
+        bool hasOverage = false;
 
         foreach (var line in _lines)
         {
@@ -74,9 +75,20 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
             {
                 allReceived = false;
             }
+            // BUG-10 FIX: Detect overage — received more than expected
+            if (line.ReceivedQuantity > line.ExpectedQuantity)
+            {
+                hasOverage = true;
+            }
         }
 
-        if (allReceived)
+        if (allReceived && hasOverage)
+        {
+            // All lines met or exceeded expectations, but at least one has overage
+            Status = InboundReceiptStatus.CompletedWithExceptions;
+            ReceivedAt = DateTime.UtcNow;
+        }
+        else if (allReceived)
         {
             Status = InboundReceiptStatus.Received;
             ReceivedAt = DateTime.UtcNow;
