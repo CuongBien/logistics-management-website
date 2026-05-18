@@ -115,7 +115,7 @@ public class OutboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> PickOrder(Guid id, [FromBody] PickOrderRequest? request)
     {
-        var command = new Warehouse.Application.Features.Outbound.Commands.PickStock.PickStockCommand(id, request?.WaveId);
+        var command = new Warehouse.Application.Features.Outbound.Commands.PickStock.PickStockCommand(id, CurrentUserClaims.GetCustomerId(User) ?? string.Empty, request?.WaveId);
         return ToActionResult(await Mediator.Send(command));
     }
 

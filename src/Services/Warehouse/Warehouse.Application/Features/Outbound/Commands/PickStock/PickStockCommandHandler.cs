@@ -12,11 +12,13 @@ public sealed class PickStockCommandHandler : IRequestHandler<PickStockCommand, 
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<PickStockCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public PickStockCommandHandler(IApplicationDbContext context, ILogger<PickStockCommandHandler> logger)
+    public PickStockCommandHandler(IApplicationDbContext context, ILogger<PickStockCommandHandler> logger, IOperatorAuthorizationService authService)
     {
         _context = context;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<bool>> Handle(PickStockCommand request, CancellationToken cancellationToken)
@@ -29,6 +31,18 @@ public sealed class PickStockCommandHandler : IRequestHandler<PickStockCommand, 
 
         if (order == null)
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", "Order not found"));
+
+        // BUG-11 FIX: RBAC check — was completely missing before
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.OperatorId,
+            order.WarehouseId,
+            null,
+            "outbound:pick",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<bool>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:pick' for warehouse '{order.WarehouseId}'."));
+        }
 
         if (order.Status != OutboundOrderStatus.Allocated && 
             order.Status != OutboundOrderStatus.PartiallyAllocated && 
