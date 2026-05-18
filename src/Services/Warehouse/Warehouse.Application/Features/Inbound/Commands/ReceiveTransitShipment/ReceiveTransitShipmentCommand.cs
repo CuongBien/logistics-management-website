@@ -126,7 +126,8 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
             var receiptLine = receipt.Lines.FirstOrDefault(l => l.Sku == line.Sku);
             if (receiptLine == null)
             {
-                receiptLine = new InboundReceiptLine(receipt.Id, order.TenantId, order.CustomerId, line.Sku, qtyToReceive);
+                receiptLine = new InboundReceiptLine(receipt.Id, order.TenantId, order.CustomerId, line.Sku, shippedQty);
+                receiptLine.AddReceivedQuantity(qtyToReceive);
                 _context.InboundReceiptLines.Add(receiptLine);
                 receipt.AddLine(receiptLine);
             }
