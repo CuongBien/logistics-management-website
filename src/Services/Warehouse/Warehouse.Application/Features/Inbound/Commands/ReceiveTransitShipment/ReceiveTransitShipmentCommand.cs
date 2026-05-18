@@ -14,16 +14,30 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<ReceiveTransitShipmentCommandHandler> _logger;
+    private readonly IOperatorAuthorizationService _authService;
 
-    public ReceiveTransitShipmentCommandHandler(IApplicationDbContext context, ILogger<ReceiveTransitShipmentCommandHandler> logger)
+    public ReceiveTransitShipmentCommandHandler(IApplicationDbContext context, ILogger<ReceiveTransitShipmentCommandHandler> logger, IOperatorAuthorizationService authService)
     {
         _context = context;
         _logger = logger;
+        _authService = authService;
     }
 
     public async Task<Result<bool>> Handle(ReceiveTransitShipmentCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Receiving Transit Package for Order {OrderId} at Warehouse {WarehouseId}", request.OrderId, request.WarehouseId);
+
+        // Check permission
+        var hasPermission = await _authService.HasPermissionAsync(
+            request.OperatorId,
+            request.WarehouseId,
+            null,
+            "inbound:transit_receive",
+            cancellationToken);
+        if (!hasPermission)
+        {
+            return Result<bool>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'inbound:transit_receive' for warehouse '{request.WarehouseId}'."));
+        }
 
         // 1. Find the Outbound Order
         var order = await _context.OutboundOrders
