@@ -119,10 +119,31 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
             decimal maxWeightKg = 1500m;
             decimal maxVolumeCbm = 4.5m;
 
-            if (order.Latitude.HasValue && order.Longitude.HasValue && sourceWh != null && Warehouse.Application.Common.Utils.WarehouseLocationHelper.TryGetCoordinates(sourceWh.Code, out var sourceCoords))
+            if (order.Latitude.HasValue && order.Longitude.HasValue && sourceWh != null)
             {
-                distanceKm = Warehouse.Application.Common.Utils.HaversineDistanceCalculator.CalculateDistance(
-                    sourceCoords.Lat, sourceCoords.Lon, order.Latitude.Value, order.Longitude.Value);
+                // BUG-12 FIX: Prefer entity coordinates over hardcoded helper.
+                // Fallback to static helper for backward compatibility with older warehouses.
+                double sourceLat, sourceLon;
+                if (sourceWh.Latitude.HasValue && sourceWh.Longitude.HasValue)
+                {
+                    sourceLat = sourceWh.Latitude.Value;
+                    sourceLon = sourceWh.Longitude.Value;
+                }
+                else if (Warehouse.Application.Common.Utils.WarehouseLocationHelper.TryGetCoordinates(sourceWh.Code, out var sourceCoords))
+                {
+                    sourceLat = sourceCoords.Lat;
+                    sourceLon = sourceCoords.Lon;
+                }
+                else
+                {
+                    sourceLat = 0;
+                    sourceLon = 0;
+                }
+
+                if (sourceLat != 0 && sourceLon != 0)
+                {
+                    distanceKm = Warehouse.Application.Common.Utils.HaversineDistanceCalculator.CalculateDistance(
+                        sourceLat, sourceLon, order.Latitude.Value, order.Longitude.Value);
                 
                 _logger.LogInformation("Calculated distance from source {WhCode} to destination: {Distance:F2} km", sourceWh.Code, distanceKm);
 
@@ -154,6 +175,7 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
                     maxWeightKg = 25000m;
                     maxVolumeCbm = 68.0m;
                 }
+                } // end if (sourceLat != 0 && sourceLon != 0)
             }
 
             _logger.LogInformation("Selected transport rule: {Mode} (MaxWeight: {Weight}kg, MaxVolume: {Volume}CBM, MaxRadius: {Radius}km)", 
@@ -201,8 +223,11 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
             // 4. Tạo chuyến xe mới nếu không có chuyến nào gom chung tải được
             if (shipment == null)
             {
-                var randomPart = new Random().Next(1000, 9999);
-                var shipmentNo = $"SHP-{order.WarehouseId.ToString()[..8]}-{DateTime.UtcNow:yyyyMMddHHmmss}-{randomPart}";
+                // BUG-07 FIX: Use Guid instead of Random to guarantee uniqueness.
+                // new Random().Next() is time-seeded — two concurrent requests within the same
+                // second can produce identical ShipmentNo values.
+                var uniquePart = Guid.NewGuid().ToString("N")[..8].ToUpper();
+                var shipmentNo = $"SHP-{order.WarehouseId.ToString()[..8]}-{DateTime.UtcNow:yyyyMMddHHmmss}-{uniquePart}";
                 shipment = new Shipment(
                     tenantId: order.TenantId,
                     customerId: order.CustomerId,
