@@ -3167,6 +3167,25 @@
                             }
                         },
                         {
+                            "name": "Step H3: View Tracking Timeline (In Transit 1)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "tracking-timeline"
+                                    ]
+                                }
+                            }
+                        },
+                        {
                             "name": "Step I: Receive Transit at HCM Mega Hub",
                             "request": {
                                 "method": "POST",
@@ -3270,6 +3289,25 @@
                                         "shipments",
                                         "{{shipmentId_4_j}}",
                                         "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step J3: View Tracking Timeline (In Transit 2)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "tracking-timeline"
                                     ]
                                 }
                             }
@@ -3383,6 +3421,25 @@
                             }
                         },
                         {
+                            "name": "Step L3: View Tracking Timeline (In Transit 3)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "tracking-timeline"
+                                    ]
+                                }
+                            }
+                        },
+                        {
                             "name": "Step M0: Create Final Inbound Receipt at Hai Phong Hub (Pre-notification)",
                             "request": {
                                 "method": "POST",
@@ -3446,6 +3503,25 @@
                                         "receipts",
                                         "{{receiptId_4_final}}",
                                         "receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Step N: View Final Tracking Timeline (Delivered)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_4}}/tracking-timeline",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_4}}",
+                                        "tracking-timeline"
                                     ]
                                 }
                             }
