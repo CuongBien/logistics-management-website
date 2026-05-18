@@ -40,7 +40,8 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000012"), Code = "outbound:load", Resource = "outbound", Action = "load", IsActive = true },
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000013"), Code = "outbound:dispatch", Resource = "outbound", Action = "dispatch", IsActive = true },
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000014"), Code = "route:manage", Resource = "route", Action = "manage", IsActive = true },
-            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000015"), Code = "inventory:reconcile", Resource = "inventory", Action = "reconcile", IsActive = true }
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000015"), Code = "inventory:reconcile", Resource = "inventory", Action = "reconcile", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000016"), Code = "inbound:resolve_discrepancy", Resource = "inbound", Action = "resolve_discrepancy", IsActive = true }
         );
     }
 }

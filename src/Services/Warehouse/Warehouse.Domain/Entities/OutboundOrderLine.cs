@@ -61,4 +61,10 @@ public class OutboundOrderLine : Entity<Guid>
         if (qty > PackedQty) throw new InvalidOperationException("Shipped quantity cannot exceed packed");
         ShippedQty = qty;
     }
+
+    public void UpdateRequestedQuantity(int qty)
+    {
+        if (qty < 0) throw new ArgumentException("Quantity cannot be negative");
+        RequestedQty = qty;
+    }
 }
