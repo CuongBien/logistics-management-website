@@ -11,5 +11,6 @@ public enum InventoryLedgerReason
     Return = 7,           // Hàng trả về
     AdjustIncrease = 8,   // Điều chỉnh tăng (Kiểm kê)
     AdjustDecrease = 9,   // Điều chỉnh giảm (Kiểm kê)
-    Expired = 10          // Hủy giữ do hết hạn (TTL)
+    Expired = 10,         // Hủy giữ do hết hạn (TTL)
+    TransitReceived = 11  // Nhận hàng trung chuyển chặng Mega Hub
 }
