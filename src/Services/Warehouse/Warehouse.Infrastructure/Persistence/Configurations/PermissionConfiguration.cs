@@ -31,7 +31,16 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000003"), Code = "outbound:sort", Resource = "outbound", Action = "sort", IsActive = true },
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000004"), Code = "inventory:reserve", Resource = "inventory", Action = "reserve", IsActive = true },
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000005"), Code = "inventory:release", Resource = "inventory", Action = "release", IsActive = true },
-            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000006"), Code = "inventory:consume", Resource = "inventory", Action = "consume", IsActive = true }
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000006"), Code = "inventory:consume", Resource = "inventory", Action = "consume", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000007"), Code = "inbound:transit_receive", Resource = "inbound", Action = "transit_receive", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000008"), Code = "outbound:create", Resource = "outbound", Action = "create", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000009"), Code = "outbound:allocate", Resource = "outbound", Action = "allocate", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000010"), Code = "outbound:pick", Resource = "outbound", Action = "pick", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000011"), Code = "outbound:pack", Resource = "outbound", Action = "pack", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000012"), Code = "outbound:load", Resource = "outbound", Action = "load", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000013"), Code = "outbound:dispatch", Resource = "outbound", Action = "dispatch", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000014"), Code = "route:manage", Resource = "route", Action = "manage", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000015"), Code = "inventory:reconcile", Resource = "inventory", Action = "reconcile", IsActive = true }
         );
     }
 }
