@@ -104,7 +104,7 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
             decimal maxWeightKg = 1500m;
             decimal maxVolumeCbm = 4.5m;
 
-            if (order.Latitude.HasValue && order.Longitude.HasValue && sourceWh != null && WarehouseCoords.TryGetValue(sourceWh.Code, out var sourceCoords))
+            if (order.Latitude.HasValue && order.Longitude.HasValue && sourceWh != null && Warehouse.Application.Common.Utils.WarehouseLocationHelper.TryGetCoordinates(sourceWh.Code, out var sourceCoords))
             {
                 distanceKm = Warehouse.Application.Common.Utils.HaversineDistanceCalculator.CalculateDistance(
                     sourceCoords.Lat, sourceCoords.Lon, order.Latitude.Value, order.Longitude.Value);
@@ -222,15 +222,4 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
         _logger.LogInformation("Order {OrderId} loaded into Shipment {ShipmentNo} successfully", order.Id, shipment.ShipmentNo);
         return Result<bool>.Success(true);
     }
-
-    private static readonly Dictionary<string, (double Lat, double Lon)> WarehouseCoords = new()
-    {
-        { "WH-CT-001", (10.037110, 105.788250) },
-        { "WH-SG-002", (10.762622, 106.660172) },
-        { "WH-NT-003", (12.238791, 109.196749) },
-        { "WH-DN-004", (16.054407, 108.202164) },
-        { "WH-V-005", (18.673470, 105.681290) },
-        { "WH-HN-006", (21.028511, 105.804817) },
-        { "WH-HP-007", (20.844912, 106.688079) }
-    };
 }
