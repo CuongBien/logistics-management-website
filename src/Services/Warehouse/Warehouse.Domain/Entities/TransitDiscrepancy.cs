@@ -50,6 +50,20 @@ public class TransitDiscrepancy : Entity<Guid>
 
     public void Resolve(TransitDiscrepancyStatus newStatus, string? resolutionNotes)
     {
+        // BUG-06 FIX: Validate state transition — only PendingInvestigation can be resolved.
+        // Once resolved, a discrepancy cannot be reverted or changed to another terminal state.
+        if (Status != TransitDiscrepancyStatus.PendingInvestigation)
+        {
+            throw new InvalidOperationException(
+                $"Cannot resolve discrepancy in status '{Status}'. Only discrepancies in 'PendingInvestigation' status can be resolved.");
+        }
+
+        if (newStatus == TransitDiscrepancyStatus.PendingInvestigation)
+        {
+            throw new InvalidOperationException(
+                "Cannot resolve a discrepancy back to 'PendingInvestigation'. Must choose a terminal resolution status.");
+        }
+
         Status = newStatus;
         if (!string.IsNullOrWhiteSpace(resolutionNotes))
         {
