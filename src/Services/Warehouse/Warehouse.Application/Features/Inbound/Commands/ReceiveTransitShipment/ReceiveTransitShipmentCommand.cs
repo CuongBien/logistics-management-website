@@ -106,7 +106,10 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
         // Unload/Receive each item into intermediate hub inventory
         foreach (var line in order.Lines)
         {
-            int shippedQty = line.RequestedQty;
+            // BUG-01 FIX: Use ShippedQty (set by previous DispatchShipment) as the
+            // reference for what was actually loaded onto the truck, not RequestedQty
+            // which represents the original customer order and must never be mutated.
+            int shippedQty = line.ShippedQty > 0 ? line.ShippedQty : line.RequestedQty;
             int qtyToReceive = shippedQty;
 
             if (request.ReceivedItems != null && request.ReceivedItems.TryGetValue(line.Sku, out var customQty))
@@ -114,9 +117,9 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                 qtyToReceive = customQty;
             }
 
-            if (qtyToReceive < 0 || qtyToReceive > shippedQty)
+            if (qtyToReceive < 0)
             {
-                return Result<bool>.Failure(new Error("TransitReceive.InvalidQuantity", $"Received quantity for SKU {line.Sku} ({qtyToReceive}) must be between 0 and shipped quantity ({shippedQty})."));
+                return Result<bool>.Failure(new Error("TransitReceive.InvalidQuantity", $"Received quantity for SKU {line.Sku} ({qtyToReceive}) cannot be negative."));
             }
 
             // 4.1 Find or create Inbound Receipt Line
@@ -153,6 +156,19 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                 inventoryItem.Restock(qtyToReceive);
             }
 
+            // BUG-03 FIX: Reserve the restocked inventory for next-leg dispatch.
+            // Without this, DispatchShipment finds zero reservations at the hub
+            // and silently skips inventory deduction → ghost inventory accumulates.
+            inventoryItem.ReserveStock(qtyToReceive);
+            var transitReservation = InventoryReservation.Create(
+                inventoryItem.Id,
+                order.Id.ToString(),
+                ReservationType.OutboundOrder,
+                qtyToReceive,
+                TimeSpan.FromDays(7),  // TTL for transit reservation
+                $"TRANSIT-{shipment.ShipmentNo}");
+            _context.InventoryReservations.Add(transitReservation);
+
             // 4.4 Create Inventory Ledger Log
             var ledger = InventoryLedger.Create(
                 inventoryItem,
@@ -165,7 +181,7 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
             _context.InventoryLedgers.Add(ledger);
 
             // Check and handle discrepancy
-            if (qtyToReceive < shippedQty)
+            if (qtyToReceive != shippedQty)
             {
                 var discrepancy = new TransitDiscrepancy(
                     order.Id,
@@ -178,7 +194,9 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                     request.OperatorId
                 );
                 _context.TransitDiscrepancies.Add(discrepancy);
-                line.UpdateRequestedQuantity(qtyToReceive);
+                // BUG-01 FIX: REMOVED line.UpdateRequestedQuantity(qtyToReceive)
+                // RequestedQty must never be mutated — it is the single source of truth
+                // for the original customer order. Discrepancy is tracked separately.
 
                 // Publish integration event
                 await _publishEndpoint.Publish(new EventBus.Messages.Events.TransitDiscrepancyDetectedIntegrationEvent(
@@ -195,8 +213,10 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                 ), cancellationToken);
             }
 
-            // 4.5 Reset shipped quantity to allow next-leg shipment
-            line.UpdateShipped(0);
+            // BUG-02 + BUG-04 FIX: Reset ALL progress counters for next-leg transit.
+            // Old code only reset ShippedQty, leaving PickedQty/PackedQty stale from
+            // the origin warehouse → caused wrong qtyToShip at next hub.
+            line.ResetForNextTransitLeg(qtyToReceive);
         }
 
         // Mark intermediate inbound receipt as fully received

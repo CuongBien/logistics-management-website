@@ -67,4 +67,23 @@ public class OutboundOrderLine : Entity<Guid>
         if (qty < 0) throw new ArgumentException("Quantity cannot be negative");
         RequestedQty = qty;
     }
+
+    /// <summary>
+    /// Resets all progress counters for the next transit leg.
+    /// RequestedQty is preserved as the original customer order quantity (Single Source of Truth).
+    /// Reserved/Picked/Packed are set to the actual quantity received at the hub.
+    /// ShippedQty is reset to 0 so the next-leg dispatch can calculate correctly.
+    /// </summary>
+    /// <param name="actualReceivedQty">The quantity physically received at the transit hub.</param>
+    public void ResetForNextTransitLeg(int actualReceivedQty)
+    {
+        if (actualReceivedQty < 0) throw new ArgumentException("Received quantity cannot be negative");
+
+        // Do NOT modify RequestedQty — it preserves the original order intent.
+        // Set all progress counters to match what is physically available at this hub.
+        ReservedQty = actualReceivedQty;
+        PickedQty = actualReceivedQty;
+        PackedQty = actualReceivedQty;
+        ShippedQty = 0;
+    }
 }
