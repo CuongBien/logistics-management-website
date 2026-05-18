@@ -110,9 +110,39 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         return new OutboundOrder(orderId, tenantId, customerId, warehouseId, orderNo, destinationAddress, destinationCity, priority, allowPartial, partnerId, latitude, longitude, weight, volume);
     }
 
+    // BUG-13 FIX: State machine guard — defines valid forward transitions.
+    // Prevents impossible jumps like Delivered→Draft or Cancelled→Shipped.
+    private static readonly Dictionary<OutboundOrderStatus, HashSet<OutboundOrderStatus>> _allowedTransitions = new()
+    {
+        { OutboundOrderStatus.Draft, new() { OutboundOrderStatus.PendingAllocation, OutboundOrderStatus.Allocated, OutboundOrderStatus.PartiallyAllocated, OutboundOrderStatus.Cancelled } },
+        { OutboundOrderStatus.PendingAllocation, new() { OutboundOrderStatus.Allocated, OutboundOrderStatus.PartiallyAllocated, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Failed } },
+        { OutboundOrderStatus.PartiallyAllocated, new() { OutboundOrderStatus.Allocated, OutboundOrderStatus.Picking, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Failed } },
+        { OutboundOrderStatus.Allocated, new() { OutboundOrderStatus.Picking, OutboundOrderStatus.Cancelled } },
+        { OutboundOrderStatus.Picking, new() { OutboundOrderStatus.PartiallyPicked, OutboundOrderStatus.Picked, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Failed } },
+        { OutboundOrderStatus.PartiallyPicked, new() { OutboundOrderStatus.Picked, OutboundOrderStatus.Packed, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Failed } },
+        { OutboundOrderStatus.Picked, new() { OutboundOrderStatus.Packing, OutboundOrderStatus.Packed, OutboundOrderStatus.Cancelled } },
+        { OutboundOrderStatus.Packing, new() { OutboundOrderStatus.Packed, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Failed } },
+        { OutboundOrderStatus.Packed, new() { OutboundOrderStatus.Loaded, OutboundOrderStatus.Shipped, OutboundOrderStatus.Cancelled } },
+        { OutboundOrderStatus.Loaded, new() { OutboundOrderStatus.Shipped, OutboundOrderStatus.Packed, OutboundOrderStatus.Cancelled } },
+        { OutboundOrderStatus.Shipped, new() { OutboundOrderStatus.Delivered, OutboundOrderStatus.Failed, OutboundOrderStatus.Packed } }, // Packed = transit re-receive
+        { OutboundOrderStatus.Delivered, new() { } }, // Terminal
+        { OutboundOrderStatus.Cancelled, new() { } }, // Terminal
+        { OutboundOrderStatus.Failed, new() { OutboundOrderStatus.Draft } } // Allow retry from Failed
+    };
+
     public void UpdateStatus(OutboundOrderStatus newStatus)
     {
-        Status = newStatus;
+        if (Status == newStatus) return; // Idempotent
+
+        if (_allowedTransitions.TryGetValue(Status, out var allowed) && allowed.Contains(newStatus))
+        {
+            Status = newStatus;
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"Invalid status transition: {Status} → {newStatus}. Allowed transitions from {Status}: [{string.Join(", ", _allowedTransitions.GetValueOrDefault(Status) ?? new())}]");
+        }
     }
 
     public void UpdateWarehouse(Guid newWarehouseId)
