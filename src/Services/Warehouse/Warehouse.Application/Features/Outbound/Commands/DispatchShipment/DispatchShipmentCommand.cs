@@ -63,6 +63,26 @@ public sealed class DispatchShipmentCommandHandler : IRequestHandler<DispatchShi
         foreach (var shipOrder in shipment.Orders)
         {
             var order = shipOrder.OutboundOrder;
+
+            // BUG-08 FIX: Guard against dispatching orders in invalid states.
+            // Only Loaded (normal) and Packed (transit re-ship) orders should be dispatched.
+            // Cancelled/Draft/Delivered orders must be skipped to prevent phantom inventory deduction.
+            if (order.Status == OutboundOrderStatus.Cancelled || 
+                order.Status == OutboundOrderStatus.Failed ||
+                order.Status == OutboundOrderStatus.Shipped ||
+                order.Status == OutboundOrderStatus.Delivered)
+            {
+                _logger.LogWarning("Skipping order {OrderId} in status {Status} during dispatch of Shipment {ShipmentNo}",
+                    order.Id, order.Status, shipment.ShipmentNo);
+                continue;
+            }
+
+            if (order.Status != OutboundOrderStatus.Loaded && order.Status != OutboundOrderStatus.Packed)
+            {
+                _logger.LogWarning("Order {OrderId} is in unexpected status {Status} for dispatch. Skipping.",
+                    order.Id, order.Status);
+                continue;
+            }
             
             // Lấy các Reservation đang chờ của đơn này
             var reservations = await _context.InventoryReservations
