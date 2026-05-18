@@ -171,6 +171,14 @@ public class OutboundController : ApiControllerBase
         return Ok(new { ShipmentId = shipmentOrder.ShipmentId });
     }
 
+    [HttpGet("orders/{id:guid}/tracking-timeline")]
+    [ProducesResponseType(typeof(Warehouse.Application.Features.Outbound.Queries.GetOrderTrackingTimeline.OrderTrackingDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Warehouse.Application.Features.Outbound.Queries.GetOrderTrackingTimeline.OrderTrackingDto>> GetOrderTrackingTimeline(Guid id)
+    {
+        var query = new Warehouse.Application.Features.Outbound.Queries.GetOrderTrackingTimeline.GetOrderTrackingTimelineQuery(id);
+        return ToActionResult(await Mediator.Send(query));
+    }
+
     [HttpPost("shipments/{id:guid}/dispatch")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> DispatchShipment(Guid id)
