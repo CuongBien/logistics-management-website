@@ -29,11 +29,10 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetReceiptByOrderId(Guid orderId, [FromQuery] Guid warehouseId)
     {
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
         var query = _context.InboundReceipts
             .Include(r => r.Lines)
             .ThenInclude(l => l.Allocations)
-            .Where(x => x.OrderId == orderId && x.TenantId == tenantId);
+            .Where(x => x.OrderId == orderId);
         
         if (warehouseId != Guid.Empty)
         {
@@ -53,15 +52,7 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Guid>> CreateReceipt([FromBody] CreateInboundReceiptCommand command)
     {
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-        var customerId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(customerId))
-        {
-            return BadRequest(new { Code = "TenantOrCustomer.MissingClaim", Message = "Missing tenant/customer claim in access token." });
-        }
-
-        var finalCommand = command with { TenantId = tenantId, CustomerId = customerId };
-        var result = await Mediator.Send(finalCommand);
+        var result = await Mediator.Send(command);
         return ToActionResult(result);
     }
 
@@ -74,12 +65,7 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Receive(Guid receiptId, [FromBody] ReceiveInboundItemRequest request)
     {
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(tenantId))
-        {
-            return BadRequest(new { Code = "Tenant.MissingClaim", Message = "Missing tenant claim in access token." });
-        }
         if (string.IsNullOrWhiteSpace(operatorSub))
         {
             return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
@@ -88,7 +74,7 @@ public class InboundController : ApiControllerBase
         var command = new ReceiveInboundItemCommand(
             receiptId,
             request.OrderId,
-            tenantId,
+            "", // TenantId is resolved internally from the receipt in the handler!
             request.SkuCode,
             request.BinCode,
             operatorSub,
@@ -108,15 +94,14 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> ForceClose(Guid receiptId)
     {
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(operatorSub))
+        if (string.IsNullOrWhiteSpace(operatorSub))
         {
-            return BadRequest(new { Code = "Claims.Missing", Message = "Missing tenant/operator claims." });
+            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claims." });
         }
 
-        var command = new Warehouse.Application.Features.Inbound.Commands.ForceCloseReceipt.ForceCloseReceiptCommand(receiptId, tenantId, operatorSub);
+        var command = new Warehouse.Application.Features.Inbound.Commands.ForceCloseReceipt.ForceCloseReceiptCommand(receiptId, "", operatorSub);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }

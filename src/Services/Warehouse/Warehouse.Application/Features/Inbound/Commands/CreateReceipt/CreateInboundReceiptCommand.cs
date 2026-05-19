@@ -8,7 +8,22 @@ namespace Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 
 public record ExpectedReceiptLine(string SkuCode, int ExpectedQuantity);
 
-public record CreateInboundReceiptCommand(Guid OrderId, string TenantId, string CustomerId, Guid WarehouseId, string? SourceShipmentNo, List<ExpectedReceiptLine>? ExpectedLines = null) : IRequest<Result<Guid>>;
+public record CreateInboundReceiptCommand(
+    Guid OrderId,
+    string TenantId,
+    string CustomerId,
+    Guid WarehouseId,
+    string? SourceShipmentNo,
+    List<ExpectedReceiptLine>? ExpectedLines = null
+) : IRequest<Result<Guid>>
+{
+    // Parameterless constructor for Model Binding
+    public CreateInboundReceiptCommand() : this(Guid.Empty, "", "", Guid.Empty, null, null) {}
+
+    // Old parameter constructor for compatibility with existing tests
+    public CreateInboundReceiptCommand(Guid orderId, string tenantId, string customerId, string? sourceShipmentNo)
+        : this(orderId, tenantId, customerId, Guid.Empty, sourceShipmentNo, null) {}
+}
 
 public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundReceiptCommand, Result<Guid>>
 {

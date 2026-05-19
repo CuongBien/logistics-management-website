@@ -34,9 +34,6 @@ public class ForceCloseReceiptCommandHandler : IRequestHandler<ForceCloseReceipt
         if (receipt == null)
             return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
-        if (!string.Equals(receipt.TenantId, request.TenantId, StringComparison.Ordinal))
-            return Result.Failure(new Error("InboundReceipt.ForbiddenTenant", $"Receipt '{request.ReceiptId}' does not belong to tenant '{request.TenantId}'."));
-
         // Check permission
         var hasPermission = await _authService.HasPermissionAsync(
             request.ClosedBySub, 

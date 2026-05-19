@@ -26,15 +26,6 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
     public async Task<Result> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
     {
-        var skuExists = await _context.ErpSkuMirrors
-            .AnyAsync(x => x.TenantId == request.TenantId && x.SkuCode == request.SkuCode && x.Status == "active", cancellationToken);
-        if (!skuExists)
-        {
-            return Result.Failure(new Error(
-                "ErpSkuMirror.MissingMapping",
-                $"Cannot receive inbound item because SKU '{request.SkuCode}' is not mapped for tenant '{request.TenantId}'."));
-        }
-
         // 1. Load InboundReceipt by ReceiptId with lines
         var receipt = await _context.InboundReceipts
             .Include(r => r.Lines)
@@ -44,18 +35,21 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (receipt == null)
             return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
-        if (!string.Equals(receipt.TenantId, request.TenantId, StringComparison.Ordinal))
+        // 2. Validate SKU exists for the RECEIPT'S tenant (the Consignor/Merchant), NOT the operator's tenant!
+        var skuExists = await _context.ErpSkuMirrors
+            .AnyAsync(x => x.TenantId == receipt.TenantId && x.SkuCode == request.SkuCode && x.Status == "active", cancellationToken);
+        if (!skuExists)
         {
             return Result.Failure(new Error(
-                "InboundReceipt.ForbiddenTenant",
-                $"Receipt '{request.ReceiptId}' does not belong to tenant '{request.TenantId}'."));
+                "ErpSkuMirror.MissingMapping",
+                $"Cannot receive inbound item because SKU '{request.SkuCode}' is not mapped for tenant '{receipt.TenantId}'."));
         }
 
-        // 2. Validate OrderId belongs to this receipt
+        // 3. Validate OrderId belongs to this receipt
         if (receipt.OrderId != request.OrderId)
             return Result.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));
 
-        // 3. Load Bin by BinCode and WarehouseId (safety for multi-warehouse)
+        // 4. Load Bin by BinCode and WarehouseId (safety for multi-warehouse)
         var bin = await _context.Bins
             .Include(b => b.Zone)
             .ThenInclude(z => z.Block)
@@ -84,7 +78,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (line == null)
         {
             // Blind receipt scenario: line wasn't in ASN
-            line = new InboundReceiptLine(receipt.Id, request.TenantId, receipt.CustomerId, request.SkuCode, expectedQuantity: request.Quantity);
+            line = new InboundReceiptLine(receipt.Id, receipt.TenantId, receipt.CustomerId, request.SkuCode, expectedQuantity: request.Quantity);
             _context.InboundReceiptLines.Add(line);
             receipt.AddLine(line);
         }
@@ -99,7 +93,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         }
         else
         {
-            allocation = new InboundBinAllocation(line.Id, bin.Id, request.Quantity, request.TenantId);
+            allocation = new InboundBinAllocation(line.Id, bin.Id, request.Quantity, receipt.TenantId);
             _context.InboundBinAllocations.Add(allocation);
         }
 
@@ -113,13 +107,13 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         var warehouseId = bin.Zone.Block.WarehouseId;
         var inventoryItem = await _context.InventoryItems
             .FirstOrDefaultAsync(i => i.WarehouseId == warehouseId 
-                                   && i.TenantId == request.TenantId 
+                                   && i.TenantId == receipt.TenantId 
                                    && i.Sku == request.SkuCode 
                                    && i.BinId == bin.Id, cancellationToken);
 
         if (inventoryItem == null)
         {
-            inventoryItem = InventoryItem.Create(request.SkuCode, request.Quantity, request.TenantId, receipt.CustomerId, warehouseId, bin.Id);
+            inventoryItem = InventoryItem.Create(request.SkuCode, request.Quantity, receipt.TenantId, receipt.CustomerId, warehouseId, bin.Id);
             _context.InventoryItems.Add(inventoryItem);
         }
         else
