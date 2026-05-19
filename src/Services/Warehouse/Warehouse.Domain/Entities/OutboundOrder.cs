@@ -114,7 +114,7 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
     // Prevents impossible jumps like Delivered→Draft or Cancelled→Shipped.
     private static readonly Dictionary<OutboundOrderStatus, HashSet<OutboundOrderStatus>> _allowedTransitions = new()
     {
-        { OutboundOrderStatus.Draft, new() { OutboundOrderStatus.PendingAllocation, OutboundOrderStatus.Allocated, OutboundOrderStatus.PartiallyAllocated, OutboundOrderStatus.Cancelled } },
+        { OutboundOrderStatus.Draft, new() { OutboundOrderStatus.PendingAllocation, OutboundOrderStatus.Allocated, OutboundOrderStatus.PartiallyAllocated, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Shipped } },
         { OutboundOrderStatus.PendingAllocation, new() { OutboundOrderStatus.Allocated, OutboundOrderStatus.PartiallyAllocated, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Failed } },
         { OutboundOrderStatus.PartiallyAllocated, new() { OutboundOrderStatus.Allocated, OutboundOrderStatus.Picking, OutboundOrderStatus.Cancelled, OutboundOrderStatus.Failed } },
         { OutboundOrderStatus.Allocated, new() { OutboundOrderStatus.Picking, OutboundOrderStatus.Cancelled } },
