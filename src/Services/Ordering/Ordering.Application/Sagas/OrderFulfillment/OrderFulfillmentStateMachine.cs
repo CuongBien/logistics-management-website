@@ -42,19 +42,24 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
         // FLOW: Mỗi transition = 1 con người ở ngoài đời hành động
         // =====================================================
 
-        // Step 1: Consignor tạo đơn → Saga khởi tạo → ĐỢI shipper lấy hàng
+        // Step 1: Consignor tạo đơn → Saga khởi tạo → ĐỢI shipper lấy hàng hoặc tự động phân luồng
         Initially(
             When(OrderCreated)
                 .Then(context =>
                 {
-                    logger.LogInformation("Saga: Order {OrderId} created with Waybill {Waybill}", 
-                        context.Message.OrderId, context.Message.WaybillCode);
+                    logger.LogInformation("Saga: Order {OrderId} created with Waybill {Waybill} (Type: {Type}, Mode: {Mode})", 
+                        context.Message.OrderId, context.Message.WaybillCode, context.Message.OrderType, context.Message.FulfillmentMode);
                     context.Saga.OrderId = context.Message.OrderId;
                     context.Saga.ConsignorId = context.Message.ConsignorId;
                     context.Saga.WaybillCode = context.Message.WaybillCode;
                     context.Saga.CodAmount = context.Message.CodAmount;
                 })
-                .TransitionTo(AwaitingPickup)
+                .If(context => context.Message.OrderType == 2,
+                    binder => binder.TransitionTo(Completed))
+                .If(context => context.Message.OrderType == 1 && context.Message.FulfillmentMode == 2,
+                    binder => binder.TransitionTo(InWarehouse))
+                .If(context => context.Message.OrderType == 1 && context.Message.FulfillmentMode == 1,
+                    binder => binder.TransitionTo(AwaitingPickup))
         );
 
         // Step 2: 👤 Shipper scan lấy hàng → ĐỢI hàng về kho

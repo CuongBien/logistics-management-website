@@ -19,19 +19,24 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
             .NotNull().WithMessage("Consignee info is required.");
 
         RuleFor(v => v.Consignee.FullName)
-            .NotEmpty().WithMessage("Consignee name is required.");
+            .NotEmpty().WithMessage("Consignee name is required.")
+            .When(v => v.FulfillmentMode != 2 && string.IsNullOrEmpty(v.Consignee?.PartnerId));
             
         RuleFor(v => v.Consignee.Phone)
-            .NotEmpty().WithMessage("Consignee phone is required.");
+            .NotEmpty().WithMessage("Consignee phone is required.")
+            .When(v => v.FulfillmentMode != 2 && string.IsNullOrEmpty(v.Consignee?.PartnerId));
 
         RuleFor(v => v.Consignee.Address)
-            .NotNull().WithMessage("Consignee address is required.");
+            .NotNull().WithMessage("Consignee address is required.")
+            .When(v => v.FulfillmentMode != 2 && string.IsNullOrEmpty(v.Consignee?.PartnerId));
 
-        RuleFor(v => v.Consignee.Address.Street)
-            .NotEmpty().WithMessage("Street is required.");
+        RuleFor(v => v.Consignee.Address!.Street)
+            .NotEmpty().WithMessage("Street is required.")
+            .When(v => v.FulfillmentMode != 2 && string.IsNullOrEmpty(v.Consignee?.PartnerId) && v.Consignee?.Address != null);
             
-        RuleFor(v => v.Consignee.Address.City)
-            .NotEmpty().WithMessage("City is required.");
+        RuleFor(v => v.Consignee.Address!.City)
+            .NotEmpty().WithMessage("City is required.")
+            .When(v => v.FulfillmentMode != 2 && string.IsNullOrEmpty(v.Consignee?.PartnerId) && v.Consignee?.Address != null);
 
         RuleFor(v => v.CodAmount)
             .GreaterThanOrEqualTo(0).WithMessage("COD amount cannot be negative.");

@@ -2,7 +2,10 @@ using EventBus.Messages.Events;
 using MediatR;
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using Ordering.Application.Common.Interfaces;
 using Ordering.Domain.Events;
+using System.Linq;
 
 namespace Ordering.Application.Features.Orders.EventHandlers;
 
@@ -15,11 +18,13 @@ public class OrderCreatedEventHandler : INotificationHandler<OrderCreatedDomainE
 {
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<OrderCreatedEventHandler> _logger;
+    private readonly IApplicationDbContext _context;
 
-    public OrderCreatedEventHandler(IPublishEndpoint publishEndpoint, ILogger<OrderCreatedEventHandler> logger)
+    public OrderCreatedEventHandler(IPublishEndpoint publishEndpoint, ILogger<OrderCreatedEventHandler> logger, IApplicationDbContext context)
     {
         _publishEndpoint = publishEndpoint;
         _logger = logger;
+        _context = context;
     }
 
     public async Task Handle(OrderCreatedDomainEvent notification, CancellationToken cancellationToken)
@@ -27,8 +32,33 @@ public class OrderCreatedEventHandler : INotificationHandler<OrderCreatedDomainE
         _logger.LogInformation("Order {OrderId} created with Waybill {WaybillCode}. Publishing Integration Event...", 
             notification.OrderId, notification.WaybillCode);
 
+        var order = _context.Orders.Local.FirstOrDefault(x => x.Id == notification.OrderId);
+
+        if (order == null)
+        {
+            order = await _context.Orders
+                .Include(x => x.Items)
+                .FirstOrDefaultAsync(x => x.Id == notification.OrderId, cancellationToken);
+        }
+
+        if (order == null)
+        {
+            _logger.LogError("Order {OrderId} not found when mapping to integration event.", notification.OrderId);
+            return;
+        }
+
+        var items = order.Items.Select(x => new OrderItemEventDto(x.SkuCode ?? string.Empty, x.Quantity)).ToList();
+
         await _publishEndpoint.Publish(new OrderCreatedIntegrationEvent(
-            notification.OrderId, notification.WaybillCode, notification.ConsignorId, notification.CodAmount), cancellationToken);
+            notification.OrderId, 
+            notification.WaybillCode, 
+            notification.ConsignorId, 
+            notification.CodAmount,
+            notification.OrderType,
+            notification.FulfillmentMode,
+            order.Consignee?.PartnerId,
+            items,
+            order.TenantId), cancellationToken);
     }
 }
 
