@@ -3625,6 +3625,1018 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "Dual-Mode Logistics Integration",
+            "description": "Integration testing of Dual-Mode Logistics: Pre-stocked Warehouse Fulfillment Flow vs Standard Courier Pickup & Delivery Flow.",
+            "item": [
+                {
+                    "name": "Case A: Pre-stocked Warehouse Fulfillment Flow",
+                    "description": "Flow where goods are pre-stocked into warehouse shelves via Inbound Request, and outbound orders are fulfilled directly from WMS stock (skipping driver pickup).",
+                    "item": [
+                        {
+                            "name": "0. Get WMS Warehouses",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "var wh = jsonData.find(w => w.warehouseCode === 'WH-CT-001' || w.code === 'WH-CT-001');",
+                                            "if (wh) {",
+                                            "    pm.collectionVariables.set(\"warehouseId\", wh.id);",
+                                            "    console.log(\"Resolved Warehouse WH-CT-001 ID: \" + wh.id);",
+                                            "} else {",
+                                            "    console.log(\"⚠️ Warehouse WH-CT-001 not found, setting default ID\");",
+                                            "    pm.collectionVariables.set(\"warehouseId\", \"73c683b5-4bfa-4ad1-ad14-bd1f2c4a92c4\");",
+                                            "}",
+                                            "pm.test(\"Warehouses list retrieved\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/Warehouse",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "Warehouse"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "1. Create Inbound Request (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.collectionVariables.set(\"inboundOrderId\", jsonData.value);",
+                                            "pm.test(\"Inbound Request Created successfully\", function () {",
+                                            "    pm.response.to.have.status(201);",
+                                            "    pm.expect(jsonData.value).to.not.be.null;",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"destinationWarehouseCode\": \"WH-CT-001\",\n    \"items\": [\n        {\n            \"skuCode\": \"SKU-AO-001\",\n            \"quantity\": 500\n        }\n    ],\n    \"note\": \"Nhập hàng kho Cần Thơ\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/inbound-request",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "inbound-request"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "2. Get Inbound Receipt in WMS",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.collectionVariables.set(\"inboundReceiptId\", jsonData.id);",
+                                            "pm.test(\"WMS Inbound Receipt found\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.id).to.not.be.null;",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{inboundOrderId}}",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "by-order",
+                                        "{{inboundOrderId}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "3. Scan Receive Inbound Items (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Items received into WMS bin successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{inboundOrderId}}\",\n    \"skuCode\": \"SKU-AO-001\",\n    \"binCode\": \"BIN-CT-001\",\n    \"quantity\": 500\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{inboundReceiptId}}/receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "{{inboundReceiptId}}",
+                                        "receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "4. Close Inbound Receipt (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"WMS Inbound Receipt closed\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{inboundReceiptId}}/force-close",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "{{inboundReceiptId}}",
+                                        "force-close"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "5. Create Outbound Order (OMS - Warehouse Mode)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.collectionVariables.set(\"fulfillmentOrderId\", jsonData.value);",
+                                            "pm.test(\"Warehouse fulfillment order created successfully\", function () {",
+                                            "    pm.response.to.have.status(201);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Trần Quốc Tuấn\",\n        \"phone\": \"0987654321\",\n        \"address\": {\n            \"street\": \"123 Lê Lợi\",\n            \"city\": \"Hải Phòng\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"180000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 150000,\n    \"shippingFee\": 30000,\n    \"weight\": 0.5,\n    \"fulfillmentMode\": 2,\n    \"note\": \"Xuất kho Cần Thơ giao Hải Phòng\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "6. Get Outbound Order Details (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.collectionVariables.set(\"outboundOrderId\", jsonData.id);",
+                                            "pm.test(\"WMS Outbound Order verified and allocated\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.status).to.equal(\"Allocated\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{fulfillmentOrderId}}",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{fulfillmentOrderId}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "7. Pick Order (Wave) (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Pick wave successfully initiated\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"waveId\": \"WAVE-DUAL-005\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/pick",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{outboundOrderId}}",
+                                        "pick"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "8. Get Pick Tasks (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData.length > 0) {",
+                                            "    pm.collectionVariables.set(\"pickTaskId\", jsonData[0].id);",
+                                            "}",
+                                            "pm.test(\"Pick tasks retrieved successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.length).to.be.above(0);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/pick-tasks",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{outboundOrderId}}",
+                                        "pick-tasks"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "9. Confirm Pick Task (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Pick task confirmed\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/pick-tasks/{{pickTaskId}}/confirm",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "pick-tasks",
+                                        "{{pickTaskId}}",
+                                        "confirm"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "10. Pack Order (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Order packed\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/pack",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{outboundOrderId}}",
+                                        "pack"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "11. Load Order into Shipment (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Order loaded into shipment successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{outboundOrderId}}",
+                                        "ship"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "11b. Get Shipment ID by Order (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId\", jsonData.shipmentId);",
+                                            "pm.test(\"Shipment ID retrieved and stored successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.shipmentId).to.not.be.null;",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{outboundOrderId}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{outboundOrderId}}",
+                                        "shipment"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "12. Dispatch Shipment (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Shipment dispatched successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "13. Verify Final Status and Timeline (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Order status is complete (Dispatched)\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.status).to.equal(\"Dispatched\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{fulfillmentOrderId}}",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{fulfillmentOrderId}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Case B: Standard Courier Pickup & Delivery Flow",
+                    "description": "Standard courier logistics flow where driver picks up parcel from sender, sorting center processes it, and routes to destination.",
+                    "item": [
+                        {
+                            "name": "1. Create Order (OMS - Courier Pickup Mode)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.collectionVariables.set(\"courierOrderId\", jsonData.value);",
+                                            "pm.test(\"Courier pickup order created successfully\", function () {",
+                                            "    pm.response.to.have.status(201);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguyễn Văn B\",\n        \"phone\": \"0912345678\",\n        \"address\": {\n            \"street\": \"456 Trần Hưng Đạo\",\n            \"city\": \"Đà Nẵng\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"550000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 300000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"Hàng bưu cục lẻ - yêu cầu pickup tận nơi\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "2. Scan Pickup Order (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Order successfully picked up by driver\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"driverId\": \"driver_05\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}/actions/pickup",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}",
+                                        "actions",
+                                        "pickup"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "3. Verify Order Saga State (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Order successfully moved to PickedUp state in Saga\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.value.status).to.equal(\"PickedUp\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "4. Get Inbound Receipt in WMS (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.collectionVariables.set(\"courierInboundReceiptId\", jsonData.id);",
+                                            "pm.test(\"WMS Inbound Receipt for Courier found\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.id).to.not.be.null;",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{courierOrderId}}",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "by-order",
+                                        "{{courierOrderId}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "5. Scan Receive Inbound Items (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Items received into WMS bin successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{courierOrderId}}\",\n    \"skuCode\": \"SKU-AO-001\",\n    \"binCode\": \"BIN-CT-001\",\n    \"quantity\": 1\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{courierInboundReceiptId}}/receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "{{courierInboundReceiptId}}",
+                                        "receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "6. Verify Order Saga State is InWarehouse (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Order successfully moved to InWarehouse state in Saga\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.value.status).to.equal(\"InWarehouse\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "7. Sort Order (WMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Order sorted successfully at WMS\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{courierOrderId}}\",\n    \"destinationWarehouseId\": \"{{warehouseId}}\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/sort",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "sort"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "8. Verify Order Saga State is AwaitingDispatch (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Order successfully moved to AwaitingDispatch state in Saga\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.value.status).to.equal(\"AwaitingDispatch\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "9. Dispatch Order (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Order successfully dispatched to driver\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"driverId\": \"driver_07\",\n    \"routeId\": \"ROUTE_FINAL_01\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}/actions/dispatch",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}",
+                                        "actions",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "10. Verify Order Saga State is Dispatched (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Order successfully moved to Dispatched state in Saga\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.value.status).to.equal(\"Dispatched\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "11. Deliver Order (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Order successfully marked as delivered\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"proofOfDeliveryUrl\": \"http://pod-example.com/courier.jpg\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}/actions/deliver",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}",
+                                        "actions",
+                                        "deliver"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "12. Verify Final Order Status is Completed (OMS)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Order successfully completed\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    pm.expect(jsonData.value.status).to.equal(\"Completed\");",
+                                            "});"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId}}",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "orders",
+                                        "{{courierOrderId}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
         }
     ]
 }
