@@ -73,6 +73,10 @@ public static class WMSDbContextSeed
 
                     if (whId == ctId)
                     {
+                        var binCt = new Bin(wh.Id, zone.Id, "BIN-CT-001");
+                        context.Bins.Add(binCt);
+                        await context.SaveChangesAsync();
+
                         logger.LogInformation("Updating existing inventory items to point to the new BinId {BinId}", bin.Id);
                         await context.Database.ExecuteSqlRawAsync($"UPDATE \"InventoryItems\" SET \"BinId\" = '{bin.Id}' WHERE \"WarehouseId\" = '{ctId}';");
                     }
