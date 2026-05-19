@@ -6,7 +6,14 @@ public record OrderCreatedIntegrationEvent(
     Guid OrderId, 
     string WaybillCode, 
     string ConsignorId, 
-    decimal CodAmount) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
+    decimal CodAmount,
+    int OrderType = 1,
+    int FulfillmentMode = 1,
+    string? DestinationWarehouseCode = null,
+    System.Collections.Generic.List<OrderItemEventDto>? Items = null,
+    string? TenantId = null) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
+
+public record OrderItemEventDto(string SkuCode, int Quantity);
 
 // --- Human-triggered Shipment Events ---
 
