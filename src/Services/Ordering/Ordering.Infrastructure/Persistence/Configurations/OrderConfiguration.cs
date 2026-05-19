@@ -60,6 +60,20 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.CreatedByOperatorId).HasMaxLength(100);
         builder.Property(o => o.UpdatedByOperatorId).HasMaxLength(100);
 
+        builder.Property(o => o.Type)
+            .HasConversion(
+                v => (int)v,
+                v => (OrderType)v)
+            .IsRequired()
+            .HasDefaultValue(OrderType.Parcel);
+
+        builder.Property(o => o.Fulfillment)
+            .HasConversion(
+                v => (int)v,
+                v => (FulfillmentMode)v)
+            .IsRequired()
+            .HasDefaultValue(FulfillmentMode.Pickup);
+
         // Consignee owned type
         builder.OwnsOne(o => o.Consignee, consignee =>
         {

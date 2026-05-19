@@ -19,6 +19,8 @@ public class Order : Entity<Guid>, IAggregateRoot
     public decimal ShippingFee { get; private set; }  // Phí vận chuyển
     public decimal Weight { get; private set; }       // Trọng lượng (kg)
     public string? Note { get; private set; }         // Ghi chú giao hàng
+    public OrderType Type { get; private set; } = OrderType.Parcel;
+    public FulfillmentMode Fulfillment { get; private set; } = FulfillmentMode.Pickup;
     
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastModifiedAt { get; private set; }
@@ -32,6 +34,13 @@ public class Order : Entity<Guid>, IAggregateRoot
     // Navigation
     private readonly List<OrderItem> _items = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    public void AddItem(Guid skuId, string skuCode, int quantity, decimal price = 0)
+    {
+        var item = new OrderItem(skuId, quantity, price);
+        item.SetSkuCode(skuCode);
+        _items.Add(item);
+    }
 
     // Tracking fields populated by human actions
     public string? PickupDriverId { get; private set; }
@@ -64,7 +73,9 @@ public class Order : Entity<Guid>, IAggregateRoot
         decimal codAmount,
         decimal shippingFee,
         decimal weight,
-        string? note = null)
+        string? note = null,
+        OrderType type = OrderType.Parcel,
+        FulfillmentMode fulfillment = FulfillmentMode.Pickup)
     {
         if (codAmount < 0)
             return Result<Order>.Failure(DomainErrors.Order.InvalidCodAmount);
@@ -84,14 +95,26 @@ public class Order : Entity<Guid>, IAggregateRoot
             ShippingFee = shippingFee,
             Weight = weight,
             Note = note,
+            Type = type,
+            Fulfillment = fulfillment,
             CreatedAt = DateTime.UtcNow,
             DeliveryAttempts = 0
         };
 
         order.AddDomainEvent(new OrderCreatedDomainEvent(
-            order.Id, consignorId, order.WaybillCode, codAmount, shippingFee));
+            order.Id, consignorId, order.WaybillCode, codAmount, shippingFee, (int)type, (int)fulfillment));
 
         return Result<Order>.Success(order);
+    }
+
+    public Result SetInWarehouseDirectly()
+    {
+        if (Status != OrderStatus.New)
+            return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
+
+        Status = OrderStatus.InWarehouse;
+        LastModifiedAt = DateTime.UtcNow;
+        return Result.Success();
     }
 
     /// <summary>
