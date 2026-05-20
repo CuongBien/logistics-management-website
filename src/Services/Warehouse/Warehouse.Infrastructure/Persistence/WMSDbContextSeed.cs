@@ -80,6 +80,13 @@ public static class WMSDbContextSeed
                         logger.LogInformation("Updating existing inventory items to point to the new BinId {BinId}", bin.Id);
                         await context.Database.ExecuteSqlRawAsync($"UPDATE \"InventoryItems\" SET \"BinId\" = '{bin.Id}' WHERE \"WarehouseId\" = '{ctId}';");
                     }
+
+                    if (whId == hpId)
+                    {
+                        var binHpStore = new Bin(wh.Id, zone.Id, "BIN-A1-02");
+                        context.Bins.Add(binHpStore);
+                        await context.SaveChangesAsync();
+                    }
                 }
                 
                 logger.LogInformation("Successfully configured base warehouse layouts for all 7 warehouses.");

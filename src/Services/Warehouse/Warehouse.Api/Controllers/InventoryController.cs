@@ -61,4 +61,17 @@ public class InventoryController : ControllerBase
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
+
+    [HttpPost("transfer")]
+    public async Task<IActionResult> Transfer([FromBody] Warehouse.Application.Features.Inventory.Commands.TransferInventory.TransferInventoryCommand command)
+    {
+        command.TenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        if (string.IsNullOrEmpty(command.CustomerId))
+        {
+            command.CustomerId = "cust-default";
+        }
+        command.OperatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
 }
