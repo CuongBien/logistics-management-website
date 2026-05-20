@@ -63,7 +63,7 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
         // 2. Find the active dispatched Shipment containing this order
         var shipmentOrder = await _context.ShipmentOrders
             .Include(so => so.Shipment)
-            .FirstOrDefaultAsync(so => so.OutboundOrderId == order.Id && so.Shipment.Status == ShipmentStatus.Shipped, cancellationToken);
+            .FirstOrDefaultAsync(so => so.OutboundOrderId == order.Id && (so.Shipment.Status == ShipmentStatus.Shipped || so.Shipment.Status == ShipmentStatus.Delivered), cancellationToken);
 
         if (shipmentOrder == null)
         {
