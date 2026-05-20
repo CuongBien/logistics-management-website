@@ -13,8 +13,13 @@ public record CreateOrderCommand(
     bool SaveToContacts = false,
     int FulfillmentMode = 1,
     string TenantId = "",
-    string ConsignorId = "") : IRequest<Result<Guid>>;
+    string ConsignorId = "",
+    string? SourceWarehouseCode = null,
+    ConsignorDto? Consignor = null) : IRequest<Result<Guid>>;
 
 public record ConsigneeDto(string? FullName, string? Phone, AddressDto? Address, string? PartnerId = null, double? Latitude = null, double? Longitude = null);
 
 public record AddressDto(string? Street, string? City, string? State, string? Country, string? ZipCode);
+
+public record ConsignorDto(string? FullName, string? Phone, AddressDto? Address);
+

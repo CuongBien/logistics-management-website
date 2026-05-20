@@ -11,7 +11,10 @@ public record OrderCreatedIntegrationEvent(
     int FulfillmentMode = 1,
     string? DestinationWarehouseCode = null,
     System.Collections.Generic.List<OrderItemEventDto>? Items = null,
-    string? TenantId = null) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
+    string? TenantId = null,
+    string? SourceWarehouseCode = null,
+    string? ConsignorCity = null,
+    string? ConsignorAddress = null) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
 
 public record OrderItemEventDto(string SkuCode, int Quantity);
 

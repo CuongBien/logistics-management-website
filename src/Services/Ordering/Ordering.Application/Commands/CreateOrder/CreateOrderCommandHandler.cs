@@ -57,6 +57,15 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
             request.Consignee.Longitude);
 
         // 2. Create Order Aggregate (auto-generates WaybillCode)
+        string? consignorCity = request.Consignor?.Address?.City;
+        string? consignorAddress = null;
+        if (request.Consignor?.Address != null)
+        {
+            var parts = new[] { request.Consignor.Address.Street, request.Consignor.Address.City, request.Consignor.Address.State }
+                .Where(x => !string.IsNullOrWhiteSpace(x));
+            consignorAddress = string.Join(", ", parts);
+        }
+
         var orderResult = Order.Create(
             request.TenantId,
             request.ConsignorId,
@@ -66,7 +75,10 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
             request.Weight,
             request.Note,
             Ordering.Domain.Enums.OrderType.Parcel,
-            (Ordering.Domain.Enums.FulfillmentMode)request.FulfillmentMode);
+            (Ordering.Domain.Enums.FulfillmentMode)request.FulfillmentMode,
+            request.SourceWarehouseCode,
+            consignorCity,
+            consignorAddress);
 
         if (orderResult.IsFailure)
         {

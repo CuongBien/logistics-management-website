@@ -56,15 +56,60 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
     {
         _logger.LogInformation("WMS: Processing Courier Inbound for Order {OrderId}...", msg.OrderId);
 
-        // Find warehouse by code, or fallback to WH-CT-001 (Can Tho Warehouse)
-        var destCode = msg.DestinationWarehouseCode;
-        if (string.IsNullOrWhiteSpace(destCode))
+        // Resolve entry point warehouse dynamically:
+        // 1. From ConsignorCity
+        // 2. From SourceWarehouseCode
+        // 3. Fallback to Can Tho (WH-CT-001)
+        string? entryCode = null;
+        if (!string.IsNullOrWhiteSpace(msg.ConsignorCity))
         {
-            destCode = "WH-CT-001";
+            var city = msg.ConsignorCity.Trim().ToLowerInvariant();
+            if (city.Contains("ho chi minh") || city.Contains("hcm") || city.Contains("sai gon") || city.Contains("sài gòn"))
+            {
+                entryCode = "WH-SG-002";
+            }
+            else if (city.Contains("cần thơ") || city.Contains("can tho") || city == "ct")
+            {
+                entryCode = "WH-CT-001";
+            }
+            else if (city.Contains("nha trang") || city.Contains("khanh hoa") || city.Contains("khánh hòa"))
+            {
+                entryCode = "WH-NT-003";
+            }
+            else if (city.Contains("đà nẵng") || city.Contains("da nang") || city == "dn")
+            {
+                entryCode = "WH-DN-004";
+            }
+            else if (city.Contains("vinh") || city.Contains("nghệ an") || city.Contains("nghe an"))
+            {
+                entryCode = "WH-V-005";
+            }
+            else if (city.Contains("hà nội") || city.Contains("ha noi") || city.Contains("hanoi") || city == "hn")
+            {
+                entryCode = "WH-HN-006";
+            }
+            else if (city.Contains("hải phòng") || city.Contains("hai phong") || city == "hp")
+            {
+                entryCode = "WH-HP-007";
+            }
+            
+            _logger.LogInformation("WMS: Resolved entry warehouse code '{EntryCode}' from ConsignorCity '{ConsignorCity}'", entryCode, msg.ConsignorCity);
+        }
+
+        if (string.IsNullOrEmpty(entryCode) && !string.IsNullOrWhiteSpace(msg.SourceWarehouseCode))
+        {
+            entryCode = msg.SourceWarehouseCode;
+            _logger.LogInformation("WMS: Resolved entry warehouse code '{EntryCode}' from SourceWarehouseCode", entryCode);
+        }
+
+        if (string.IsNullOrEmpty(entryCode))
+        {
+            entryCode = "WH-CT-001";
+            _logger.LogInformation("WMS: Falling back to default entry warehouse code 'WH-CT-001'");
         }
         
         var warehouse = await _context.Warehouses
-            .FirstOrDefaultAsync(x => x.Code == destCode);
+            .FirstOrDefaultAsync(x => x.Code == entryCode);
 
         if (warehouse == null)
         {
@@ -169,6 +214,28 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
 
         var lines = msg.Items.Select(x => new OutboundOrderLineItem(x.SkuCode, x.Quantity, "PCS")).ToList();
 
+        // Resolve Destination Warehouse Details if provided
+        var destAddress = "Customer Shipping Address";
+        var destCity = "Customer City";
+        string? partnerId = null;
+        double? latitude = null;
+        double? longitude = null;
+
+        if (!string.IsNullOrWhiteSpace(msg.DestinationWarehouseCode))
+        {
+            var destWh = await _context.Warehouses
+                .FirstOrDefaultAsync(w => w.Code == msg.DestinationWarehouseCode);
+
+            if (destWh != null)
+            {
+                destAddress = destWh.Name;
+                destCity = destWh.Code;
+                partnerId = destWh.Code;
+                latitude = destWh.Latitude;
+                longitude = destWh.Longitude;
+            }
+        }
+
         // Create Outbound Order
         var createOutboundCmd = new CreateOutboundOrderCommand(
             TenantId: msg.TenantId ?? "DefaultTenant",
@@ -176,12 +243,15 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
             WarehouseId: warehouseId,
             OrderId: msg.OrderId,
             OrderNo: msg.WaybillCode,
-            DestinationAddress: "Customer Shipping Address",
-            DestinationCity: "Customer City",
+            DestinationAddress: destAddress,
+            DestinationCity: destCity,
             Priority: 1,
             AllowPartial: false,
             PlannedShipAt: DateTime.UtcNow.AddDays(1),
-            Lines: lines
+            Lines: lines,
+            PartnerId: partnerId,
+            Latitude: latitude,
+            Longitude: longitude
         );
 
         var outboundResult = await _mediator.Send(createOutboundCmd);

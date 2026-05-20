@@ -11,7 +11,10 @@ public record OrderCreatedDomainEvent(
     decimal CodAmount,
     decimal ShippingFee,
     int OrderType = 1,
-    int FulfillmentMode = 1) : IDomainEvent
+    int FulfillmentMode = 1,
+    string? SourceWarehouseCode = null,
+    string? ConsignorCity = null,
+    string? ConsignorAddress = null) : IDomainEvent
 {
     public Guid EventId => Guid.NewGuid();
     public DateTime OccurredOn => DateTime.UtcNow;

@@ -75,7 +75,10 @@ public class Order : Entity<Guid>, IAggregateRoot
         decimal weight,
         string? note = null,
         OrderType type = OrderType.Parcel,
-        FulfillmentMode fulfillment = FulfillmentMode.Pickup)
+        FulfillmentMode fulfillment = FulfillmentMode.Pickup,
+        string? sourceWarehouseCode = null,
+        string? consignorCity = null,
+        string? consignorAddress = null)
     {
         if (codAmount < 0)
             return Result<Order>.Failure(DomainErrors.Order.InvalidCodAmount);
@@ -102,7 +105,7 @@ public class Order : Entity<Guid>, IAggregateRoot
         };
 
         order.AddDomainEvent(new OrderCreatedDomainEvent(
-            order.Id, consignorId, order.WaybillCode, codAmount, shippingFee, (int)type, (int)fulfillment));
+            order.Id, consignorId, order.WaybillCode, codAmount, shippingFee, (int)type, (int)fulfillment, sourceWarehouseCode, consignorCity, consignorAddress));
 
         return Result<Order>.Success(order);
     }
