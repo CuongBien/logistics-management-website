@@ -149,13 +149,17 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
     {
         _logger.LogInformation("WMS: Processing InboundRequest for Order {OrderId}...", msg.OrderId);
 
-        // Find warehouse by code
+        // Find warehouse by code (Prioritize SourceWarehouseCode for Cross-region Consignment)
+        var targetWarehouseCode = !string.IsNullOrWhiteSpace(msg.SourceWarehouseCode) 
+            ? msg.SourceWarehouseCode 
+            : msg.DestinationWarehouseCode;
+
         var warehouse = await _context.Warehouses
-            .FirstOrDefaultAsync(x => x.Code == msg.DestinationWarehouseCode);
+            .FirstOrDefaultAsync(x => x.Code == targetWarehouseCode);
 
         if (warehouse == null)
         {
-            _logger.LogError("WMS Inbound Error: Destination warehouse with code '{WarehouseCode}' not found.", msg.DestinationWarehouseCode);
+            _logger.LogError("WMS Inbound Error: Target warehouse with code '{WarehouseCode}' not found.", targetWarehouseCode);
             return;
         }
 
@@ -179,6 +183,35 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
         else
         {
             _logger.LogInformation("WMS: Automatically created InboundReceipt {ReceiptId} for order {OrderId}.", result.Value, msg.OrderId);
+
+            // Cross-region consignment: store the final destination on the receipt
+            // so the Sort handler can auto-resolve it later without the client hardcoding it.
+            if (!string.IsNullOrWhiteSpace(msg.SourceWarehouseCode) 
+                && !string.IsNullOrWhiteSpace(msg.DestinationWarehouseCode)
+                && !string.Equals(msg.SourceWarehouseCode, msg.DestinationWarehouseCode, StringComparison.OrdinalIgnoreCase))
+            {
+                var destWarehouse = await _context.Warehouses
+                    .FirstOrDefaultAsync(x => x.Code == msg.DestinationWarehouseCode);
+
+                if (destWarehouse != null)
+                {
+                    var receipt = await _context.InboundReceipts
+                        .FirstOrDefaultAsync(r => r.Id == result.Value);
+
+                    if (receipt != null)
+                    {
+                        receipt.SetFinalDestination(destWarehouse.Id);
+                        await _context.SaveChangesAsync(default);
+                        _logger.LogInformation(
+                            "WMS: Cross-region consignment detected. Stored FinalDestinationWarehouseId={DestId} (Code={DestCode}) on InboundReceipt {ReceiptId}.",
+                            destWarehouse.Id, destWarehouse.Code, result.Value);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("WMS: Destination warehouse '{DestCode}' not found. Cannot store FinalDestinationWarehouseId.", msg.DestinationWarehouseCode);
+                }
+            }
         }
     }
 

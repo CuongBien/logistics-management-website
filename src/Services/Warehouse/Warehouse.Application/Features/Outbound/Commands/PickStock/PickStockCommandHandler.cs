@@ -32,6 +32,11 @@ public sealed class PickStockCommandHandler : IRequestHandler<PickStockCommand, 
         if (order == null)
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", "Order not found"));
 
+        if (order.OrderNo.StartsWith("SORTED-", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result<bool>.Failure(new Error("Outbound.InvalidOperation", "Courier orders (SORTED-xxx) are pre-packed at the counter and cannot be manually picked."));
+        }
+
         // BUG-11 FIX: RBAC check — was completely missing before
         var hasPermission = await _authService.HasPermissionAsync(
             request.OperatorId,

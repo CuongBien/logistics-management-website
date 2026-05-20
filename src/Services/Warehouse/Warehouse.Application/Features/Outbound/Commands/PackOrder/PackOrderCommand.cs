@@ -37,6 +37,11 @@ public sealed class PackOrderCommandHandler : IRequestHandler<PackOrderCommand, 
         if (order == null)
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", "Order not found"));
 
+        if (order.OrderNo.StartsWith("SORTED-", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result<bool>.Failure(new Error("Outbound.InvalidOperation", "Courier orders (SORTED-xxx) are pre-packed at the counter and cannot be manually packed."));
+        }
+
         // Check permission
         var hasPermission = await _authService.HasPermissionAsync(
             request.OperatorId,
