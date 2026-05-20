@@ -5370,7 +5370,7 @@
                             }
                         },
                         {
-                            "name": "1. Create Warehouse Order A (OMS)",
+                            "name": "1. Create InboundRequest A (OMS)",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -5381,7 +5381,116 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 150.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 1: Cross-Province Next-Hop Routing (Can Tho to Hai Phong)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Hai Phong\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    }\n}"
+                                    "raw": "{\n    \"destinationWarehouseCode\": \"WH-CT-001\",\n    \"items\": [\n        {\n            \"skuCode\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 150\n        }\n    ],\n    \"note\": \"Seed inventory for Case D Order A\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/Orders/inbound-request",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "Orders",
+                                        "inbound-request"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"orderId_D_A_Seed\", response.value);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "2. GET Auto-Generated Inbound Receipt A (WMS)",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId_D_A_Seed}}",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "by-order",
+                                        "{{orderId_D_A_Seed}}"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "exec": [
+                                            "setTimeout(function(){}, 2000); // Wait 2s for RabbitMQ"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                },
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"receiptId_4\", response.id);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "3. Scan & Receive Package A into Bin (WMS)",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_D_A_Seed}}\",\n    \"skuCode\": \"SKU-RED-TSHIRT\",\n    \"quantity\": 150,\n    \"binCode\": \"BIN-CT-001\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId_4}}/receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "{{receiptId_4}}",
+                                        "receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "4. Create Warehouse Order A (OMS)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"skuCodes\": [\n        \"SKU-RED-TSHIRT\"\n    ],\n    \"weight\": 150.0,\n    \"shippingFee\": 35000,\n    \"codAmount\": 500000,\n    \"note\": \"Smart Routing Scenario 1: Cross-Province Next-Hop Routing (Can Tho to Hai Phong)\",\n    \"saveToContacts\": true,\n    \"consignee\": {\n        \"fullName\": \"Consignee Hai Phong\",\n        \"phone\": \"0987654321\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    },\n    \"fulfillmentMode\": 2\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/Orders",
@@ -5408,106 +5517,12 @@
                             ]
                         },
                         {
-                            "name": "2. Create Inbound Receipt A (WMS)",
+                            "name": "5. GET Auto-Generated Outbound Order A (WMS)",
                             "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"orderId\": \"{{orderId_D_A}}\",\n    \"tenantId\": \"default-tenant\",\n    \"customerId\": \"cust-default\",\n    \"warehouseId\": \"b61a8f61-5238-4a18-809c-335cc293a025\",\n    \"sourceShipmentNo\": \"ASN-1-{{$timestamp}}\",\n    \"expectedLines\": [\n        {\n            \"skuCode\": \"SKU-RED-TSHIRT\",\n            \"expectedQuantity\": 150\n        }\n    ]\n}"
-                                },
+                                "method": "GET",
+                                "header": [],
                                 "url": {
-                                    "raw": "{{wms_url}}/api/inbound/receipts",
-                                    "host": [
-                                        "{{wms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "inbound",
-                                        "receipts"
-                                    ]
-                                }
-                            },
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "const response = pm.response.json();",
-                                            "pm.collectionVariables.set(\"receiptId_4\", response);"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "name": "3. Scan & Receive Package A into Bin (WMS)",
-                            "request": {
-                                "method": "PUT",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"orderId\": \"{{orderId_D_A}}\",\n    \"skuCode\": \"SKU-RED-TSHIRT\",\n    \"binCode\": \"BIN-A1-01\",\n    \"quantity\": 150\n}"
-                                },
-                                "url": {
-                                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId_4}}/receive",
-                                    "host": [
-                                        "{{wms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "inbound",
-                                        "receipts",
-                                        "{{receiptId_4}}",
-                                        "receive"
-                                    ]
-                                }
-                            }
-                        },
-                        {
-                            "name": "4. Create Outbound Order A (WMS)",
-                            "request": {
-                                "method": "POST",
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"orderId\": \"{{orderId_D_A}}\",\n    \"orderNo\": \"ORD-SMART-HP-111-{{$timestamp}}\",\n    \"destinationAddress\": \"50 Lach Tray, Hai Phong City\",\n    \"destinationCity\": \"Hai Phong\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"partnerId\": \"WH-HP-007\",\n    \"latitude\": 20.844912,\n    \"longitude\": 106.688079,\n    \"weight\": 150.0,\n    \"volume\": 0.45,\n    \"lines\": [\n        {\n            \"sku\": \"{{sku}}\",\n            \"quantity\": 150,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
-                                },
-                                "url": {
-                                    "raw": "{{wms_url}}/api/outbound/orders",
-                                    "host": [
-                                        "{{wms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "outbound",
-                                        "orders"
-                                    ]
-                                }
-                            }
-                        },
-                        {
-                            "name": "5. Allocate Stock A (WMS)",
-                            "request": {
-                                "method": "POST",
-                                "url": {
-                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_D_A}}/allocate",
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_D_A}}",
                                     "host": [
                                         "{{wms_url}}"
                                     ],
@@ -5515,11 +5530,31 @@
                                         "api",
                                         "outbound",
                                         "orders",
-                                        "{{orderId_D_A}}",
-                                        "allocate"
+                                        "{{orderId_D_A}}"
                                     ]
                                 }
-                            }
+                            },
+                            "event": [
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "exec": [
+                                            "setTimeout(function(){}, 2000); // Wait 2s for RabbitMQ to allocate"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                },
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"outboundOrderId_D_A\", response.id);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
                         },
                         {
                             "name": "6. Pick Order A (WMS)",
@@ -6508,20 +6543,64 @@
                             }
                         },
                         {
-                            "name": "37. Receive Transit for Order B at Hai Phong Hub (WMS)",
+                            "name": "37. GET Bins Hierarchy at HP (Extract Bin IDs)",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/Warehouse/f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6/hierarchy",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "Warehouse",
+                                        "f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6",
+                                        "hierarchy"
+                                    ]
+                                }
+                            },
                             "event": [
                                 {
                                     "listen": "test",
                                     "script": {
                                         "exec": [
-                                            "pm.test(\"Order B final transit received successfully at Hai Phong\", function () {",
-                                            "    pm.response.to.have.status(200);",
-                                            "});"
+                                            "const response = pm.response.json();",
+                                            "const hierarchy = response.value || response;",
+                                            "let sourceBinId = null;",
+                                            "let destBinId = null;",
+                                            "if (hierarchy && hierarchy.blocks) {",
+                                            "    for (const block of hierarchy.blocks) {",
+                                            "        if (block.zones) {",
+                                            "            for (const zone of block.zones) {",
+                                            "                if (zone.bins) {",
+                                            "                    for (const bin of zone.bins) {",
+                                            "                        if (bin.binCode === \"BIN-A1-01\") {",
+                                            "                            sourceBinId = bin.id;",
+                                            "                        }",
+                                            "                        if (bin.binCode === \"BIN-A1-02\") {",
+                                            "                            destBinId = bin.id;",
+                                            "                        }",
+                                            "                    }",
+                                            "                }",
+                                            "            }",
+                                            "        }",
+                                            "    }",
+                                            "}",
+                                            "pm.test(\"Bins found in hierarchy\", function () {",
+                                            "    pm.expect(sourceBinId).to.not.be.null;",
+                                            "    pm.expect(destBinId).to.not.be.null;",
+                                            "});",
+                                            "pm.collectionVariables.set(\"sourceBinId_D\", sourceBinId);",
+                                            "pm.collectionVariables.set(\"destBinId_D\", destBinId);"
                                         ],
                                         "type": "javascript"
                                     }
                                 }
-                            ],
+                            ]
+                        },
+                        {
+                            "name": "38. Putaway (Transfer) from Transit Bin to Storage Bin at HP",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -6532,10 +6611,244 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"receivedItems\": {\n        \"SKU-AO-001\": 1\n    }\n}"
+                                    "raw": "{\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"customerId\": \"cust-default\",\n    \"sku\": \"SKU-RED-TSHIRT\",\n    \"sourceBinId\": \"{{sourceBinId_D}}\",\n    \"destinationBinId\": \"{{destBinId_D}}\",\n    \"quantity\": 152\n}"
                                 },
                                 "url": {
-                                    "raw": "{{wms_url}}/api/inbound/orders/{{courierOrderId_D_B}}/transit-receive",
+                                    "raw": "{{wms_url}}/api/inventory/transfer",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inventory",
+                                        "transfer"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Advanced Scenarios",
+            "item": [
+                {
+                    "name": "Case E: Cross-region Consignment (Line-haul + Fulfillment)",
+                    "item": [
+                        {
+                            "name": "1. Create InboundRequest (Source CT, Dest HP)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"destinationWarehouseCode\": \"WH-HP-007\",\n    \"items\": [\n        {\n            \"skuCode\": \"SKU-BLUE-SHIRT\",\n            \"quantity\": 50\n        }\n    ],\n    \"note\": \"Cross-region consignment test: Can Tho to Hai Phong\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{oms_url}}/api/Orders/inbound-request",
+                                    "host": [
+                                        "{{oms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "Orders",
+                                        "inbound-request"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"orderId_E\", response.value || response.id);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "2. GET Auto-Generated Inbound Receipt at Source (CT)",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/by-order/{{orderId_E}}",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "by-order",
+                                        "{{orderId_E}}"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "exec": [
+                                            "setTimeout(function(){}, 2000);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                },
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"receiptId_E\", response.id || response.value.id);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "3. Receive Package at Source (CT)",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_E}}\",\n    \"skuCode\": \"SKU-BLUE-SHIRT\",\n    \"quantity\": 50,\n    \"binCode\": \"BIN-CT-001\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId_E}}/receive",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts",
+                                        "{{receiptId_E}}",
+                                        "receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "4. Sort Package for Line-haul (CT to HP)",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_E}}\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/sort",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "sort"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "5. GET Shipment ID at CT",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_E}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_E}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "exec": [
+                                            "setTimeout(function(){}, 2000);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                },
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_Ch1_E\", response.shipmentId || response.value || response.id);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "6. Dispatch Shipment at CT",
+                            "request": {
+                                "method": "POST",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_Ch1_E}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_Ch1_E}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "7. Receive Transit Shipment at HCM",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"receivedItems\": {\n        \"SKU-BLUE-SHIRT\": 50\n    }\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/orders/{{orderId_E}}/transit-receive",
                                     "host": [
                                         "{{wms_url}}"
                                     ],
@@ -6543,59 +6856,25 @@
                                         "api",
                                         "inbound",
                                         "orders",
-                                        "{{courierOrderId_D_B}}",
+                                        "{{orderId_E}}",
                                         "transit-receive"
                                     ]
                                 }
-                            }
-                        },
-                        {
-                            "name": "38. Verify Courier Order Saga State is AwaitingDispatch (OMS)",
+                            },
                             "event": [
                                 {
-                                    "listen": "test",
+                                    "listen": "prerequest",
                                     "script": {
                                         "exec": [
-                                            "var jsonData = pm.response.json();",
-                                            "pm.test(\"Order successfully moved to AwaitingDispatch state in Saga\", function () {",
-                                            "    pm.response.to.have.status(200);",
-                                            "    pm.expect(jsonData.value.status).to.equal(\"AwaitingDispatch\");",
-                                            "});"
+                                            "setTimeout(function(){}, 2000);"
                                         ],
                                         "type": "javascript"
                                     }
                                 }
-                            ],
-                            "request": {
-                                "method": "GET",
-                                "url": {
-                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId_D_B_D_B}}",
-                                    "host": [
-                                        "{{oms_url}}"
-                                    ],
-                                    "path": [
-                                        "api",
-                                        "orders",
-                                        "{{courierOrderId_D_B_D_B}}"
-                                    ]
-                                }
-                            }
+                            ]
                         },
                         {
-                            "name": "39. Dispatch Courier Order (OMS)",
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "pm.test(\"Order successfully dispatched to driver\", function () {",
-                                            "    pm.response.to.have.status(200);",
-                                            "});"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ],
+                            "name": "8. Sort Package at HCM (HCM to HP)",
                             "request": {
                                 "method": "PUT",
                                 "header": [
@@ -6606,70 +6885,124 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"driverId\": \"driver_07\",\n    \"routeId\": \"ROUTE_FINAL_01\"\n}"
+                                    "raw": "{\n    \"orderId\": \"{{orderId_E}}\"\n}"
                                 },
                                 "url": {
-                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId_D_B_D_B}}/actions/dispatch",
+                                    "raw": "{{wms_url}}/api/outbound/sort",
                                     "host": [
-                                        "{{oms_url}}"
+                                        "{{wms_url}}"
                                     ],
                                     "path": [
                                         "api",
+                                        "outbound",
+                                        "sort"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "9. GET Shipment ID at HCM",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_E}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
                                         "orders",
-                                        "{{courierOrderId_D_B_D_B}}",
-                                        "actions",
+                                        "{{orderId_E}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "exec": [
+                                            "setTimeout(function(){}, 2000);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                },
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_Ch2_E\", response.shipmentId || response.value || response.id);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "10. Dispatch Shipment at HCM",
+                            "request": {
+                                "method": "POST",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_Ch2_E}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_Ch2_E}}",
                                         "dispatch"
                                     ]
                                 }
                             }
                         },
                         {
-                            "name": "40. Verify Courier Order Saga State is Dispatched (OMS)",
-                            "event": [
-                                {
-                                    "listen": "test",
-                                    "script": {
-                                        "exec": [
-                                            "var jsonData = pm.response.json();",
-                                            "pm.test(\"Order successfully moved to Dispatched state in Saga\", function () {",
-                                            "    pm.response.to.have.status(200);",
-                                            "    pm.expect(jsonData.value.status).to.equal(\"Dispatched\");",
-                                            "});"
-                                        ],
-                                        "type": "javascript"
-                                    }
-                                }
-                            ],
+                            "name": "11. Receive Transit Shipment at Hanoi",
                             "request": {
-                                "method": "GET",
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5\",\n    \"receivedItems\": {\n        \"SKU-BLUE-SHIRT\": 50\n    }\n}"
+                                },
                                 "url": {
-                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId_D_B_D_B}}",
+                                    "raw": "{{wms_url}}/api/inbound/orders/{{orderId_E}}/transit-receive",
                                     "host": [
-                                        "{{oms_url}}"
+                                        "{{wms_url}}"
                                     ],
                                     "path": [
                                         "api",
+                                        "inbound",
                                         "orders",
-                                        "{{courierOrderId_D_B_D_B}}"
+                                        "{{orderId_E}}",
+                                        "transit-receive"
                                     ]
                                 }
-                            }
-                        },
-                        {
-                            "name": "41. Deliver Courier Order (OMS)",
+                            },
                             "event": [
                                 {
-                                    "listen": "test",
+                                    "listen": "prerequest",
                                     "script": {
                                         "exec": [
-                                            "pm.test(\"Order successfully marked as delivered\", function () {",
-                                            "    pm.response.to.have.status(200);",
-                                            "});"
+                                            "setTimeout(function(){}, 2000);"
                                         ],
                                         "type": "javascript"
                                     }
                                 }
-                            ],
+                            ]
+                        },
+                        {
+                            "name": "12. Sort Package at Hanoi (Hanoi to HP)",
                             "request": {
                                 "method": "PUT",
                                 "header": [
@@ -6680,51 +7013,230 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"proofOfDeliveryUrl\": \"http://pod-example.com/courier.jpg\"\n}"
+                                    "raw": "{\n    \"orderId\": \"{{orderId_E}}\"\n}"
                                 },
                                 "url": {
-                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId_D_B_D_B}}/actions/deliver",
+                                    "raw": "{{wms_url}}/api/outbound/sort",
                                     "host": [
-                                        "{{oms_url}}"
+                                        "{{wms_url}}"
                                     ],
                                     "path": [
                                         "api",
-                                        "orders",
-                                        "{{courierOrderId_D_B_D_B}}",
-                                        "actions",
-                                        "deliver"
+                                        "outbound",
+                                        "sort"
                                     ]
                                 }
                             }
                         },
                         {
-                            "name": "42. Verify Final Courier Order Status is Completed (OMS)",
+                            "name": "13. GET Shipment ID at Hanoi",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{orderId_E}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{orderId_E}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "exec": [
+                                            "setTimeout(function(){}, 2000);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                },
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"shipmentId_Ch3_E\", response.shipmentId || response.value || response.id);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "14. Dispatch Shipment at Hanoi",
+                            "request": {
+                                "method": "POST",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{shipmentId_Ch3_E}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{shipmentId_Ch3_E}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "15. Create Final Inbound Receipt at HP",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_E}}\",\n    \"tenantId\": \"default-tenant\",\n    \"customerId\": \"cust-default\",\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"sourceShipmentNo\": \"ASN-FINAL-E-{{$timestamp}}\",\n    \"expectedLines\": [\n        {\n            \"skuCode\": \"SKU-BLUE-SHIRT\",\n            \"expectedQuantity\": 50\n        }\n    ]\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inbound/receipts",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inbound",
+                                        "receipts"
+                                    ]
+                                }
+                            },
                             "event": [
                                 {
                                     "listen": "test",
                                     "script": {
                                         "exec": [
-                                            "var jsonData = pm.response.json();",
-                                            "pm.test(\"Order successfully completed\", function () {",
-                                            "    pm.response.to.have.status(200);",
-                                            "    pm.expect(jsonData.value.status).to.equal(\"Completed\");",
-                                            "});"
+                                            "const response = pm.response.json();",
+                                            "pm.collectionVariables.set(\"receiptId_E_final\", response);"
                                         ],
                                         "type": "javascript"
                                     }
                                 }
-                            ],
+                            ]
+                        },
+                        {
+                            "name": "16. Inbound Receive at HP",
                             "request": {
-                                "method": "GET",
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"orderId\": \"{{orderId_E}}\",\n    \"skuCode\": \"SKU-BLUE-SHIRT\",\n    \"binCode\": \"BIN-A1-01\",\n    \"quantity\": 50\n}"
+                                },
                                 "url": {
-                                    "raw": "{{oms_url}}/api/orders/{{courierOrderId_D_B_D_B}}",
+                                    "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId_E_final}}/receive",
                                     "host": [
-                                        "{{oms_url}}"
+                                        "{{wms_url}}"
                                     ],
                                     "path": [
                                         "api",
-                                        "orders",
-                                        "{{courierOrderId_D_B_D_B}}"
+                                        "inbound",
+                                        "receipts",
+                                        "{{receiptId_E_final}}",
+                                        "receive"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "17. GET Bins Hierarchy at HP (Extract Bin IDs)",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/Warehouse/f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6/hierarchy",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "Warehouse",
+                                        "f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6",
+                                        "hierarchy"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "const response = pm.response.json();",
+                                            "const hierarchy = response.value || response;",
+                                            "let sourceBinId = null;",
+                                            "let destBinId = null;",
+                                            "if (hierarchy && hierarchy.blocks) {",
+                                            "    for (const block of hierarchy.blocks) {",
+                                            "        if (block.zones) {",
+                                            "            for (const zone of block.zones) {",
+                                            "                if (zone.bins) {",
+                                            "                    for (const bin of zone.bins) {",
+                                            "                        if (bin.binCode === \"BIN-A1-01\") {",
+                                            "                            sourceBinId = bin.id;",
+                                            "                        }",
+                                            "                        if (bin.binCode === \"BIN-A1-02\") {",
+                                            "                            destBinId = bin.id;",
+                                            "                        }",
+                                            "                    }",
+                                            "                }",
+                                            "            }",
+                                            "        }",
+                                            "    }",
+                                            "}",
+                                            "pm.test(\"Bins found in hierarchy\", function () {",
+                                            "    pm.expect(sourceBinId).to.not.be.null;",
+                                            "    pm.expect(destBinId).to.not.be.null;",
+                                            "});",
+                                            "pm.collectionVariables.set(\"sourceBinId_E\", sourceBinId);",
+                                            "pm.collectionVariables.set(\"destBinId_E\", destBinId);"
+                                        ],
+                                        "type": "javascript"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "18. Putaway (Transfer) from Transit Bin to Storage Bin at HP",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"customerId\": \"cust-default\",\n    \"sku\": \"SKU-BLUE-SHIRT\",\n    \"sourceBinId\": \"{{sourceBinId_E}}\",\n    \"destinationBinId\": \"{{destBinId_E}}\",\n    \"quantity\": 50\n}"
+                                },
+                                "url": {
+                                    "raw": "{{wms_url}}/api/inventory/transfer",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "inventory",
+                                        "transfer"
                                     ]
                                 }
                             }
