@@ -19,11 +19,6 @@ public class OperatorAuthorizationService : IOperatorAuthorizationService
 
     public async Task<bool> HasPermissionAsync(string operatorSub, Guid warehouseId, Guid? zoneId, string permissionCode, CancellationToken cancellationToken = default)
     {
-        if (string.Equals(operatorSub, "System", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
         var cacheKey = $"permissions_{operatorSub}";
 
         if (!_cache.TryGetValue(cacheKey, out List<PermissionInfo> permissions))

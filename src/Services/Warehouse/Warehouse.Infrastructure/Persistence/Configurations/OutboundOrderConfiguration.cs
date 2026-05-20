@@ -9,33 +9,27 @@ public class OutboundOrderConfiguration : IEntityTypeConfiguration<OutboundOrder
     public void Configure(EntityTypeBuilder<OutboundOrder> builder)
     {
         builder.ToTable("OutboundOrders");
-        builder.HasKey(x => x.Id);
+        builder.HasKey(o => o.Id);
 
-        builder.Property(x => x.TenantId).HasMaxLength(100).IsRequired();
-        builder.Property(x => x.CustomerId).HasMaxLength(100).IsRequired();
-        builder.Property(x => x.WarehouseId).IsRequired();
-        builder.Property(x => x.OrderId).IsRequired();
-        builder.Property(x => x.OrderNo).HasMaxLength(50).IsRequired();
-        builder.Property(x => x.Destination).HasMaxLength(500);
-        builder.Property(x => x.DestinationAddress).HasMaxLength(500);
-        builder.Property(x => x.DestinationCity).HasMaxLength(100);
+        builder.Property(o => o.TenantId).HasMaxLength(100).IsRequired();
+        builder.Property(o => o.CustomerId).HasMaxLength(100).IsRequired();
+        builder.Property(o => o.WarehouseId).IsRequired();
+        builder.Property(o => o.OrderId).IsRequired();
         
-        builder.Property(x => x.Status)
-               .HasConversion<int>()
+        builder.Property(o => o.Status)
+               .HasConversion<string>()
+               .HasMaxLength(50)
                .IsRequired();
 
-        builder.Property(x => x.Priority).IsRequired().HasDefaultValue(0);
-        builder.Property(x => x.AllowPartial).IsRequired().HasDefaultValue(true);
-        builder.Property(x => x.PlannedShipAt);
-        builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(o => o.PlannedShipAt);
+        builder.Property(o => o.CreatedAt).IsRequired();
 
-        builder.HasMany(x => x.Lines)
-               .WithOne(x => x.OutboundOrder)
-               .HasForeignKey(x => x.OutboundOrderId)
-               .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(o => new { o.TenantId, o.OrderId }).IsUnique();
+        builder.HasIndex(o => new { o.WarehouseId, o.Status, o.PlannedShipAt });
 
-        builder.HasIndex(x => new { x.WarehouseId, x.Status, x.PlannedShipAt });
-        builder.HasIndex(x => new { x.TenantId, x.OrderNo }).IsUnique();
-        builder.HasIndex(x => x.OrderId);
+        builder.HasMany(o => o.Lines)
+            .WithOne(l => l.Order)
+            .HasForeignKey(l => l.OutboundOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -9,18 +9,14 @@ public class OutboundOrderLineConfiguration : IEntityTypeConfiguration<OutboundO
     public void Configure(EntityTypeBuilder<OutboundOrderLine> builder)
     {
         builder.ToTable("OutboundOrderLines");
-        builder.HasKey(x => x.Id);
 
-        builder.Property(x => x.Sku).HasMaxLength(100).IsRequired();
-        builder.Property(x => x.Uom).HasMaxLength(20).IsRequired();
-        
-        builder.Property(x => x.RequestedQty).IsRequired();
-        builder.Property(x => x.ReservedQty).IsRequired();
-        builder.Property(x => x.PickedQty).IsRequired();
-        builder.Property(x => x.PackedQty).IsRequired();
-        builder.Property(x => x.ShippedQty).IsRequired();
+        builder.HasKey(l => l.Id);
 
-        // Ràng buộc Unique SKU trên mỗi Order (đã chốt ở plan)
-        builder.HasIndex(x => new { x.OutboundOrderId, x.Sku }).IsUnique();
+        builder.Property(l => l.OutboundOrderId).IsRequired();
+        builder.Property(l => l.SkuCode).HasMaxLength(100).IsRequired();
+        builder.Property(l => l.RequestedQty).IsRequired();
+        builder.Property(l => l.Uom).HasMaxLength(32).IsRequired();
+
+        builder.HasIndex(l => new { l.OutboundOrderId, l.SkuCode });
     }
 }

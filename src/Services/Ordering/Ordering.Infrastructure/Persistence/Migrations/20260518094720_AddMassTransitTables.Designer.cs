@@ -12,8 +12,8 @@ using Ordering.Infrastructure.Persistence;
 namespace Ordering.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260501090000_NormalizeOrderingPhaseA")]
-    partial class NormalizeOrderingPhaseA
+    [Migration("20260518094720_AddMassTransitTables")]
+    partial class AddMassTransitTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -411,6 +411,10 @@ namespace Ordering.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedByOperatorId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("CustomerIdInternal")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -467,6 +471,10 @@ namespace Ordering.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("UpdatedByOperatorId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("WarehouseId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -480,6 +488,12 @@ namespace Ordering.Infrastructure.Persistence.Migrations
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByOperatorId")
+                        .HasFilter("\"CreatedByOperatorId\" IS NOT NULL");
+
+                    b.HasIndex("UpdatedByOperatorId")
+                        .HasFilter("\"UpdatedByOperatorId\" IS NOT NULL");
 
                     b.HasIndex("WaybillCode")
                         .IsUnique();
@@ -495,6 +509,54 @@ namespace Ordering.Infrastructure.Persistence.Migrations
                         .HasFilter("\"ExternalReference\" IS NOT NULL");
 
                     b.ToTable("Orders", (string)null);
+                });
+
+            modelBuilder.Entity("Ordering.Domain.Entities.OrderConsignee", b =>
+                {
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Street")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ZipCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("OrderId");
+
+                    b.ToTable("OrderConsignees", (string)null);
                 });
 
             modelBuilder.Entity("Ordering.Domain.Entities.OrderItem", b =>
@@ -651,6 +713,15 @@ namespace Ordering.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Consignee")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ordering.Domain.Entities.OrderConsignee", b =>
+                {
+                    b.HasOne("Ordering.Domain.Entities.Order", null)
+                        .WithOne()
+                        .HasForeignKey("Ordering.Domain.Entities.OrderConsignee", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
