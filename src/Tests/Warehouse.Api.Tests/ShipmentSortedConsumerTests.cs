@@ -38,10 +38,10 @@ public class ShipmentSortedConsumerTests
         await consumer.Consume(contextMock.Object);
 
         var receipts = await dbContext.InboundReceipts
-            .Where(x => x.OrderId == orderId && x.TenantId == "tenant-a")
+            .Where(x => x.SourceRef == orderId.ToString() && x.TenantId == "tenant-a")
             .ToListAsync();
 
         Assert.Single(receipts);
-        Assert.Equal("ASN-TEST-001", receipts[0].SourceShipmentNo);
+        Assert.Equal("ASN-TEST-001", receipts[0].ShipmentNo);
     }
 }

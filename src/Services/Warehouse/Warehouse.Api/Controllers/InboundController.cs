@@ -2,14 +2,9 @@ using Logistics.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Warehouse.Application.Common.Interfaces;
-using Warehouse.Domain.Entities;
-using Warehouse.Domain.Enums;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
-using Warehouse.Application.Features.Inbound.Commands.ReceiveTransitShipment;
-using Warehouse.Application.Features.Inbound.Queries.GetTransitDiscrepancies;
-using Warehouse.Application.Features.Inbound.Commands.ResolveTransitDiscrepancy;
 using Warehouse.Api.Controllers.Requests;
 
 namespace Warehouse.Api.Controllers;
@@ -29,10 +24,11 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetReceiptByOrderId(Guid orderId, [FromQuery] Guid warehouseId)
     {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
         var query = _context.InboundReceipts
             .Include(r => r.Lines)
             .ThenInclude(l => l.Allocations)
-            .Where(x => x.OrderId == orderId);
+            .Where(x => x.SourceRef == orderId.ToString() && x.TenantId == tenantId);
         
         if (warehouseId != Guid.Empty)
         {
@@ -52,7 +48,15 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Guid>> CreateReceipt([FromBody] CreateInboundReceiptCommand command)
     {
-        var result = await Mediator.Send(command);
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var customerId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(customerId))
+        {
+            return BadRequest(new { Code = "TenantOrCustomer.MissingClaim", Message = "Missing tenant/customer claim in access token." });
+        }
+
+        var finalCommand = command with { TenantId = tenantId, CustomerId = customerId };
+        var result = await Mediator.Send(finalCommand);
         return ToActionResult(result);
     }
 
@@ -65,7 +69,12 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Receive(Guid receiptId, [FromBody] ReceiveInboundItemRequest request)
     {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            return BadRequest(new { Code = "Tenant.MissingClaim", Message = "Missing tenant claim in access token." });
+        }
         if (string.IsNullOrWhiteSpace(operatorSub))
         {
             return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
@@ -74,7 +83,7 @@ public class InboundController : ApiControllerBase
         var command = new ReceiveInboundItemCommand(
             receiptId,
             request.OrderId,
-            "", // TenantId is resolved internally from the receipt in the handler!
+            tenantId,
             request.SkuCode,
             request.BinCode,
             operatorSub,
@@ -94,75 +103,15 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> ForceClose(Guid receiptId)
     {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(operatorSub))
+        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(operatorSub))
         {
-            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claims." });
+            return BadRequest(new { Code = "Claims.Missing", Message = "Missing tenant/operator claims." });
         }
 
-        var command = new Warehouse.Application.Features.Inbound.Commands.ForceCloseReceipt.ForceCloseReceiptCommand(receiptId, "", operatorSub);
-        var result = await Mediator.Send(command);
-        return ToActionResult(result);
-    }
-
-    /// <summary>
-    /// Nhận hàng trung chuyển tại kho trung gian (Transit Hub)
-    /// </summary>
-    [HttpPost("orders/{orderId:guid}/transit-receive")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<bool>> ReceiveTransitShipment(Guid orderId, [FromBody] ReceiveTransitShipmentRequest request)
-    {
-        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(operatorSub))
-        {
-            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
-        }
-
-        var command = new ReceiveTransitShipmentCommand(orderId, request.WarehouseId, operatorSub, request.ReceivedItems);
-        var result = await Mediator.Send(command);
-        return ToActionResult(result);
-    }
-
-    /// <summary>
-    /// Truy vấn danh sách chênh lệch/hao hụt hàng hóa trung chuyển
-    /// </summary>
-    [HttpGet("transit-discrepancies")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<TransitDiscrepancy>>> GetTransitDiscrepancies(
-        [FromQuery] Guid? warehouseId,
-        [FromQuery] Guid? orderId,
-        [FromQuery] Guid? shipmentId,
-        [FromQuery] Warehouse.Domain.Enums.TransitDiscrepancyStatus? status)
-    {
-        var query = new GetTransitDiscrepanciesQuery(warehouseId, orderId, shipmentId, status);
-        var result = await Mediator.Send(query);
-        return ToActionResult(result);
-    }
-
-    /// <summary>
-    /// Giải quyết biên bản chênh lệch/hao hụt trung chuyển (Yêu cầu quyền inbound:resolve_discrepancy)
-    /// </summary>
-    [HttpPost("transit-discrepancies/{id:guid}/resolve")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<bool>> ResolveTransitDiscrepancy(
-        Guid id, 
-        [FromBody] ResolveTransitDiscrepancyRequest request)
-    {
-        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(operatorSub))
-        {
-            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
-        }
-
-        var command = new ResolveTransitDiscrepancyCommand(id, request.NewStatus, operatorSub, request.Notes);
+        var command = new Warehouse.Application.Features.Inbound.Commands.ForceCloseReceipt.ForceCloseReceiptCommand(receiptId, tenantId, operatorSub);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }

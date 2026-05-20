@@ -37,12 +37,6 @@ public class InventoryLedger : Entity<Guid>
     // EF Core
     private InventoryLedger() { }
 
-    /// <summary>
-    /// Creates a new ledger entry. IMPORTANT: The mutation (Restock/Deduct/ConsumeStock)
-    /// MUST be applied to the InventoryItem BEFORE calling this method, so that
-    /// BalanceAfter correctly reflects the post-mutation state.
-    /// If you need to override the balance (e.g. for adjustments), pass it explicitly.
-    /// </summary>
     public static InventoryLedger Create(
         InventoryItem item,
         InventoryLedgerReason reason,
@@ -50,8 +44,7 @@ public class InventoryLedger : Entity<Guid>
         string? referenceId = null,
         string? referenceType = null,
         string? operatorSub = null,
-        string? correlationId = null,
-        int? balanceAfter = null)
+        string? correlationId = null)
     {
         return new InventoryLedger
         {
@@ -62,7 +55,7 @@ public class InventoryLedger : Entity<Guid>
             BinId = item.BinId,
             Reason = reason,
             DeltaQty = deltaQty,
-            BalanceAfter = balanceAfter ?? item.QuantityOnHand,
+            BalanceAfter = item.QuantityOnHand,
             ReferenceId = referenceId,
             ReferenceType = referenceType,
             OperatorSub = operatorSub,

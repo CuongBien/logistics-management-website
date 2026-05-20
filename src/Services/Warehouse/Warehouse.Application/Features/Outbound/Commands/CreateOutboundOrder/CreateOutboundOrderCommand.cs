@@ -3,22 +3,11 @@ using MediatR;
 
 namespace Warehouse.Application.Features.Outbound.Commands.CreateOutboundOrder;
 
-public record OutboundOrderLineItem(string Sku, int Quantity, string Uom);
+public record OutboundOrderLineSpec(string SkuCode, int RequestedQty, string? Uom);
 
 public record CreateOutboundOrderCommand(
+    Guid OrderId,
+    Guid DestinationWarehouseId,
     string TenantId,
     string CustomerId,
-    Guid WarehouseId,
-    Guid OrderId,
-    string OrderNo,
-    string? DestinationAddress,
-    string? DestinationCity,
-    int Priority,
-    bool AllowPartial,
-    DateTime? PlannedShipAt,
-    List<OutboundOrderLineItem> Lines,
-    string? PartnerId = null,
-    double? Latitude = null,
-    double? Longitude = null,
-    decimal? Weight = null,
-    decimal? Volume = null) : IRequest<Result<Guid>>;
+    IReadOnlyList<OutboundOrderLineSpec> Lines) : IRequest<Result<Guid>>;

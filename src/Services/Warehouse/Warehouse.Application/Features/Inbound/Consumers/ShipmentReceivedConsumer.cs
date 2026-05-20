@@ -26,23 +26,23 @@ public sealed class ShipmentReceivedConsumer : IConsumer<ShipmentReceivedIntegra
 
         _logger.LogInformation("Consuming ShipmentReceived for Order {OrderId} at Warehouse {WH}", message.OrderId, message.WarehouseId);
 
-        // 1. Find the InboundReceipt to get the SourceShipmentNo
+        // 1. Find the InboundReceipt using SourceRef (OrderId) instead of the old OrderId property
         var receipt = await _context.InboundReceipts
-            .FirstOrDefaultAsync(x => x.OrderId == message.OrderId && x.WarehouseId == destinationWarehouseId, context.CancellationToken);
+            .FirstOrDefaultAsync(x => x.SourceRef == message.OrderId.ToString() && x.WarehouseId == destinationWarehouseId, context.CancellationToken);
 
-        if (receipt == null || string.IsNullOrWhiteSpace(receipt.SourceShipmentNo))
+        if (receipt == null || string.IsNullOrWhiteSpace(receipt.ShipmentNo))
         {
-            _logger.LogWarning("Cannot find InboundReceipt or SourceShipmentNo for Order {OrderId} at Warehouse {WH}", message.OrderId, message.WarehouseId);
+            _logger.LogWarning("Cannot find InboundReceipt or ShipmentNo for Order {OrderId} at Warehouse {WH}", message.OrderId, message.WarehouseId);
             return;
         }
 
         // 2. Find the Shipment by ShipmentNo
         var shipment = await _context.Shipments
-            .FirstOrDefaultAsync(x => x.ShipmentNo == receipt.SourceShipmentNo && x.Status == ShipmentStatus.Shipped, context.CancellationToken);
+            .FirstOrDefaultAsync(x => x.ShipmentNo == receipt.ShipmentNo && x.Status == ShipmentStatus.Dispatched, context.CancellationToken);
 
         if (shipment == null)
         {
-            _logger.LogWarning("No dispatched Shipment found with ShipmentNo {ShipmentNo}", receipt.SourceShipmentNo);
+            _logger.LogWarning("No dispatched Shipment found with ShipmentNo {ShipmentNo}", receipt.ShipmentNo);
             return;
         }
 
@@ -51,6 +51,6 @@ public sealed class ShipmentReceivedConsumer : IConsumer<ShipmentReceivedIntegra
         
         await _context.SaveChangesAsync(context.CancellationToken);
 
-        _logger.LogInformation("Shipment {ShipmentNo} marked as Delivered for Order {OrderId}", receipt.SourceShipmentNo, message.OrderId);
+        _logger.LogInformation("Shipment {ShipmentNo} marked as Delivered for Order {OrderId}", receipt.ShipmentNo, message.OrderId);
     }
 }

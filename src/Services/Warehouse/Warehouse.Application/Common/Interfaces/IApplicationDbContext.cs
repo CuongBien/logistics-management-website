@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Warehouse.Domain.Entities;
 
 namespace Warehouse.Application.Common.Interfaces;
@@ -14,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<InboundReceipt> InboundReceipts { get; }
     DbSet<InboundReceiptLine> InboundReceiptLines { get; }
     DbSet<InboundBinAllocation> InboundBinAllocations { get; }
+    DbSet<DispositionLog> DispositionLogs { get; }
     DbSet<OperatorProfile> OperatorProfiles { get; }
     DbSet<Role> Roles { get; }
     DbSet<Permission> Permissions { get; }
@@ -23,19 +25,13 @@ public interface IApplicationDbContext
     DbSet<ErpSkuMirror> ErpSkuMirrors { get; }
     DbSet<ErpWarehouseMirror> ErpWarehouseMirrors { get; }
     DbSet<ErpSyncCheckpoint> ErpSyncCheckpoints { get; }
-    
-    // Outbound
     DbSet<OutboundOrder> OutboundOrders { get; }
     DbSet<OutboundOrderLine> OutboundOrderLines { get; }
-    DbSet<PickTask> PickTasks { get; }
     DbSet<Shipment> Shipments { get; }
-    DbSet<ShipmentItem> ShipmentItems { get; }
-    DbSet<ShipmentOrder> ShipmentOrders { get; }
-
     DbSet<InventoryLedger> InventoryLedgers { get; }
     DbSet<InventoryReconciliationReport> InventoryReconciliationReports { get; }
-    DbSet<WarehouseRoute> WarehouseRoutes { get; }
-    DbSet<TransitDiscrepancy> TransitDiscrepancies { get; }
     
+
+    ChangeTracker ChangeTracker { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

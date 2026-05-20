@@ -81,16 +81,13 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             
         if (outboundOrder == null)
         {
-            outboundOrder = new OutboundOrder(
-                request.OrderId, 
-                request.TenantId, 
-                request.CustomerId, 
-                sourceWarehouseId, 
-                orderNo: $"SORTED-{request.OrderId.ToString()[..8].ToUpper()}",
-                destinationAddress: null,
-                destinationCity: null,
-                priority: 0,
-                allowPartial: true);
+            // Sort-created outbound order: we don't have specific line items yet,
+            // but the constructor requires at least one. Use a placeholder.
+            var lineSpecs = new List<(string SkuCode, int RequestedQty, string? Uom)>
+            {
+                ("SORTED-ORDER", 1, "EA")
+            };
+            outboundOrder = new OutboundOrder(request.OrderId, sourceWarehouseId, request.TenantId, request.CustomerId, lineSpecs);
             outboundOrder.UpdateStatus(OutboundOrderStatus.Shipped);
             _context.OutboundOrders.Add(outboundOrder);
 

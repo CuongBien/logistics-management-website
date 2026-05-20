@@ -1,0 +1,196 @@
+
+services:
+  # Main Application Database
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: lms-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lms_oms_dev
+    ports:
+      - "56432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker-postgres-init.sql:/docker-entrypoint-initdb.d/docker-postgres-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lms-network
+
+  # Keycloak Database
+  postgres-keycloak:
+    image: postgres:16-alpine
+    container_name: lms-postgres-keycloak
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak123
+      POSTGRES_DB: keycloak
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lms-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: lms-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: lms
+      RABBITMQ_DEFAULT_PASS: lms123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - lms-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: lms-keycloak
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak123
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "18080:8080"
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - lms-network
+
+  ordering.api:
+    image: lms-ordering-api
+    build:
+      context: ../../
+      dockerfile: src/Services/Ordering/Ordering.Api/Dockerfile
+    container_name: lms-ordering-api
+    ports:
+      - "5000:8080"
+    environment:
+      - Swagger__ServerBasePath=/api/ordering
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_oms_dev;Username=postgres;Password=postgres
+      - MessageBroker__RabbitMQ__Host=rabbitmq
+      - MessageBroker__RabbitMQ__Username=lms
+      - MessageBroker__RabbitMQ__Password=lms123
+      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
+      - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
+      - JwtOptions__Audience=oms-client
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - ErpSync__BaseUrl=http://erp:5010/api
+      - ErpSync__ApiKey=dev-key
+      - ErpSync__BatchSize=100
+      - ErpSync__SyncIntervalSeconds=20
+      - ErpSync__TenantIds__0=default-tenant
+    depends_on:
+      - postgres
+      - rabbitmq
+      - keycloak
+    networks:
+      - lms-network
+
+  warehouse.api:
+    image: lms-warehouse-api
+    build:
+      context: ../../
+      dockerfile: src/Services/Warehouse/Warehouse.Api/Dockerfile
+    container_name: lms-warehouse-api
+    ports:
+      - "5051:8080"
+    environment:
+      - Swagger__ServerBasePath=/api/warehouse
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=lms_wms_dev;Username=postgres;Password=postgres
+      - MessageBroker__RabbitMQ__Host=rabbitmq
+      - MessageBroker__RabbitMQ__Username=lms
+      - MessageBroker__RabbitMQ__Password=lms123
+      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
+      - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
+      - JwtOptions__Audience=oms-client
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - ErpSync__BaseUrl=http://erp:5010/api
+      - ErpSync__ApiKey=dev-key
+      - ErpSync__BatchSize=100
+      - ErpSync__SyncIntervalSeconds=20
+      - ErpSync__TenantIds__0=default-tenant
+    depends_on:
+      - postgres
+      - rabbitmq
+      - keycloak
+    networks:
+      - lms-network
+
+  web.bff.api:
+    image: lms-web-bff-api
+    build:
+      context: ../../
+      dockerfile: src/ApiGateways/Web.Bff.Logistics/Web.Bff.Logistics.Api/Dockerfile
+    container_name: lms-web-bff-api
+    ports:
+      - "8000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ReverseProxy__Clusters__oms-cluster__Destinations__oms-destination__Address=http://ordering.api:8080
+      - ReverseProxy__Clusters__wms-cluster__Destinations__wms-destination__Address=http://warehouse.api:8080
+      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
+      - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
+      - JwtOptions__Audience=oms-client
+    depends_on:
+      - ordering.api
+      - warehouse.api
+    networks:
+      - lms-network
+
+  erp:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile.erp
+    container_name: lms-mock-erp
+    ports:
+      - "5009:5010"
+    networks:
+      - lms-network
+
+
+volumes:
+  postgres_data:
+  postgres_keycloak_data:
+  rabbitmq_data:
+
+networks:
+  lms-network:
+    driver: bridge

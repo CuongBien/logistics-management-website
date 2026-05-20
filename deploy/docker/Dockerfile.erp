@@ -1,0 +1,7 @@
+FROM mcr.microsoft.com/powershell:latest
+WORKDIR /app
+COPY src/mock-erp.ps1 .
+EXPOSE 5010
+# Sửa script để lắng nghe trên tất cả interface (trong container thì không cần admin cho việc này)
+RUN sed -i 's/http:\/\/localhost:\$Port\//http:\/\/\*:\$Port\//g' mock-erp.ps1
+CMD ["pwsh", "-File", "./mock-erp.ps1", "-Port", "5010"]

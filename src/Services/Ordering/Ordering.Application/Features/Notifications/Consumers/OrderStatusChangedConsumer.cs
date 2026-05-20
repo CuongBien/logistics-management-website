@@ -14,7 +14,8 @@ public class OrderStatusChangedConsumer :
     IConsumer<RouteDispatchedIntegrationEvent>,
     IConsumer<DeliveryCompletedIntegrationEvent>,
     IConsumer<DeliveryFailedIntegrationEvent>,
-    IConsumer<ShipmentSortedIntegrationEvent>
+    IConsumer<ShipmentSortedIntegrationEvent>,
+    IConsumer<InboundDiscrepancyDetectedIntegrationEvent>
 {
     private readonly INotificationService _notificationService;
     private readonly IApplicationDbContext _context;
@@ -126,6 +127,27 @@ public class OrderStatusChangedConsumer :
             context.CancellationToken);
     }
 
+    public async Task Consume(ConsumeContext<InboundDiscrepancyDetectedIntegrationEvent> context)
+    {
+        var isStatusSynchronized = await SyncOrderAwaitingResolutionStatusAsync(
+            context.Message.OrderId,
+            context.Message.WarehouseId,
+            context.CancellationToken);
+        if (!isStatusSynchronized) return;
+
+        var consignorId = await GetConsignorIdAsync(context.Message.OrderId, context.CancellationToken);
+        if (string.IsNullOrEmpty(consignorId)) return;
+
+        var details = string.Join(", ", context.Message.Lines.Select(l => 
+            $"{l.SkuCode} (Dự kiến: {l.ExpectedQty}, Thực tế: {l.ReceivedQty})"));
+
+        await _notificationService.SendOrderStatusUpdatedAsync(
+            consignorId, context.Message.OrderId,
+            "AwaitingResolution",
+            $"Phát hiện sai lệch khi nhập kho tại {context.Message.WarehouseId}. Vui lòng xử lý ngoại lệ. Chi tiết: {details}",
+            context.CancellationToken);
+    }
+
     private async Task<string> GetConsignorIdAsync(Guid orderId, CancellationToken cancellationToken)
     {
         var orderState = await _context.OrderStates
@@ -219,6 +241,37 @@ public class OrderStatusChangedConsumer :
         order.ClearDomainEvents();
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("ShipmentSorted sync applied for Order {OrderId}", orderId);
+        return true;
+    }
+
+    private async Task<bool> SyncOrderAwaitingResolutionStatusAsync(Guid orderId, string warehouseId, CancellationToken cancellationToken)
+    {
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(x => x.Id == orderId, cancellationToken);
+
+        if (order == null)
+        {
+            _logger.LogWarning("Cannot sync InboundDiscrepancyDetected: Order {OrderId} not found", orderId);
+            return false;
+        }
+
+        if (order.Status == OrderStatus.AwaitingResolution)
+        {
+            _logger.LogInformation("Skip InboundDiscrepancyDetected sync for Order {OrderId} because status is already AwaitingResolution", orderId);
+            return false;
+        }
+
+        var result = order.MarkAwaitingResolution(warehouseId);
+        if (result.IsFailure)
+        {
+            _logger.LogWarning("InboundDiscrepancyDetected sync failed for Order {OrderId}. Error: {ErrorCode} - {ErrorMessage}",
+                orderId, result.Error.Code, result.Error.Message);
+            return false;
+        }
+
+        order.ClearDomainEvents();
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("InboundDiscrepancyDetected sync applied for Order {OrderId}", orderId);
         return true;
     }
 }

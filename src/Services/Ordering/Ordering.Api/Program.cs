@@ -17,9 +17,6 @@ using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Clear default claim mapping to keep 'sub' as 'sub'
-System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
-
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();
 
@@ -120,8 +117,6 @@ builder.Services.AddAuthentication("Bearer")
             {
                 "http://localhost:8080/realms/logistics_realm",
                 "http://localhost:18080/realms/logistics_realm",
-                "http://127.0.0.1:8080/realms/logistics_realm",
-                "http://127.0.0.1:18080/realms/logistics_realm",
                 "http://keycloak:8080/realms/logistics_realm"
             },
             ValidateAudience = false,

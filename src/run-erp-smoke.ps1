@@ -9,7 +9,7 @@ $mockJob = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList 
     "-ExecutionPolicy",
     "Bypass",
     "-File",
-    "tests/mock-erp/mock-erp.ps1"
+    "src/mock-erp.ps1"
 )
 Start-Sleep -Seconds 2
 

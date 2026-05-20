@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Warehouse.Application.Common.Interfaces;
 using Warehouse.Api.Controllers;
 using Warehouse.Api.Controllers.Requests;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
+using Warehouse.Application.Features.Outbound.Commands.CreateOutboundOrder;
 using Warehouse.Application.Features.Outbound.Commands.SortOrder;
 using Xunit;
 
@@ -21,10 +23,71 @@ public class InboundOutboundControllerTests
         var senderMock = new Mock<ISender>(MockBehavior.Strict);
         var controller = BuildInboundController(senderMock.Object, Array.Empty<Claim>());
 
-        var result = await controller.CreateReceipt(new CreateInboundReceiptCommand(Guid.NewGuid(), "tenant", "customer", "ASN-1"));
+        var warehouseId = Guid.NewGuid();
+        var result = await controller.CreateReceipt(new CreateInboundReceiptCommand(Guid.NewGuid(), "tenant", "customer", warehouseId, "ASN-1"));
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
         senderMock.Verify(x => x.Send(It.IsAny<CreateInboundReceiptCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateOutboundOrder_ReturnsBadRequest_WhenClaimsMissing()
+    {
+        var senderMock = new Mock<ISender>(MockBehavior.Strict);
+        var controller = BuildOutboundController(senderMock.Object, Array.Empty<Claim>());
+
+        var result = await controller.CreateOutboundOrder(new CreateOutboundOrderRequest
+        {
+            OrderId = Guid.NewGuid(),
+            DestinationWarehouseId = Guid.NewGuid(),
+            Lines = new List<CreateOutboundOrderLineRequest>
+            {
+                new() { SkuCode = "SKU-1", RequestedQty = 1 }
+            }
+        });
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        senderMock.Verify(x => x.Send(It.IsAny<CreateOutboundOrderCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateOutboundOrder_OverridesTenantAndCustomerFromClaims()
+    {
+        var senderMock = new Mock<ISender>();
+        senderMock
+            .Setup(x => x.Send(It.IsAny<CreateOutboundOrderCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Logistics.Core.Result<Guid>.Success(Guid.NewGuid()));
+        var claims = new[]
+        {
+            new Claim("tenant_id", "tenant-out"),
+            new Claim("sub", "operator-out")
+        };
+        var controller = BuildOutboundController(senderMock.Object, claims);
+
+        var orderId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        await controller.CreateOutboundOrder(new CreateOutboundOrderRequest
+        {
+            OrderId = orderId,
+            DestinationWarehouseId = warehouseId,
+            Lines = new List<CreateOutboundOrderLineRequest>
+            {
+                new() { SkuCode = "SKU-RED", RequestedQty = 2, Uom = "EA" }
+            }
+        });
+
+        senderMock.Verify(
+            x => x.Send(
+                It.Is<CreateOutboundOrderCommand>(c =>
+                    c.TenantId == "tenant-out"
+                    && c.CustomerId == "operator-out"
+                    && c.OrderId == orderId
+                    && c.DestinationWarehouseId == warehouseId
+                    && c.Lines.Count == 1
+                    && c.Lines[0].SkuCode == "SKU-RED"
+                    && c.Lines[0].RequestedQty == 2),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -87,15 +150,17 @@ public class InboundOutboundControllerTests
 
     private static InboundController BuildInboundController(ISender sender, IReadOnlyCollection<Claim> claims)
     {
+        var db = new Mock<IApplicationDbContext>();
         var services = new ServiceCollection();
         services.AddSingleton(sender);
+        services.AddSingleton(db.Object);
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services.BuildServiceProvider(),
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
         };
 
-        return new InboundController
+        return new InboundController(db.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
@@ -103,15 +168,17 @@ public class InboundOutboundControllerTests
 
     private static OutboundController BuildOutboundController(ISender sender, IReadOnlyCollection<Claim> claims)
     {
+        var db = new Mock<IApplicationDbContext>();
         var services = new ServiceCollection();
         services.AddSingleton(sender);
+        services.AddSingleton(db.Object);
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services.BuildServiceProvider(),
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
         };
 
-        return new OutboundController
+        return new OutboundController(db.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };

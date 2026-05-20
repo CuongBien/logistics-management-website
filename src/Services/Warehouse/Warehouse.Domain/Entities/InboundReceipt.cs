@@ -1,5 +1,6 @@
 using Logistics.Core;
 using Warehouse.Domain.Enums;
+using Warehouse.Domain.Events;
 
 namespace Warehouse.Domain.Entities;
 
@@ -9,10 +10,11 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
     public string CustomerId { get; private set; } = default!;
     public Guid WarehouseId { get; private set; }
     public string ReceiptNo { get; private set; } = default!;
-    public DateTime CreatedAt { get; private set; }
-    public string? SourceShipmentNo { get; private set; }
-    public Guid OrderId { get; private set; }
+    public string? ShipmentNo { get; private set; }
+    public string SourceType { get; private set; } = default!;
+    public string SourceRef { get; private set; } = default!;
     public InboundReceiptStatus Status { get; private set; }
+    public DateTime CreatedAt { get; private set; }
     public DateTime? ReceivedAt { get; private set; }
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
@@ -24,17 +26,18 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
     // EF Core
     private InboundReceipt() { }
 
-    public InboundReceipt(Guid orderId, string tenantId, string customerId, Guid warehouseId, string receiptNo, string? sourceShipmentNo)
+    public InboundReceipt(string tenantId, string customerId, Guid warehouseId, string receiptNo, string sourceType, string sourceRef, string? shipmentNo = null)
     {
         Id = Guid.NewGuid();
-        OrderId = orderId;
         TenantId = tenantId;
         CustomerId = customerId;
         WarehouseId = warehouseId;
         ReceiptNo = receiptNo;
-        CreatedAt = DateTime.UtcNow;
-        SourceShipmentNo = sourceShipmentNo;
+        ShipmentNo = shipmentNo;
+        SourceType = sourceType;
+        SourceRef = sourceRef;
         Status = InboundReceiptStatus.Pending;
+        CreatedAt = DateTime.UtcNow;
         IsDeleted = false;
     }
 
@@ -44,79 +47,87 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
         DeletedAt = DateTime.UtcNow;
     }
 
-    public void UpdateStatus(InboundReceiptStatus status)
+    public void AddLine(InboundReceiptLine line)
     {
-        Status = status;
-        if (status == InboundReceiptStatus.Received || status == InboundReceiptStatus.CompletedWithExceptions)
+        _lines.Add(line);
+        RecalculateStatus();
+    }
+
+    public void StartReceiving()
+    {
+        if (Status == InboundReceiptStatus.Pending || Status == InboundReceiptStatus.Draft)
         {
-            ReceivedAt = DateTime.UtcNow;
+            Status = InboundReceiptStatus.Receiving;
         }
     }
 
     public void RecalculateStatus()
     {
+        var oldStatus = Status;
+
         if (_lines.Count == 0)
         {
             Status = InboundReceiptStatus.Pending;
             return;
         }
 
-        bool allReceived = true;
-        bool anyReceived = false;
-        bool hasOverage = false;
+        bool allCompleted = true;
+        bool hasExceptions = false;
+        bool isReceiving = false;
 
         foreach (var line in _lines)
         {
-            if (line.ReceivedQuantity > 0)
+            if (line.Status == InboundReceiptLineStatus.PartiallyReceived)
             {
-                anyReceived = true;
+                isReceiving = true;
             }
-            if (line.ReceivedQuantity < line.ExpectedQuantity)
+
+            if (line.Status != InboundReceiptLineStatus.Completed)
             {
-                allReceived = false;
+                allCompleted = false;
             }
-            // BUG-10 FIX: Detect overage — received more than expected
-            if (line.ReceivedQuantity > line.ExpectedQuantity)
+
+            if (line.RejectedQty > 0 || line.ShortageQty > 0)
             {
-                hasOverage = true;
+                hasExceptions = true;
             }
         }
 
-        if (allReceived && hasOverage)
+        if (allCompleted)
         {
-            // All lines met or exceeded expectations, but at least one has overage
-            Status = InboundReceiptStatus.CompletedWithExceptions;
-            ReceivedAt = DateTime.UtcNow;
+            Status = hasExceptions ? InboundReceiptStatus.CompletedWithExceptions : InboundReceiptStatus.Completed;
+            ReceivedAt ??= DateTime.UtcNow;
+
+            // Emit completion event if status transitioned to a final state
+            if (oldStatus != InboundReceiptStatus.Completed && oldStatus != InboundReceiptStatus.CompletedWithExceptions)
+            {
+                var discrepancies = _lines.Select(l => new InboundDiscrepancyInfo(
+                    l.SkuCode,
+                    l.ExpectedQty,
+                    l.ReceivedQty,
+                    l.RejectedQty,
+                    l.ShortageQty,
+                    null
+                )).ToList();
+
+                AddDomainEvent(new InboundReceiptCompletedDomainEvent(
+                    Id,
+                    WarehouseId,
+                    SourceRef,
+                    Status,
+                    discrepancies
+                ));
+            }
         }
-        else if (allReceived)
+        else if (isReceiving)
         {
-            Status = InboundReceiptStatus.Received;
-            ReceivedAt = DateTime.UtcNow;
-        }
-        else if (anyReceived)
-        {
-            Status = InboundReceiptStatus.PartiallyReceived;
+            Status = InboundReceiptStatus.Receiving;
             ReceivedAt = null;
         }
         else
         {
             Status = InboundReceiptStatus.Pending;
+            ReceivedAt = null;
         }
-    }
-
-    public void ForceClose()
-    {
-        if (Status == InboundReceiptStatus.Received || Status == InboundReceiptStatus.Closed || Status == InboundReceiptStatus.Cancelled || Status == InboundReceiptStatus.CompletedWithExceptions)
-        {
-            return; // Already closed
-        }
-
-        Status = InboundReceiptStatus.CompletedWithExceptions;
-        ReceivedAt = DateTime.UtcNow;
-    }
-
-    public void AddLine(InboundReceiptLine line)
-    {
-        _lines.Add(line);
     }
 }
