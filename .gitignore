@@ -79,6 +79,7 @@ src/Tests/**/bin/
 src/Tests/**/obj/
 # Agent and Spec directories
 .agent/
+.agents/
 .cursor/
 .gemini/
 .github/
