@@ -17,6 +17,12 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 
+    /// <summary>
+    /// For cross-region consignment: the final destination warehouse where goods should end up.
+    /// Null for standard local inbound receipts.
+    /// </summary>
+    public Guid? FinalDestinationWarehouseId { get; private set; }
+
     // Navigation
     private readonly List<InboundReceiptLine> _lines = new();
     public IReadOnlyCollection<InboundReceiptLine> Lines => _lines.AsReadOnly();
@@ -36,6 +42,11 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
         SourceShipmentNo = sourceShipmentNo;
         Status = InboundReceiptStatus.Pending;
         IsDeleted = false;
+    }
+
+    public void SetFinalDestination(Guid warehouseId)
+    {
+        FinalDestinationWarehouseId = warehouseId;
     }
 
     public void Delete()

@@ -66,7 +66,8 @@ public class CreateInboundRequestCommandHandler : IRequestHandler<CreateInboundR
             weight: 1.0m, // Inbound doesn't strictly have a shipping weight, default to 1.0
             note: request.Note,
             type: OrderType.InboundRequest,
-            fulfillment: FulfillmentMode.Pickup // Default for inbound, doesn't matter since it skips Saga
+            fulfillment: FulfillmentMode.Pickup, // Default for inbound, doesn't matter since it skips Saga
+            sourceWarehouseCode: request.SourceWarehouseCode ?? request.DestinationWarehouseCode
         );
 
         if (orderResult.IsFailure)

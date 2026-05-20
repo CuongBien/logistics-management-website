@@ -60,6 +60,8 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
             return Result<bool>.Failure(Error.NotFound("OutboundOrder.NotFound", $"Outbound Order {request.OrderId} not found."));
         }
 
+        bool isFinalDestination = (request.WarehouseId.ToString() == order.PartnerId);
+
         // 2. Find the active dispatched Shipment containing this order
         var shipmentOrder = await _context.ShipmentOrders
             .Include(so => so.Shipment)
@@ -157,18 +159,27 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                 inventoryItem.Restock(qtyToReceive);
             }
 
-            // BUG-03 FIX: Reserve the restocked inventory for next-leg dispatch.
-            // Without this, DispatchShipment finds zero reservations at the hub
-            // and silently skips inventory deduction → ghost inventory accumulates.
-            inventoryItem.ReserveStock(qtyToReceive);
-            var transitReservation = InventoryReservation.Create(
-                inventoryItem.Id,
-                order.Id.ToString(),
-                ReservationType.OutboundOrder,
-                qtyToReceive,
-                TimeSpan.FromDays(7),  // TTL for transit reservation
-                $"TRANSIT-{shipment.ShipmentNo}");
-            _context.InventoryReservations.Add(transitReservation);
+            // Check if this is the final destination for this order
+            if (!isFinalDestination)
+            {
+                // BUG-03 FIX: Reserve the restocked inventory for next-leg dispatch.
+                inventoryItem.ReserveStock(qtyToReceive);
+                var transitReservation = InventoryReservation.Create(
+                    inventoryItem.Id,
+                    order.Id.ToString(),
+                    ReservationType.OutboundOrder,
+                    qtyToReceive,
+                    TimeSpan.FromDays(7),  // TTL for transit reservation
+                    $"TRANSIT-{shipment.ShipmentNo}");
+                _context.InventoryReservations.Add(transitReservation);
+            }
+            else
+            {
+                // Final destination reached! 
+                // For Cross-region Consignment: Inventory becomes Available.
+                // For Courier orders: Inventory awaits Last-mile pickup.
+                _logger.LogInformation("WMS: Final destination reached for Order {OrderId}. Skipping reservation to free inventory.", order.OrderId);
+            }
 
             // 4.4 Create Inventory Ledger Log
             var ledger = InventoryLedger.Create(
@@ -223,9 +234,17 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
         // Mark intermediate inbound receipt as fully received
         receipt.RecalculateStatus();
 
-        // CRITICAL: Update the Outbound Order's physical location & status to enable next-leg dispatch
+        // CRITICAL: Update the Outbound Order's physical location & status
         order.UpdateWarehouse(request.WarehouseId);
-        order.UpdateStatus(OutboundOrderStatus.Packed); // Reset status to Packed
+        
+        if (isFinalDestination)
+        {
+            order.UpdateStatus(OutboundOrderStatus.Delivered); // End of transit
+        }
+        else
+        {
+            order.UpdateStatus(OutboundOrderStatus.Packed); // Reset status to Packed for next-leg dispatch
+        }
 
         // 5. Mark incoming shipment as Delivered at its current intermediate stop
         shipment.Deliver();

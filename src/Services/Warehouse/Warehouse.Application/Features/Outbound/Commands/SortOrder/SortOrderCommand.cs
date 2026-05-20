@@ -5,7 +5,7 @@ namespace Warehouse.Application.Features.Outbound.Commands.SortOrder;
 
 public record SortOrderCommand(
     Guid OrderId,
-    Guid DestinationWarehouseId,
+    Guid? DestinationWarehouseId,
     string TenantId,
     string CustomerId,
     string? SourceShipmentNo) : IRequest<Result>;

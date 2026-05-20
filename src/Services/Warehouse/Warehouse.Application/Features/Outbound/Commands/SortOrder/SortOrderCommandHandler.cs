@@ -60,7 +60,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         }
         else
         {
-            // Case B: First-time sort for Standard Courier Order (Bưu cục lẻ)
+            // Case B: First-time sort for Standard Courier Order (Bưu cục lẻ) or Cross-region Consignment
             // 1. Tìm Bin đang chứa OrderId
             bin = await _context.Bins
                 .Include(b => b.Zone)
@@ -80,13 +80,40 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
 
             if (inboundReceipt == null)
             {
-                return Result.Failure(new Error("Outbound.InvalidOrderType", $"Sort action is strictly reserved for standard courier orders (bưu cục lẻ). No inbound receipt found for Order ID {request.OrderId}."));
+                return Result.Failure(new Error("Outbound.InvalidOrderType", $"Sort action is reserved for standard courier orders (bưu cục lẻ) and cross-region consignments. No inbound receipt found for Order ID {request.OrderId}."));
             }
 
             if (inboundReceipt.Lines.Count == 0)
             {
                 return Result.Failure(new Error("InboundReceipt.Empty", $"Inbound receipt for courier Order ID {request.OrderId} has no lines."));
             }
+        }
+
+        // ============================================================
+        // RESOLVE DESTINATION WAREHOUSE ID
+        // Priority: 1) Explicit request param  2) InboundReceipt.FinalDestinationWarehouseId  3) OutboundOrder.PartnerId
+        // ============================================================
+        Guid resolvedDestinationId;
+
+        if (request.DestinationWarehouseId.HasValue)
+        {
+            // Client explicitly provided the destination
+            resolvedDestinationId = request.DestinationWarehouseId.Value;
+        }
+        else if (inboundReceipt?.FinalDestinationWarehouseId.HasValue == true)
+        {
+            // Cross-region consignment: destination was stored on InboundReceipt at creation time
+            resolvedDestinationId = inboundReceipt.FinalDestinationWarehouseId.Value;
+        }
+        else if (outboundOrder != null && !string.IsNullOrWhiteSpace(outboundOrder.PartnerId) && Guid.TryParse(outboundOrder.PartnerId, out var parsedPartnerId))
+        {
+            // Multi-hop transit: destination stored on existing OutboundOrder
+            resolvedDestinationId = parsedPartnerId;
+        }
+        else
+        {
+            return Result.Failure(new Error("Sort.MissingDestination",
+                "DestinationWarehouseId is required for first-time sort when no final destination is recorded on the inbound receipt."));
         }
 
         // 2. Check RBAC Permission
@@ -120,11 +147,11 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         // Query source and destination warehouses for coordinates
         var warehouses = await _context.Warehouses.ToListAsync(cancellationToken);
         var sourceWh = warehouses.FirstOrDefault(w => w.Id == sourceWarehouseId);
-        var destWh = warehouses.FirstOrDefault(w => w.Id == request.DestinationWarehouseId);
+        var destWh = warehouses.FirstOrDefault(w => w.Id == resolvedDestinationId);
 
         if (destWh == null)
         {
-            return Result.Failure(Error.NotFound("Warehouse.NotFound", $"Destination warehouse with ID {request.DestinationWarehouseId} not found."));
+            return Result.Failure(Error.NotFound("Warehouse.NotFound", $"Destination warehouse with ID {resolvedDestinationId} not found."));
         }
 
         // Calculate weight and volume for shipping limit checks
@@ -158,7 +185,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         }
 
         // 1. Next-Hop Matrix Routing
-        var destinationKey = request.DestinationWarehouseId.ToString();
+        var destinationKey = resolvedDestinationId.ToString();
         if (sourceWh != null)
         {
             var route = await _context.WarehouseRoutes
@@ -257,7 +284,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
                 destinationCity: destWh!.Code,
                 priority: 0,
                 allowPartial: true,
-                partnerId: request.DestinationWarehouseId.ToString(),
+                partnerId: resolvedDestinationId.ToString(),
                 latitude: destLat,
                 longitude: destLon,
                 weight: totalWeight,
@@ -322,24 +349,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             }
         }
 
-        if (shipment != null)
-        {
-            // Consolidate into existing shipment
-            shipment.AddOrder(outboundOrder.Id);
-            shipment.MarkLoading();
-
-            foreach (var line in outboundOrder.Lines)
-            {
-                int qtyToShip = line.PickedQty - line.ShippedQty;
-                if (qtyToShip > 0)
-                {
-                    shipment.AddItem(line.Id, qtyToShip);
-                }
-            }
-
-            outboundOrder.UpdateStatus(OutboundOrderStatus.Loaded);
-        }
-        else
+        if (shipment == null)
         {
             // No matching shipment found, create dedicated run
             var uniquePart = Guid.NewGuid().ToString("N")[..8].ToUpper();
@@ -353,37 +363,27 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
                 destinationId: destinationKey
             );
             _context.Shipments.Add(shipment);
-
-            shipment.AddOrder(outboundOrder.Id);
-            shipment.MarkLoading();
-
-            foreach (var line in outboundOrder.Lines)
-            {
-                int qtyToShip = line.PickedQty - line.ShippedQty;
-                if (qtyToShip > 0)
-                {
-                    shipment.AddItem(line.Id, qtyToShip);
-                }
-            }
-
-            // Immediately dispatch dedicated run
-            shipment.Dispatch();
-            
-            foreach (var line in outboundOrder.Lines)
-            {
-                int qtyToShip = line.PickedQty - line.ShippedQty;
-                if (qtyToShip > 0)
-                {
-                    line.UpdateShipped(qtyToShip);
-                }
-            }
-            outboundOrder.UpdateStatus(OutboundOrderStatus.Shipped);
         }
+
+        // Consolidate or load into new/existing shipment
+        shipment.AddOrder(outboundOrder.Id);
+        shipment.MarkLoading();
+
+        foreach (var line in outboundOrder.Lines)
+        {
+            int qtyToShip = line.PickedQty - line.ShippedQty;
+            if (qtyToShip > 0)
+            {
+                shipment.AddItem(line.Id, qtyToShip);
+            }
+        }
+
+        outboundOrder.UpdateStatus(OutboundOrderStatus.Loaded);
 
         // 3. Publish Integration Event (Transactional Outbox will handle persistence)
         await _publishEndpoint.Publish(new ShipmentSortedIntegrationEvent(
             request.OrderId,
-            request.DestinationWarehouseId.ToString(),
+            resolvedDestinationId.ToString(),
             DateTime.UtcNow,
             request.TenantId,
             request.CustomerId,
