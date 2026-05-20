@@ -4,30 +4,25 @@ using Microsoft.EntityFrameworkCore;
 using Ordering.Application.Common.Interfaces;
 using Ordering.Domain.Entities;
 using Ordering.Domain.ValueObjects;
-using Microsoft.Extensions.Logging;
 
 namespace Ordering.Application.Commands.CreateOrder;
 
 public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
-    private readonly MassTransit.IPublishEndpoint _publishEndpoint;
-    private readonly ILogger<CreateOrderCommandHandler> _logger;
 
-    public CreateOrderCommandHandler(IApplicationDbContext context, MassTransit.IPublishEndpoint publishEndpoint, ILogger<CreateOrderCommandHandler> logger)
+    public CreateOrderCommandHandler(IApplicationDbContext context)
     {
         _context = context;
-        _publishEndpoint = publishEndpoint;
-        _logger = logger;
     }
 
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
-        var skuMirrors = await _context.ErpSkuMirrors
-            .Where(x => x.TenantId == request.TenantId && x.Status == "active" && request.SkuCodes.Contains(x.SkuCode))
+        var activeSkuCodes = await _context.ErpSkuMirrors
+            .Where(x => x.TenantId == request.TenantId && x.Status == "active")
+            .Select(x => x.SkuCode)
             .ToListAsync(cancellationToken);
-
-        var missingSkuCodes = request.SkuCodes.Except(skuMirrors.Select(x => x.SkuCode)).ToArray();
+        var missingSkuCodes = request.SkuCodes.Except(activeSkuCodes).ToArray();
 
         if (missingSkuCodes.Length > 0)
         {
@@ -37,24 +32,17 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
         }
 
         // 1. Build Consignee Value Object
-        Address? address = null;
-        if (request.Consignee.Address != null)
-        {
-            address = new Address(
-                request.Consignee.Address.Street ?? "N/A",
-                request.Consignee.Address.City ?? "N/A",
-                request.Consignee.Address.State ?? "N/A",
-                request.Consignee.Address.Country ?? "N/A",
-                request.Consignee.Address.ZipCode ?? "000000");
-        }
+        var address = new Address(
+            request.Consignee.Address.Street,
+            request.Consignee.Address.City,
+            request.Consignee.Address.State,
+            request.Consignee.Address.Country,
+            request.Consignee.Address.ZipCode);
 
         var consignee = new Consignee(
             request.Consignee.FullName,
             request.Consignee.Phone,
-            address,
-            request.Consignee.PartnerId,
-            request.Consignee.Latitude,
-            request.Consignee.Longitude);
+            address);
 
         // 2. Create Order Aggregate (auto-generates WaybillCode)
         var orderResult = Order.Create(
@@ -64,9 +52,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
             request.CodAmount,
             request.ShippingFee,
             request.Weight,
-            request.Note,
-            Ordering.Domain.Enums.OrderType.Parcel,
-            (Ordering.Domain.Enums.FulfillmentMode)request.FulfillmentMode);
+            request.Note);
 
         if (orderResult.IsFailure)
         {
@@ -75,48 +61,14 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
 
         var order = orderResult.Value!;
 
-        // Add OrderItems
-        var skuQuantities = request.SkuCodes.GroupBy(x => x).ToDictionary(g => g.Key, g => g.Count());
-        foreach (var skuMirror in skuMirrors)
-        {
-            var quantity = skuQuantities[skuMirror.SkuCode];
-            order.AddItem(skuMirror.Id, skuMirror.SkuCode, quantity);
-        }
-
-        // 3. Auto-confirm (validate → AwaitingPickup) or set InWarehouse directly (for pre-stocked warehouse fulfillment)
-        Result confirmResult;
-        if (request.FulfillmentMode == 2) // Warehouse
-        {
-            confirmResult = order.SetInWarehouseDirectly();
-        }
-        else // Pickup
-        {
-            confirmResult = order.Confirm();
-        }
-
+        // 3. Auto-confirm (validate → AwaitingPickup)
+        var confirmResult = order.Confirm();
         if (confirmResult.IsFailure)
         {
             return Result<Guid>.Failure(confirmResult.Error);
         }
 
-        // 4. Handle SaveToContacts (Async - Must be before SaveChanges for Outbox)
-        if (request.SaveToContacts && !string.IsNullOrEmpty(request.Consignee.FullName) && !string.IsNullOrEmpty(request.Consignee.Phone))
-        {
-            _logger.LogInformation("Publishing NewPartnerEncounteredIntegrationEvent for phone {Phone}", request.Consignee.Phone);
-            await _publishEndpoint.Publish(new EventBus.Messages.Events.NewPartnerEncounteredIntegrationEvent
-            {
-                TenantId = request.TenantId,
-                Name = request.Consignee.FullName,
-                Phone = request.Consignee.Phone,
-                Address = request.Consignee.Address?.Street ?? "N/A",
-                City = request.Consignee.Address?.City ?? "N/A",
-                PartnerId = request.Consignee.PartnerId,
-                Latitude = request.Consignee.Latitude,
-                Longitude = request.Consignee.Longitude
-            }, cancellationToken);
-        }
-
-        // 5. Persist
+        // 4. Persist
         _context.Orders.Add(order);
         await _context.SaveChangesAsync(cancellationToken);
 

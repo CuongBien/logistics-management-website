@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Warehouse.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 [Authorize]
 public abstract class ApiControllerBase : ControllerBase
 {

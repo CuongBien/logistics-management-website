@@ -14,6 +14,7 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
     public State Dispatched { get; private set; } = null!;
     public State Delivered { get; private set; } = null!;
     public State DeliveryFailed { get; private set; } = null!;
+    public State AwaitingResolution { get; private set; } = null!;
     public State Completed { get; private set; } = null!;
 
     // --- Events (triggered by human actions via Integration Events) ---
@@ -24,6 +25,8 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
     public Event<RouteDispatchedIntegrationEvent> RouteDispatched { get; private set; } = null!;
     public Event<DeliveryCompletedIntegrationEvent> DeliveryCompleted { get; private set; } = null!;
     public Event<DeliveryFailedIntegrationEvent> DeliveryFailedEvent { get; private set; } = null!;
+    public Event<InboundDiscrepancyDetectedIntegrationEvent> InboundDiscrepancyDetected { get; private set; } = null!;
+    public Event<OrderExceptionResolvedIntegrationEvent> OrderExceptionResolved { get; private set; } = null!;
 
     public OrderFulfillmentStateMachine(ILogger<OrderFulfillmentStateMachine> logger)
     {
@@ -37,29 +40,26 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
         Event(() => RouteDispatched, x => x.CorrelateById(m => m.Message.OrderId));
         Event(() => DeliveryCompleted, x => x.CorrelateById(m => m.Message.OrderId));
         Event(() => DeliveryFailedEvent, x => x.CorrelateById(m => m.Message.OrderId));
+        Event(() => InboundDiscrepancyDetected, x => x.CorrelateById(m => m.Message.OrderId));
+        Event(() => OrderExceptionResolved, x => x.CorrelateById(m => m.Message.OrderId));
 
         // =====================================================
         // FLOW: Mỗi transition = 1 con người ở ngoài đời hành động
         // =====================================================
 
-        // Step 1: Consignor tạo đơn → Saga khởi tạo → ĐỢI shipper lấy hàng hoặc tự động phân luồng
+        // Step 1: Consignor tạo đơn → Saga khởi tạo → ĐỢI shipper lấy hàng
         Initially(
             When(OrderCreated)
                 .Then(context =>
                 {
-                    logger.LogInformation("Saga: Order {OrderId} created with Waybill {Waybill} (Type: {Type}, Mode: {Mode})", 
-                        context.Message.OrderId, context.Message.WaybillCode, context.Message.OrderType, context.Message.FulfillmentMode);
+                    logger.LogInformation("Saga: Order {OrderId} created with Waybill {Waybill}", 
+                        context.Message.OrderId, context.Message.WaybillCode);
                     context.Saga.OrderId = context.Message.OrderId;
                     context.Saga.ConsignorId = context.Message.ConsignorId;
                     context.Saga.WaybillCode = context.Message.WaybillCode;
                     context.Saga.CodAmount = context.Message.CodAmount;
                 })
-                .If(context => context.Message.OrderType == 2,
-                    binder => binder.TransitionTo(Completed))
-                .If(context => context.Message.OrderType == 1 && context.Message.FulfillmentMode == 2,
-                    binder => binder.TransitionTo(InWarehouse))
-                .If(context => context.Message.OrderType == 1 && context.Message.FulfillmentMode == 1,
-                    binder => binder.TransitionTo(AwaitingPickup))
+                .TransitionTo(AwaitingPickup)
         );
 
         // Step 2: 👤 Shipper scan lấy hàng → ĐỢI hàng về kho
@@ -71,7 +71,14 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
                         context.Message.DriverId, context.Message.OrderId);
                     context.Saga.PickupDriverId = context.Message.DriverId;
                 })
-                .TransitionTo(PickedUp)
+                .TransitionTo(PickedUp),
+            When(InboundDiscrepancyDetected)
+                .Then(context =>
+                {
+                    logger.LogWarning("Saga: ⚠️ Discrepancy detected for Order {OrderId} while awaiting inbound", context.Message.OrderId);
+                    context.Saga.WarehouseId = context.Message.WarehouseId;
+                })
+                .TransitionTo(AwaitingResolution)
         );
 
         // Step 3: 👤 Nhân viên kho scan nhận → ĐỢI phân loại
@@ -83,7 +90,15 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
                         context.Message.WarehouseId, context.Message.OrderId);
                     context.Saga.WarehouseId = context.Message.WarehouseId;
                 })
-                .TransitionTo(InWarehouse)
+                .TransitionTo(InWarehouse),
+            When(InboundDiscrepancyDetected)
+                .Then(context =>
+                {
+                    logger.LogWarning("Saga: ⚠️ Discrepancy detected for Order {OrderId} during receiving at {WH}", 
+                        context.Message.OrderId, context.Message.WarehouseId);
+                    context.Saga.WarehouseId = context.Message.WarehouseId;
+                })
+                .TransitionTo(AwaitingResolution)
         );
 
         // Step 4: 👤 Nhân viên sorted → ĐỢI quản lý duyệt tuyến
@@ -95,7 +110,15 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
                         context.Message.OrderId, context.Message.DestinationWarehouseId);
                     context.Saga.DestinationWarehouseId = context.Message.DestinationWarehouseId;
                 })
-                .TransitionTo(AwaitingDispatch)
+                .TransitionTo(AwaitingDispatch),
+            When(InboundDiscrepancyDetected)
+                .Then(context =>
+                {
+                    logger.LogWarning("Saga: ⚠️ Discrepancy detected for Order {OrderId} during sorting at {WH}", 
+                        context.Message.OrderId, context.Message.WarehouseId);
+                    context.Saga.WarehouseId = context.Message.WarehouseId;
+                })
+                .TransitionTo(AwaitingResolution)
         );
 
         // Step 5: 👤 Quản lý assign tài xế → ĐỢI tài xế giao
@@ -184,6 +207,19 @@ public class OrderFulfillmentStateMachine : MassTransitStateMachine<OrderState>
                     context.Saga.RouteId = context.Message.RouteId;
                 })
                 .TransitionTo(Dispatched)
+        );
+
+        // Step 8: Exception Resolution flow
+        During(AwaitingResolution,
+            When(OrderExceptionResolved)
+                .Then(context =>
+                {
+                    logger.LogInformation("Saga: 🛠️ Order {OrderId} exception resolved with strategy {Strategy}", 
+                        context.Message.OrderId, context.Message.Strategy);
+                })
+                .IfElse(context => context.Message.Strategy == "AcceptPartial",
+                    binder => binder.TransitionTo(InWarehouse),
+                    binder => binder.TransitionTo(Completed).Finalize())
         );
 
         SetCompletedWhenFinalized();

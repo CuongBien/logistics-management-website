@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Ordering.Application.Commands.CreateOrder;
-using Ordering.Application.Commands.CreateInboundRequest;
 using Ordering.Application.Queries.GetOrderById;
 using Ordering.Application.Queries.GetOrderStatusHistory;
 using Ordering.Application.Queries.GetOrderConsignee;
@@ -41,33 +40,6 @@ public class OrdersController : ControllerBase
         _logger.LogInformation("Creating order... userId={UserId}, tenantId={TenantId}", userId, tenantId);
                      
         // Enforce claims as trusted source for tenancy and consignor.
-        var finalCommand = command with { ConsignorId = userId, TenantId = tenantId };
-
-        var result = await _mediator.Send(finalCommand);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(result);
-        }
-
-        return CreatedAtAction(nameof(Get), new { id = result.Value }, result);
-    }
-
-    [HttpPost("inbound-request")]
-    [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Result<Guid>>> CreateInboundRequest(CreateInboundRequestCommand command)
-    {
-        var userId = CurrentUserClaims.GetCustomerId(User) ?? "Anonymous";
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(tenantId))
-        {
-            return BadRequest(Result<Guid>.Failure(new Error("Tenant.MissingClaim", "Missing tenant claim in access token.")));
-        }
-
-        _logger.LogInformation("Creating inbound request... userId={UserId}, tenantId={TenantId}", userId, tenantId);
-
         var finalCommand = command with { ConsignorId = userId, TenantId = tenantId };
 
         var result = await _mediator.Send(finalCommand);

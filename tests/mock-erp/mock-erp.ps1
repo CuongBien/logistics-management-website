@@ -4,7 +4,7 @@ param(
 )
 
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://*:$Port/")
+$listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Start()
 
 Write-Host "Mock ERP server started at http://localhost:$Port"
@@ -26,14 +26,6 @@ $skuItems = @(
         unitOfMeasure = "PCS"
         status = "active"
         updatedAtErp = "2026-04-30T00:05:00Z"
-    },
-    @{
-        erpSkuId = "ERP-SKU-003"
-        skuCode = "SKU-AO-001"
-        name = "Áo sơ mi nam"
-        unitOfMeasure = "PCS"
-        status = "active"
-        updatedAtErp = "2026-04-30T00:10:00Z"
     }
 )
 
@@ -51,34 +43,6 @@ $warehouseItems = @(
         name = "Ha Noi Hub 01"
         status = "active"
         updatedAtErp = "2026-04-30T00:05:00Z"
-    },
-    @{
-        erpWarehouseId = "ERP-WH-003"
-        warehouseCode = "WH-CT-001"
-        name = "Can Tho Hub 01"
-        status = "active"
-        updatedAtErp = "2026-04-30T00:10:00Z"
-    },
-    @{
-        erpWarehouseId = "ERP-WH-004"
-        warehouseCode = "WH-SG-002"
-        name = "HCM Mega Hub 02"
-        status = "active"
-        updatedAtErp = "2026-04-30T00:10:00Z"
-    },
-    @{
-        erpWarehouseId = "ERP-WH-005"
-        warehouseCode = "WH-HN-006"
-        name = "Hanoi Hub 06"
-        status = "active"
-        updatedAtErp = "2026-04-30T00:10:00Z"
-    },
-    @{
-        erpWarehouseId = "ERP-WH-006"
-        warehouseCode = "WH-HP-007"
-        name = "Hai Phong Hub 07"
-        status = "active"
-        updatedAtErp = "2026-04-30T00:10:00Z"
     }
 )
 

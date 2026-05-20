@@ -19,8 +19,6 @@ public class Order : Entity<Guid>, IAggregateRoot
     public decimal ShippingFee { get; private set; }  // Phí vận chuyển
     public decimal Weight { get; private set; }       // Trọng lượng (kg)
     public string? Note { get; private set; }         // Ghi chú giao hàng
-    public OrderType Type { get; private set; } = OrderType.Parcel;
-    public FulfillmentMode Fulfillment { get; private set; } = FulfillmentMode.Pickup;
     
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastModifiedAt { get; private set; }
@@ -34,13 +32,6 @@ public class Order : Entity<Guid>, IAggregateRoot
     // Navigation
     private readonly List<OrderItem> _items = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
-
-    public void AddItem(Guid skuId, string skuCode, int quantity, decimal price = 0)
-    {
-        var item = new OrderItem(skuId, quantity, price);
-        item.SetSkuCode(skuCode);
-        _items.Add(item);
-    }
 
     // Tracking fields populated by human actions
     public string? PickupDriverId { get; private set; }
@@ -73,9 +64,7 @@ public class Order : Entity<Guid>, IAggregateRoot
         decimal codAmount,
         decimal shippingFee,
         decimal weight,
-        string? note = null,
-        OrderType type = OrderType.Parcel,
-        FulfillmentMode fulfillment = FulfillmentMode.Pickup)
+        string? note = null)
     {
         if (codAmount < 0)
             return Result<Order>.Failure(DomainErrors.Order.InvalidCodAmount);
@@ -95,26 +84,14 @@ public class Order : Entity<Guid>, IAggregateRoot
             ShippingFee = shippingFee,
             Weight = weight,
             Note = note,
-            Type = type,
-            Fulfillment = fulfillment,
             CreatedAt = DateTime.UtcNow,
             DeliveryAttempts = 0
         };
 
         order.AddDomainEvent(new OrderCreatedDomainEvent(
-            order.Id, consignorId, order.WaybillCode, codAmount, shippingFee, (int)type, (int)fulfillment));
+            order.Id, consignorId, order.WaybillCode, codAmount, shippingFee));
 
         return Result<Order>.Success(order);
-    }
-
-    public Result SetInWarehouseDirectly()
-    {
-        if (Status != OrderStatus.New)
-            return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
-
-        Status = OrderStatus.InWarehouse;
-        LastModifiedAt = DateTime.UtcNow;
-        return Result.Success();
     }
 
     /// <summary>
@@ -151,6 +128,9 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkInWarehouse(string warehouseId, string receivedBy)
     {
+        if (Status == OrderStatus.InWarehouse)
+            return Result.Success();
+
         // Allow multi-hop: AwaitingDispatch → InWarehouse when shipment arrives at destination warehouse
         if (Status != OrderStatus.PickedUp && Status != OrderStatus.AwaitingInbound && Status != OrderStatus.AwaitingDispatch)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
@@ -258,6 +238,57 @@ public class Order : Entity<Guid>, IAggregateRoot
     public void ClearLastTransitionReasonAfterHistoryWritten()
     {
         LastTransitionReason = null;
+    }
+
+    /// <summary>
+    /// Đánh dấu kiện hàng gặp ngoại lệ khi kiểm đếm, chờ phân giải.
+    /// </summary>
+    public Result MarkAwaitingResolution(string warehouseId)
+    {
+        if (Status != OrderStatus.PickedUp && Status != OrderStatus.InWarehouse && Status != OrderStatus.AwaitingDispatch)
+            return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.AwaitingResolution)));
+
+        WarehouseId = warehouseId;
+        Status = OrderStatus.AwaitingResolution;
+        LastModifiedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phân giải ngoại lệ: Chấp nhận nhập kho phần còn lại.
+    /// </summary>
+    public Result ResolveAcceptPartial()
+    {
+        if (Status == OrderStatus.InWarehouse)
+            return Result.Success();
+
+        if (Status != OrderStatus.AwaitingResolution)
+            return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
+
+        Status = OrderStatus.InWarehouse;
+        LastModifiedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new OrderExceptionResolvedDomainEvent(Id, "AcceptPartial"));
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phân giải ngoại lệ: Hủy đơn hàng.
+    /// </summary>
+    public Result ResolveCancel()
+    {
+        if (Status == OrderStatus.Cancelled)
+            return Result.Success();
+
+        if (Status != OrderStatus.AwaitingResolution)
+            return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.Cancelled)));
+
+        Status = OrderStatus.Cancelled;
+        LastModifiedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new OrderCancelledDomainEvent(Id));
+        AddDomainEvent(new OrderExceptionResolvedDomainEvent(Id, "CancelAndReturn"));
+        return Result.Success();
     }
 
     // --- Helpers ---

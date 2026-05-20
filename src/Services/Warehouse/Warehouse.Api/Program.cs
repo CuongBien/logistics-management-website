@@ -13,9 +13,6 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Clear default claim mapping to keep 'sub' as 'sub'
-System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
-
 // Add services to the container.
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -100,8 +97,6 @@ builder.Services.AddAuthentication("Bearer")
             {
                 "http://localhost:8080/realms/logistics_realm",
                 "http://localhost:18080/realms/logistics_realm",
-                "http://127.0.0.1:8080/realms/logistics_realm",
-                "http://127.0.0.1:18080/realms/logistics_realm",
                 "http://keycloak:8080/realms/logistics_realm"
             },
             ValidateAudience = false,
@@ -137,17 +132,15 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<Warehouse.Infrastructure.Persistence.WMSDbContext>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
         if (context.Database.IsNpgsql())
         {
             context.Database.Migrate();
         }
-        await Warehouse.Infrastructure.Persistence.WMSDbContextSeed.SeedAsync(context, logger);
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating/seeding the database.");
+        logger.LogError(ex, "An error occurred while migrating the database.");
     }
 }
 

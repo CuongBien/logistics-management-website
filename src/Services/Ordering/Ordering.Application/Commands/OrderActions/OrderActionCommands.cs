@@ -12,3 +12,6 @@ public record DispatchOrderCommand(Guid OrderId, string DriverId, string RouteId
 public record DeliverOrderCommand(Guid OrderId, string ProofOfDeliveryUrl) : IRequest<Result>;
 
 public record FailDeliveryCommand(Guid OrderId, string Reason) : IRequest<Result>;
+
+public record ResolveExceptionCommand(Guid OrderId, string Strategy, string Reason) : IRequest<Result>;
+

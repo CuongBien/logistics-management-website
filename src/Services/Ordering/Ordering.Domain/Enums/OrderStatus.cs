@@ -16,5 +16,6 @@ public enum OrderStatus
     Completed = 12,        // Đối soát COD xong
     Failed = 13,           // Giao thất bại
     Cancelled = 14,        // Hủy đơn
-    ReturnInTransit = 15   // Đang hoàn trả về Consignor
+    ReturnInTransit = 15,  // Đang hoàn trả về Consignor
+    AwaitingResolution = 16 // Chờ giải quyết ngoại lệ
 }

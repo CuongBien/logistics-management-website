@@ -9,27 +9,37 @@ public class InboundReceiptLineConfiguration : IEntityTypeConfiguration<InboundR
     public void Configure(EntityTypeBuilder<InboundReceiptLine> builder)
     {
         builder.ToTable("InboundReceiptLines");
+        builder.HasKey(line => line.Id);
 
-        builder.HasKey(il => il.Id);
+        builder.Property(line => line.TenantId).HasMaxLength(100).IsRequired();
+        builder.Property(line => line.CustomerId).HasMaxLength(100).IsRequired();
+        builder.Property(line => line.ReceiptId).IsRequired();
+        builder.Property(line => line.LineNo).IsRequired();
+        
+        builder.Property(line => line.SkuCode).HasMaxLength(100).IsRequired();
+        builder.Property(line => line.Uom).HasMaxLength(50).IsRequired();
+        
+        builder.Property(line => line.ExpectedQty).IsRequired();
+        builder.Property(line => line.ReceivedQty).IsRequired();
+        builder.Property(line => line.RejectedQty).IsRequired();
+        builder.Property(line => line.RejectionReason).HasMaxLength(500);
+        builder.Property(line => line.ShortageQty).IsRequired();
+        
+        builder.Property(line => line.LotNo).HasMaxLength(100);
+        builder.Property(line => line.ExpiryDate);
+        
+        builder.Property(line => line.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
+        
+        builder.Property(line => line.IsDeleted).IsRequired();
+        builder.Property(line => line.DeletedAt);
 
-        builder.Property(il => il.TenantId).HasMaxLength(100).IsRequired();
-        builder.Property(il => il.CustomerId).HasMaxLength(100).IsRequired();
-        builder.Property(il => il.ReceiptId).IsRequired();
-        builder.Property(il => il.Sku).HasMaxLength(100).IsRequired();
-        builder.Property(il => il.ExpectedQuantity).IsRequired();
-        builder.Property(il => il.ReceivedQuantity).IsRequired();
-        builder.Property(il => il.LotNo).HasMaxLength(100);
-        builder.Property(il => il.ExpiryDate);
-        builder.Property(il => il.IsDeleted).IsRequired();
-        builder.Property(il => il.DeletedAt);
-
-        builder.HasIndex(il => new { il.ReceiptId, il.Sku })
+        builder.HasIndex(line => new { line.ReceiptId, line.LineNo })
                .IsUnique()
                .HasFilter("\"IsDeleted\" = false");
 
-        builder.HasMany(il => il.Allocations)
-               .WithOne(iba => iba.ReceiptLine)
-               .HasForeignKey(iba => iba.ReceiptLineId)
-               .OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(line => line.Allocations)
+            .WithOne(alloc => alloc.ReceiptLine)
+            .HasForeignKey(alloc => alloc.ReceiptLineId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

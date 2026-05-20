@@ -1,0 +1,146 @@
+param(
+    [int]$Port = 5010,
+    [string]$ApiKey = "dev-key"
+)
+
+$listener = New-Object System.Net.HttpListener
+$listener.Prefixes.Add("http://localhost:$Port/")
+$listener.Start()
+
+Write-Host "Mock ERP server started at http://localhost:$Port"
+Write-Host "Expected API key: $ApiKey"
+
+$skuItems = @(
+    @{
+        erpSkuId = "ERP-SKU-001"
+        skuCode = "SKU-RED-TSHIRT"
+        name = "Red T-Shirt"
+        unitOfMeasure = "PCS"
+        status = "active"
+        updatedAtErp = "2026-04-30T00:00:00Z"
+    },
+    @{
+        erpSkuId = "ERP-SKU-002"
+        skuCode = "SKU-BLUE-JEANS"
+        name = "Blue Jeans"
+        unitOfMeasure = "PCS"
+        status = "active"
+        updatedAtErp = "2026-04-30T00:05:00Z"
+    }
+)
+
+$warehouseItems = @(
+    @{
+        erpWarehouseId = "ERP-WH-001"
+        warehouseCode = "HCM-HUB-01"
+        name = "Ho Chi Minh Hub 01"
+        status = "active"
+        updatedAtErp = "2026-04-30T00:00:00Z"
+    },
+    @{
+        erpWarehouseId = "ERP-WH-002"
+        warehouseCode = "HN-HUB-01"
+        name = "Ha Noi Hub 01"
+        status = "active"
+        updatedAtErp = "2026-04-30T00:05:00Z"
+    }
+)
+
+try {
+    while ($listener.IsListening) {
+        $context = $listener.GetContext()
+        $request = $context.Request
+        Write-Host "Received request: $($request.HttpMethod) $($request.Url.PathAndQuery)"
+
+
+        try {
+            $request = $context.Request
+            $response = $context.Response
+            $path = $request.Url.AbsolutePath.TrimEnd("/")
+            $apiKeyHeader = $request.Headers["X-API-Key"]
+
+            if ($apiKeyHeader -ne $ApiKey) {
+                $response.StatusCode = 401
+                $buffer = [System.Text.Encoding]::UTF8.GetBytes('{"error":"Unauthorized API key"}')
+                $response.ContentLength64 = $buffer.Length
+                $response.OutputStream.Write($buffer, 0, $buffer.Length)
+                $response.OutputStream.Close()
+                continue
+            }
+
+            $nextCursor = $request.QueryString["updated_after"]
+            if ([string]::IsNullOrWhiteSpace($nextCursor)) {
+                $nextCursor = "cursor-1"
+            }
+
+            $payload = $null
+            switch ($path) {
+                "/skus" {
+                    $payload = @{
+                        items = $skuItems
+                        nextCursor = $nextCursor
+                    }
+                }
+                "/api/skus" {
+                    $payload = @{
+                        items = $skuItems
+                        nextCursor = $nextCursor
+                    }
+                }
+                "/warehouses" {
+                    $payload = @{
+                        items = $warehouseItems
+                        nextCursor = $nextCursor
+                    }
+                }
+                "/api/warehouses" {
+                    $payload = @{
+                        items = $warehouseItems
+                        nextCursor = $nextCursor
+                    }
+                }
+                default {
+                    $response.StatusCode = 404
+                    $buffer = [System.Text.Encoding]::UTF8.GetBytes('{"error":"Not found"}')
+                    $response.ContentLength64 = $buffer.Length
+                    $response.OutputStream.Write($buffer, 0, $buffer.Length)
+                    $response.OutputStream.Close()
+                    continue
+                }
+            }
+
+            $json = $payload | ConvertTo-Json -Depth 5
+            if ([string]::IsNullOrWhiteSpace($json)) {
+                throw "Mock ERP serialization produced empty JSON for path '$path'."
+            }
+
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+            $response.ContentType = "application/json"
+            $response.StatusCode = 200
+            $response.ContentLength64 = $bytes.Length
+            $response.OutputStream.Write($bytes, 0, $bytes.Length)
+            $response.OutputStream.Close()
+            Write-Host "Sent response: $($response.StatusCode) OK"
+
+        }
+        catch {
+            Write-Host "Mock ERP request error: $($_.Exception.Message)"
+            try {
+                $errResponse = $context.Response
+                $errResponse.StatusCode = 500
+                $errBytes = [System.Text.Encoding]::UTF8.GetBytes('{"error":"Mock ERP internal error"}')
+                $errResponse.ContentLength64 = $errBytes.Length
+                $errResponse.OutputStream.Write($errBytes, 0, $errBytes.Length)
+                $errResponse.OutputStream.Close()
+            }
+            catch {
+                # ignore secondary response write failures
+            }
+        }
+    }
+}
+finally {
+    $listener.Stop()
+    $listener.Close()
+    Write-Host "Mock ERP server stopped."
+}

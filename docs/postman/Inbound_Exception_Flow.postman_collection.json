@@ -1,0 +1,482 @@
+{
+    "info": {
+        "_postman_id": "4268e21a-466a-493a-8742-838d22384a83",
+        "name": "Inbound Exception Flow",
+        "description": "Tests the full lifecycle of an inbound exception from WMS detection to OMS resolution.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "STEP -1 · Login to Keycloak",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "pm.collectionVariables.set('token', response.access_token);",
+                            "console.log('✅ Token obtained and saved to collection variable');"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/x-www-form-urlencoded"
+                    }
+                ],
+                "body": {
+                    "mode": "urlencoded",
+                    "urlencoded": [
+                        {
+                            "key": "grant_type",
+                            "value": "password"
+                        },
+                        {
+                            "key": "client_id",
+                            "value": "oms-client"
+                        },
+                        {
+                            "key": "username",
+                            "value": "{{username}}"
+                        },
+                        {
+                            "key": "password",
+                            "value": "{{password}}"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "{{keycloak_url}}/realms/logistics_realm/protocol/openid-connect/token",
+                    "host": [
+                        "{{keycloak_url}}"
+                    ],
+                    "path": [
+                        "realms",
+                        "logistics_realm",
+                        "protocol",
+                        "openid-connect",
+                        "token"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "STEP 0 窶・Setup Dev IAM",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                    "raw": "{{wms_url}}/api/dev/account/setup-admin",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "dev",
+                        "account",
+                        "setup-admin"
+                    ]
+                },
+                "description": "G\uff83\uff61n quy\u76fb\uff3d Admin cho User hi\u76fb\u333b t\u862f\uff61i \uff84\u9edb\uff7b\u30fbc\uff83\uff73 th\u76fb\u30fbch\u862f\uff61y c\uff83\uff61c b\uff86\uff70\u76fb\u5ae9 ti\u862f\uff7fp theo m\uff83\uf8f0 kh\uff83\uff74ng b\u76fb\u30fbl\u76fb\u64c1 403 Forbidden."
+            }
+        },
+        {
+            "name": "STEP 1 \u7ab6\u30fbT\u862f\uff61o \uff84\u67c1\uff61n h\uff83\uf8f0ng (Ordering)",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "// T\u76fb\uff71 \uff84\u9edb\uff7b\u51a2g decode JWT \uff84\u9edb\uff7b\u30fbl\u862f\uff65y 'sub' l\uff83\uf8f0m consignorId",
+                            "const token = pm.collectionVariables.get('token');",
+                            "if (token) {",
+                            "  const payload = JSON.parse(atob(token.split('.')[1]));",
+                            "  pm.collectionVariables.set('consignorId', payload.sub);",
+                            "  pm.collectionVariables.set('customerId', payload.sub);",
+                            "  const tenant = payload.tenant_id || payload.tenant || 'default-tenant';",
+                            "  pm.collectionVariables.set('tenantId', tenant);",
+                            "  console.log('\ue05e\u5074 consignorId/customerId (sub):', payload.sub);",
+                            "  console.log('\ue05e\u6377 tenantId:', tenant);",
+                            "}"
+                        ]
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200/201', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                            "const body = pm.response.json();",
+                            "const id = body.value || body;",
+                            "pm.collectionVariables.set('orderId', id);",
+                            "console.log('\u7b28\u30fborderId saved:', id);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "X-Correlation-Id",
+                        "value": "{{correlationId}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{oms_url}}/api/Orders",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "Orders"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"waybillCode\": \"WB-{{$randomInt}}\",\n  \"consignorId\": \"{{consignorId}}\",\n  \"skuCodes\": [\n    \"{{skuCode}}\"\n  ],\n  \"weight\": 1.5,\n  \"shippingFee\": 35000,\n  \"codAmount\": 500000,\n  \"note\": \"Handle with care\",\n  \"consignee\": {\n    \"fullName\": \"Nguyen Van A\",\n    \"phone\": \"0901234567\",\n    \"address\": {\n      \"street\": \"123 Nguyen Trai\",\n      \"city\": \"Ho Chi Minh\",\n      \"state\": \"HCM\",\n      \"country\": \"Vietnam\",\n      \"zipCode\": \"70000\"\n    }\n  }\n}"
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "STEP 1b \u7ab6\u30fbPickup h\uff83\uf8f0ng (Ordering)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "console.log('\u7b28\u30fbOrder moved to PickedUp with correlationId:', pm.collectionVariables.get('correlationId'));"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/pickup",
+                    "host": [
+                        "{{oms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "orders",
+                        "{{orderId}}",
+                        "actions",
+                        "pickup"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"driverId\": \"driver_01\"\n}"
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "STEP 2a \u7ab6\u30fbT\u862f\uff61o phi\u862f\uff7fu nh\u862f\uff6dp kho (Warehouse)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "if (pm.response.code >= 400) { console.log('❌ Error Response:', pm.response.text()); }",
+                            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                            "const response = pm.response.json();",
+                            "const id = response.value || response;",
+                            "pm.collectionVariables.set('receiptId', id);",
+                            "const requestBody = JSON.parse(pm.request.body.raw);",
+                            "pm.collectionVariables.set('sourceShipmentNo', requestBody.sourceShipmentNo);",
+                            "console.log('✅ receiptId saved:', id);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{wms_url}}/api/inbound/receipts",
+                    "host": [
+                        "{{wms_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "inbound",
+                        "receipts"
+                    ]
+                },
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"sourceShipmentNo\": \"ASN-{{orderId}}\",\n  \"expectedLines\": [\n    {\n      \"skuCode\": \"{{skuCode}}\",\n      \"expectedQuantity\": 10\n    }\n  ]\n}"
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Warehouse (WMS)",
+            "item": [
+                {
+                    "name": "Step 1: Receive Partial Items",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"skuCode\": \"{{skuCode}}\",\n  \"binCode\": \"BIN-A1-01\",\n  \"quantity\": 5\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/receive",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{receiptId}}",
+                                "receive"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Step 2: Force Close with Discrepancy",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{ }",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{receiptId}}/force-close",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{receiptId}}",
+                                "force-close"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Ordering (OMS)",
+            "item": [
+                {
+                    "name": "Step 3: Check Order Status (AwaitingResolution)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{oms_url}}/api/orders/{{orderId}}",
+                            "host": [
+                                "{{oms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "orders",
+                                "{{orderId}}"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Step 4: Resolve Exception (AcceptPartial)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"strategy\": \"AcceptPartial\",\n  \"reason\": \"Approved partial delivery\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/resolve-exception",
+                            "host": [
+                                "{{oms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "orders",
+                                "{{orderId}}",
+                                "actions",
+                                "resolve-exception"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Step 4: Resolve Exception (CancelAndReturn)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"strategy\": \"CancelAndReturn\",\n  \"reason\": \"Rejecting discrepancies\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{oms_url}}/api/orders/{{orderId}}/actions/resolve-exception",
+                            "host": [
+                                "{{oms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "orders",
+                                "{{orderId}}",
+                                "actions",
+                                "resolve-exception"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "oms_url",
+            "value": "http://localhost:8000/api/ordering"
+        },
+        {
+            "key": "wms_url",
+            "value": "http://localhost:8000/api/warehouse"
+        },
+        {
+            "key": "orderId",
+            "value": ""
+        },
+        {
+            "key": "receiptId",
+            "value": ""
+        },
+        {
+            "key": "tenantId",
+            "value": "default-tenant"
+        },
+        {
+            "key": "skuCode",
+            "value": "SKU-RED-TSHIRT"
+        },
+        {
+            "key": "customerId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "sourceShipmentNo",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "correlationId",
+            "value": "corr-postman-e2e-001",
+            "type": "string"
+        },
+        {
+            "key": "historyCountBeforeInvalid",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "warehouseId",
+            "value": "11111111-1111-1111-1111-111111111111",
+            "type": "string"
+        },
+        {
+            "key": "blockId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "zoneId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "username",
+            "value": "tester01",
+            "type": "string"
+        },
+        {
+            "key": "password",
+            "value": "admin",
+            "type": "string"
+        },
+        {
+            "key": "keycloak_url",
+            "value": "http://localhost:18080",
+            "type": "string"
+        },
+        {
+            "key": "token",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+            }
+        ]
+    }
+}

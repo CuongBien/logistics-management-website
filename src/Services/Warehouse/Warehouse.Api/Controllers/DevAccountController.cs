@@ -3,12 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Warehouse.Application.Common.Interfaces;
 using Warehouse.Domain.Entities;
+using Logistics.Core;
+
 
 namespace Warehouse.Api.Controllers;
 
 [ApiController]
 [Route("api/dev/account")]
-[Microsoft.AspNetCore.Authorization.Authorize]
 public class DevAccountController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
@@ -26,21 +27,11 @@ public class DevAccountController : ControllerBase
     [HttpPost("setup-admin")]
     public async Task<IActionResult> SetupAdmin()
     {
-        // Kiểm tra nhiều loại claim ID phổ biến
-        var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
-                 ?? User.FindFirst("sub")?.Value
-                 ?? User.FindFirst("oid")?.Value // Azure AD
-                 ?? User.Identity?.Name;
+        var sub = CurrentUserClaims.GetCustomerId(User);
         
         if (string.IsNullOrEmpty(sub))
-        {
-            var claims = User.Claims.Select(c => $"{c.Type}: {c.Value}").ToList();
-            return BadRequest(new { 
-                Error = "Token missing sub/nameid claim", 
-                AvailableClaims = claims,
-                IsAuthenticated = User.Identity?.IsAuthenticated 
-            });
-        }
+            return BadRequest("Token missing sub/NameIdentifier claim");
+
 
         var profile = await _context.OperatorProfiles.FirstOrDefaultAsync(p => p.OperatorSub == sub);
         if (profile == null)
@@ -81,7 +72,10 @@ public class DevAccountController : ControllerBase
         }
 
         await _context.SaveChangesAsync(HttpContext.RequestAborted);
+        
+        // Invalidate permissions cache for the current operator
         _cache.Remove($"permissions_{sub}");
+        
         return Ok(new { Message = "Admin rights granted for all warehouses.", OperatorSub = sub });
     }
 }

@@ -4,9 +4,9 @@ public enum InboundReceiptStatus
 {
     Draft = 0,
     Pending = 1,
-    PartiallyReceived = 2,
-    Received = 3,
-    Closed = 4,
-    Cancelled = 5,
-    CompletedWithExceptions = 6
+    Receiving = 2,
+    Completed = 3,
+    CompletedWithExceptions = 4,
+    Closed = 5,
+    Cancelled = 6
 }

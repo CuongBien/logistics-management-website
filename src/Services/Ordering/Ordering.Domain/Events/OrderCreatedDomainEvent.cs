@@ -9,9 +9,7 @@ public record OrderCreatedDomainEvent(
     string ConsignorId, 
     string WaybillCode, 
     decimal CodAmount,
-    decimal ShippingFee,
-    int OrderType = 1,
-    int FulfillmentMode = 1) : IDomainEvent
+    decimal ShippingFee) : IDomainEvent
 {
     public Guid EventId => Guid.NewGuid();
     public DateTime OccurredOn => DateTime.UtcNow;

@@ -57,7 +57,6 @@ public class InventoryController : ControllerBase
     [HttpPost("reconcile")]
     public async Task<IActionResult> Reconcile([FromBody] ReconcileInventoryCommand command)
     {
-        command.OperatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }

@@ -39,7 +39,7 @@ public sealed class ShipmentSortedConsumer : IConsumer<ShipmentSortedIntegration
         }
 
         var existed = await _context.InboundReceipts
-            .FirstOrDefaultAsync(x => x.SourceShipmentNo == sourceShipmentNo && x.WarehouseId == destinationWarehouseId && x.TenantId == message.TenantId, context.CancellationToken);
+            .FirstOrDefaultAsync(x => x.ShipmentNo == sourceShipmentNo && x.WarehouseId == destinationWarehouseId && x.TenantId == message.TenantId, context.CancellationToken);
 
         if (existed is not null)
         {
@@ -52,11 +52,12 @@ public sealed class ShipmentSortedConsumer : IConsumer<ShipmentSortedIntegration
 
         var receiptNo = $"RCV-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
         var receipt = new InboundReceipt(
-            message.OrderId,
             message.TenantId,
             message.CustomerId,
             destinationWarehouseId,
             receiptNo,
+            "PURCHASE_ORDER",
+            message.OrderId.ToString(),
             sourceShipmentNo);
 
         _context.InboundReceipts.Add(receipt);

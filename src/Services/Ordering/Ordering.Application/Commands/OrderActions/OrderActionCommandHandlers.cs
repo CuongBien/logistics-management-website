@@ -81,3 +81,28 @@ public class FailDeliveryCommandHandler : IRequestHandler<FailDeliveryCommand, R
         return Result.Success();
     }
 }
+
+public class ResolveExceptionCommandHandler : IRequestHandler<ResolveExceptionCommand, Result>
+{
+    private readonly IApplicationDbContext _context;
+
+    public ResolveExceptionCommandHandler(IApplicationDbContext context) => _context = context;
+
+    public async Task<Result> Handle(ResolveExceptionCommand request, CancellationToken cancellationToken)
+    {
+        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == request.OrderId, cancellationToken);
+        if (order is null) return Result.Failure(new Error("Order.NotFound", "Order was not found."));
+
+        Result result = request.Strategy switch
+        {
+            "AcceptPartial" => order.ResolveAcceptPartial(),
+            "CancelAndReturn" => order.ResolveCancel(),
+            _ => Result.Failure(new Error("Order.InvalidStrategy", $"Strategy {request.Strategy} is not supported."))
+        };
+
+        if (result.IsFailure) return result;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+}
