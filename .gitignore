@@ -77,3 +77,16 @@ tests/
 !src/Tests/**
 src/Tests/**/bin/
 src/Tests/**/obj/
+# Agent and Spec directories
+.agent/
+.cursor/
+.gemini/
+.github/
+.specify/
+.tours/
+.obsidian/
+specs/
+plans/
+note/
+AGENTS.md
+local_diff.txt
