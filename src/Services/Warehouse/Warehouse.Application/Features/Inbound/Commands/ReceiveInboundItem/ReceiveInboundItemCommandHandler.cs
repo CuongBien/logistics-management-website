@@ -35,14 +35,13 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         if (receipt == null)
             return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
-        // 2. Validate SKU exists for the RECEIPT'S tenant (the Consignor/Merchant), NOT the operator's tenant!
+        // 2. Validate SKU exists
+        var isUnknown = false;
         var skuExists = await _context.ErpSkuMirrors
             .AnyAsync(x => x.TenantId == receipt.TenantId && x.SkuCode == request.SkuCode && x.Status == "active", cancellationToken);
         if (!skuExists)
         {
-            return Result.Failure(new Error(
-                "ErpSkuMirror.MissingMapping",
-                $"Cannot receive inbound item because SKU '{request.SkuCode}' is not mapped for tenant '{receipt.TenantId}'."));
+            isUnknown = true;
         }
 
         // 3. Validate OrderId belongs to this receipt
@@ -75,9 +74,32 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
         // Find or create line for this SKU
         var line = receipt.Lines.FirstOrDefault(l => l.Sku == request.SkuCode);
+        
+        var expectedQty = line?.ExpectedQuantity ?? 0;
+        var receivedQty = line?.ReceivedQuantity ?? 0;
+        var isOverage = (receivedQty + request.Quantity > expectedQty);
+
+        var targetBin = bin;
+        if (isUnknown || isOverage)
+        {
+            var quarantineBin = await _context.Bins
+                .Include(b => b.Zone)
+                .ThenInclude(z => z.Block)
+                .FirstOrDefaultAsync(b => b.BinCode == "BIN-QUARANTINE" && b.WarehouseId == receipt.WarehouseId, cancellationToken);
+                
+            if (quarantineBin == null)
+            {
+                quarantineBin = new Bin(receipt.WarehouseId, bin.ZoneId, "BIN-QUARANTINE");
+                _context.Bins.Add(quarantineBin);
+                // Also set its Zone manually so the rest of the flow doesn't crash on .Zone.Block
+                quarantineBin.GetType().GetProperty("Zone")?.SetValue(quarantineBin, bin.Zone);
+            }
+            targetBin = quarantineBin;
+        }
+
         if (line == null)
         {
-            // Blind receipt scenario: line wasn't in ASN
+            // Blind receipt / Overage
             line = new InboundReceiptLine(receipt.Id, receipt.TenantId, receipt.CustomerId, request.SkuCode, expectedQuantity: request.Quantity);
             _context.InboundReceiptLines.Add(line);
             receipt.AddLine(line);
@@ -86,34 +108,34 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         line.AddReceivedQuantity(request.Quantity);
 
         // Find or create Allocation
-        var allocation = line.Allocations.FirstOrDefault(a => a.BinId == bin.Id);
+        var allocation = line.Allocations.FirstOrDefault(a => a.BinId == targetBin.Id);
         if (allocation != null)
         {
             allocation.AddQuantity(request.Quantity);
         }
         else
         {
-            allocation = new InboundBinAllocation(line.Id, bin.Id, request.Quantity, receipt.TenantId);
+            allocation = new InboundBinAllocation(line.Id, targetBin.Id, request.Quantity, receipt.TenantId);
             _context.InboundBinAllocations.Add(allocation);
         }
 
         // 4. Mark Bin as Occupied
-        bin.AssignOrder(request.OrderId);
+        targetBin.AssignOrder(request.OrderId);
         
         // Mark receipt as received. (In a real system, we'd check if all lines are fully received)
         receipt.RecalculateStatus();
 
         // 4.5 Upsert InventoryItem
-        var warehouseId = bin.Zone.Block.WarehouseId;
+        var warehouseId = targetBin.Zone.Block.WarehouseId;
         var inventoryItem = await _context.InventoryItems
             .FirstOrDefaultAsync(i => i.WarehouseId == warehouseId 
                                    && i.TenantId == receipt.TenantId 
                                    && i.Sku == request.SkuCode 
-                                   && i.BinId == bin.Id, cancellationToken);
+                                   && i.BinId == targetBin.Id, cancellationToken);
 
         if (inventoryItem == null)
         {
-            inventoryItem = InventoryItem.Create(request.SkuCode, request.Quantity, receipt.TenantId, receipt.CustomerId, warehouseId, bin.Id);
+            inventoryItem = InventoryItem.Create(request.SkuCode, request.Quantity, receipt.TenantId, receipt.CustomerId, warehouseId, targetBin.Id);
             _context.InventoryItems.Add(inventoryItem);
         }
         else
@@ -122,15 +144,30 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         }
 
         // 4.6 Log to Ledger
+        var ledgerReason = (isUnknown || isOverage) ? "Overage Receipt" : "Receipt";
         var ledger = InventoryLedger.Create(
             inventoryItem,
             InventoryLedgerReason.InboundReceived,
             request.Quantity,
             request.ReceiptId.ToString(),
-            "Receipt",
+            ledgerReason,
             request.ScannedBy);
             
         _context.InventoryLedgers.Add(ledger);
+
+        if (isUnknown || isOverage)
+        {
+            var discrepancy = new InboundDiscrepancy(
+                receipt.Id,
+                warehouseId,
+                request.SkuCode,
+                expectedQty,
+                receivedQty + request.Quantity,
+                request.ScannedBy,
+                isUnknown ? "SKU not found in ERPMirror. Moved to Quarantine." : "Overage detected. Moved to Quarantine."
+            );
+            _context.InboundDiscrepancies.Add(discrepancy);
+        }
 
         // 5. Publish integration event ONLY if the receipt is fully received
         if (receipt.Status == InboundReceiptStatus.Received)

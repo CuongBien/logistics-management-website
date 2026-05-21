@@ -36,6 +36,7 @@ public interface IApplicationDbContext
     DbSet<InventoryReconciliationReport> InventoryReconciliationReports { get; }
     DbSet<WarehouseRoute> WarehouseRoutes { get; }
     DbSet<TransitDiscrepancy> TransitDiscrepancies { get; }
+    DbSet<InboundDiscrepancy> InboundDiscrepancies { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
