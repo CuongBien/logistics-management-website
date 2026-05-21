@@ -24,7 +24,15 @@ public class InventoryController : ControllerBase
     [HttpPost("reserve")]
     public async Task<IActionResult> Reserve([FromBody] ReserveStockCommand command)
     {
-        command.TenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var tokenTenant = CurrentUserClaims.GetTenantId(User);
+        if (!string.IsNullOrEmpty(tokenTenant))
+        {
+            command.TenantId = tokenTenant;
+        }
+        else if (string.IsNullOrEmpty(command.TenantId))
+        {
+            command.TenantId = "default-tenant";
+        }
         command.OperatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         
         var result = await _mediator.Send(command);
@@ -65,7 +73,16 @@ public class InventoryController : ControllerBase
     [HttpPost("transfer")]
     public async Task<IActionResult> Transfer([FromBody] Warehouse.Application.Features.Inventory.Commands.TransferInventory.TransferInventoryCommand command)
     {
-        command.TenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var tokenTenant = CurrentUserClaims.GetTenantId(User);
+        if (!string.IsNullOrEmpty(tokenTenant))
+        {
+            command.TenantId = tokenTenant;
+        }
+        else if (string.IsNullOrEmpty(command.TenantId))
+        {
+            command.TenantId = "default-tenant";
+        }
+
         if (string.IsNullOrEmpty(command.CustomerId))
         {
             command.CustomerId = "cust-default";
