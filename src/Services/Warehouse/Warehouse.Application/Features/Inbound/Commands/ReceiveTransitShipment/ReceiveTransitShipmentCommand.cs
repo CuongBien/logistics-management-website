@@ -12,7 +12,8 @@ public record ReceiveTransitShipmentCommand(
     Guid OrderId, 
     Guid WarehouseId, 
     string OperatorId, 
-    Dictionary<string, int>? ReceivedItems = null
+    Dictionary<string, int>? ReceivedItems = null,
+    string? BinCode = null
 ) : IRequest<Result<bool>>;
 
 public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTransitShipmentCommand, Result<bool>>
@@ -74,18 +75,40 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
 
         var shipment = shipmentOrder.Shipment;
 
-        // 3. Find standard transit bin at receiving warehouse (BIN-A1-01)
+        // Idempotency check
+        if (shipment.Status == ShipmentStatus.Delivered && order.WarehouseId == request.WarehouseId)
+        {
+            _logger.LogInformation("Transit shipment for Order {OrderId} was already delivered to {WarehouseId}.", request.OrderId, request.WarehouseId);
+            return Result<bool>.Success(true);
+        }
+
+        // 3. Resolve Bin
+        var targetBinCode = string.IsNullOrWhiteSpace(request.BinCode) ? "BIN-A1-01" : request.BinCode;
         var bin = await _context.Bins
             .Include(b => b.Zone)
             .ThenInclude(z => z.Block)
-            .FirstOrDefaultAsync(b => b.BinCode == "BIN-A1-01" && b.WarehouseId == request.WarehouseId, cancellationToken);
+            .FirstOrDefaultAsync(b => b.BinCode == targetBinCode && b.WarehouseId == request.WarehouseId, cancellationToken);
 
         if (bin == null)
         {
-            return Result<bool>.Failure(Error.NotFound("Bin.NotFound", $"Standard Transit Bin BIN-A1-01 not found at warehouse {request.WarehouseId}."));
+            return Result<bool>.Failure(Error.NotFound("Bin.NotFound", $"Target Bin {targetBinCode} not found at warehouse {request.WarehouseId}."));
         }
 
-        // 4. Find or create temporary Inbound Receipt representing transit reception
+        // 4. Find or create Quarantine Bin (BIN-QUARANTINE) if needed
+        var quarantineBin = await _context.Bins
+            .Include(b => b.Zone)
+            .ThenInclude(z => z.Block)
+            .FirstOrDefaultAsync(b => b.BinCode == "BIN-QUARANTINE" && b.WarehouseId == request.WarehouseId, cancellationToken);
+
+        if (quarantineBin == null)
+        {
+            quarantineBin = new Bin(request.WarehouseId, bin.ZoneId, "BIN-QUARANTINE");
+            _context.Bins.Add(quarantineBin);
+            // Also set its Zone manually so the rest of the flow doesn't crash on .Zone.Block
+            quarantineBin.GetType().GetProperty("Zone")?.SetValue(quarantineBin, bin.Zone);
+        }
+
+        // 5. Find or create temporary Inbound Receipt representing transit reception
         var sourceReceiptNo = $"RCV-TRANSIT-{shipment.ShipmentNo[..8]}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
         var receipt = await _context.InboundReceipts
             .Include(r => r.Lines)
@@ -105,95 +128,119 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        // Unload/Receive each item into intermediate hub inventory
+        // 6. Two-Way Reconciliation Logic
+        var receivedItems = request.ReceivedItems != null 
+            ? new Dictionary<string, int>(request.ReceivedItems) 
+            : new Dictionary<string, int>();
+
+        var expectedSkus = order.Lines.Select(l => l.Sku).ToHashSet();
+        var allSkus = new HashSet<string>(expectedSkus);
+        foreach (var sku in receivedItems.Keys)
+        {
+            allSkus.Add(sku);
+        }
+
+        // Check ErpSkuMirror for all SKUs
+        var validSkus = await _context.ErpSkuMirrors
+            .Where(e => e.TenantId == order.TenantId && allSkus.Contains(e.SkuCode))
+            .Select(e => e.SkuCode)
+            .ToListAsync(cancellationToken);
+
+        var validSkuSet = new HashSet<string>(validSkus);
+        bool hasUnknownSkus = false;
+        var unknownSkuList = new List<string>();
+
+        foreach (var sku in allSkus)
+        {
+            if (!validSkuSet.Contains(sku))
+            {
+                hasUnknownSkus = true;
+                unknownSkuList.Add(sku);
+            }
+        }
+
+        // Phase 1: Process Expected Items
         foreach (var line in order.Lines)
         {
-            // BUG-01 FIX: Use ShippedQty (set by previous DispatchShipment) as the
-            // reference for what was actually loaded onto the truck, not RequestedQty
-            // which represents the original customer order and must never be mutated.
             int shippedQty = line.ShippedQty > 0 ? line.ShippedQty : line.RequestedQty;
             int qtyToReceive = shippedQty;
 
-            if (request.ReceivedItems != null && request.ReceivedItems.TryGetValue(line.Sku, out var customQty))
+            if (receivedItems.TryGetValue(line.Sku, out var customQty))
             {
                 qtyToReceive = customQty;
+                receivedItems.Remove(line.Sku); // Mark as processed
+            }
+            else if (request.ReceivedItems != null)
+            {
+                // If ReceivedItems dictionary was provided but this SKU is missing, it means 0 received
+                qtyToReceive = 0;
             }
 
             if (qtyToReceive < 0)
             {
-                return Result<bool>.Failure(new Error("TransitReceive.InvalidQuantity", $"Received quantity for SKU {line.Sku} ({qtyToReceive}) cannot be negative."));
+                return Result<bool>.Failure(new Error("TransitReceive.InvalidQuantity", $"Received quantity for SKU {line.Sku} cannot be negative."));
             }
 
-            // 4.1 Find or create Inbound Receipt Line
-            var receiptLine = receipt.Lines.FirstOrDefault(l => l.Sku == line.Sku);
-            if (receiptLine == null)
+            if (qtyToReceive > 0)
             {
-                receiptLine = new InboundReceiptLine(receipt.Id, order.TenantId, order.CustomerId, line.Sku, shippedQty);
-                receiptLine.AddReceivedQuantity(qtyToReceive);
-                _context.InboundReceiptLines.Add(receiptLine);
-                receipt.AddLine(receiptLine);
-            }
-            else
-            {
-                receiptLine.AddReceivedQuantity(qtyToReceive);
-            }
+                var receiptLine = receipt.Lines.FirstOrDefault(l => l.Sku == line.Sku);
+                if (receiptLine == null)
+                {
+                    receiptLine = new InboundReceiptLine(receipt.Id, order.TenantId, order.CustomerId, line.Sku, shippedQty);
+                    receiptLine.AddReceivedQuantity(qtyToReceive);
+                    _context.InboundReceiptLines.Add(receiptLine);
+                    receipt.AddLine(receiptLine);
+                }
+                else
+                {
+                    receiptLine.AddReceivedQuantity(qtyToReceive);
+                }
 
-            // 4.2 Add Inbound Allocation
-            var allocation = new InboundBinAllocation(receiptLine.Id, bin.Id, qtyToReceive, order.TenantId);
-            _context.InboundBinAllocations.Add(allocation);
+                var allocation = new InboundBinAllocation(receiptLine.Id, bin.Id, qtyToReceive, order.TenantId);
+                _context.InboundBinAllocations.Add(allocation);
 
-            // 4.3 Upsert InventoryItem at receiving intermediate hub
-            var inventoryItem = await _context.InventoryItems
-                .FirstOrDefaultAsync(i => i.WarehouseId == request.WarehouseId 
-                                       && i.TenantId == order.TenantId 
-                                       && i.Sku == line.Sku 
-                                       && i.BinId == bin.Id, cancellationToken);
+                var inventoryItem = await _context.InventoryItems
+                    .FirstOrDefaultAsync(i => i.WarehouseId == request.WarehouseId 
+                                           && i.TenantId == order.TenantId 
+                                           && i.Sku == line.Sku 
+                                           && i.BinId == bin.Id, cancellationToken);
 
-            if (inventoryItem == null)
-            {
-                inventoryItem = InventoryItem.Create(line.Sku, qtyToReceive, order.TenantId, order.CustomerId, request.WarehouseId, bin.Id);
-                _context.InventoryItems.Add(inventoryItem);
-            }
-            else
-            {
-                inventoryItem.Restock(qtyToReceive);
-            }
+                if (inventoryItem == null)
+                {
+                    inventoryItem = InventoryItem.Create(line.Sku, qtyToReceive, order.TenantId, order.CustomerId, request.WarehouseId, bin.Id);
+                    _context.InventoryItems.Add(inventoryItem);
+                }
+                else
+                {
+                    inventoryItem.Restock(qtyToReceive);
+                }
 
-            // Check if this is the final destination for this order
-            if (!isFinalDestination)
-            {
-                // BUG-03 FIX: Reserve the restocked inventory for next-leg dispatch.
-                inventoryItem.ReserveStock(qtyToReceive);
-                var transitReservation = InventoryReservation.Create(
-                    inventoryItem.Id,
-                    order.Id.ToString(),
-                    ReservationType.OutboundOrder,
+                if (!isFinalDestination)
+                {
+                    inventoryItem.ReserveStock(qtyToReceive);
+                    var transitReservation = InventoryReservation.Create(
+                        inventoryItem.Id,
+                        order.Id.ToString(),
+                        ReservationType.OutboundOrder,
+                        qtyToReceive,
+                        TimeSpan.FromDays(7),
+                        $"TRANSIT-{shipment.ShipmentNo}");
+                    _context.InventoryReservations.Add(transitReservation);
+                }
+
+                var ledger = InventoryLedger.Create(
+                    inventoryItem,
+                    InventoryLedgerReason.TransitReceived,
                     qtyToReceive,
-                    TimeSpan.FromDays(7),  // TTL for transit reservation
-                    $"TRANSIT-{shipment.ShipmentNo}");
-                _context.InventoryReservations.Add(transitReservation);
-            }
-            else
-            {
-                // Final destination reached! 
-                // For Cross-region Consignment: Inventory becomes Available.
-                // For Courier orders: Inventory awaits Last-mile pickup.
-                _logger.LogInformation("WMS: Final destination reached for Order {OrderId}. Skipping reservation to free inventory.", order.OrderId);
+                    receipt.Id.ToString(),
+                    "Receipt",
+                    request.OperatorId);
+                
+                _context.InventoryLedgers.Add(ledger);
             }
 
-            // 4.4 Create Inventory Ledger Log
-            var ledger = InventoryLedger.Create(
-                inventoryItem,
-                InventoryLedgerReason.TransitReceived,
-                qtyToReceive,
-                receipt.Id.ToString(),
-                "Receipt",
-                request.OperatorId);
-            
-            _context.InventoryLedgers.Add(ledger);
-
-            // Check and handle discrepancy
-            if (qtyToReceive != shippedQty)
+            // Shortage Discrepancy
+            if (qtyToReceive < shippedQty)
             {
                 var discrepancy = new TransitDiscrepancy(
                     order.Id,
@@ -206,11 +253,7 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                     request.OperatorId
                 );
                 _context.TransitDiscrepancies.Add(discrepancy);
-                // BUG-01 FIX: REMOVED line.UpdateRequestedQuantity(qtyToReceive)
-                // RequestedQty must never be mutated — it is the single source of truth
-                // for the original customer order. Discrepancy is tracked separately.
 
-                // Publish integration event
                 await _publishEndpoint.Publish(new EventBus.Messages.Events.TransitDiscrepancyDetectedIntegrationEvent(
                     discrepancy.Id,
                     order.Id,
@@ -225,33 +268,108 @@ public class ReceiveTransitShipmentCommandHandler : IRequestHandler<ReceiveTrans
                 ), cancellationToken);
             }
 
-            // BUG-02 + BUG-04 FIX: Reset ALL progress counters for next-leg transit.
-            // Old code only reset ShippedQty, leaving PickedQty/PackedQty stale from
-            // the origin warehouse → caused wrong qtyToShip at next hub.
             line.ResetForNextTransitLeg(qtyToReceive);
         }
 
-        // Mark intermediate inbound receipt as fully received
-        receipt.RecalculateStatus();
+        // Phase 2: Process Overage / Unexpected Items
+        foreach (var kvp in receivedItems)
+        {
+            var sku = kvp.Key;
+            var overageQty = kvp.Value;
+            if (overageQty <= 0) continue;
 
-        // CRITICAL: Update the Outbound Order's physical location & status
+            var isUnknown = !validSkuSet.Contains(sku);
+            var targetOverageBin = isUnknown ? quarantineBin : bin;
+
+            var receiptLine = new InboundReceiptLine(receipt.Id, order.TenantId, order.CustomerId, sku, expectedQuantity: overageQty);
+            receiptLine.AddReceivedQuantity(overageQty);
+            _context.InboundReceiptLines.Add(receiptLine);
+            receipt.AddLine(receiptLine);
+
+            var allocation = new InboundBinAllocation(receiptLine.Id, targetOverageBin.Id, overageQty, order.TenantId);
+            _context.InboundBinAllocations.Add(allocation);
+
+            var inventoryItem = await _context.InventoryItems
+                .FirstOrDefaultAsync(i => i.WarehouseId == request.WarehouseId 
+                                       && i.TenantId == order.TenantId 
+                                       && i.Sku == sku 
+                                       && i.BinId == targetOverageBin.Id, cancellationToken);
+
+            if (inventoryItem == null)
+            {
+                inventoryItem = InventoryItem.Create(sku, overageQty, order.TenantId, order.CustomerId, request.WarehouseId, targetOverageBin.Id);
+                _context.InventoryItems.Add(inventoryItem);
+            }
+            else
+            {
+                inventoryItem.Restock(overageQty);
+            }
+
+            var ledger = InventoryLedger.Create(
+                inventoryItem,
+                InventoryLedgerReason.TransitReceived,
+                overageQty,
+                receipt.Id.ToString(),
+                "Overage Receipt",
+                request.OperatorId);
+            _context.InventoryLedgers.Add(ledger);
+
+            var discrepancy = new TransitDiscrepancy(
+                order.Id,
+                shipment.Id,
+                request.WarehouseId,
+                sku,
+                0, // ShippedQty = 0
+                overageQty,
+                shipment.Carrier ?? "N/A",
+                request.OperatorId,
+                isUnknown ? "SKU not found in ERPMirror. Moved to Quarantine." : "Overage detected"
+            );
+            _context.TransitDiscrepancies.Add(discrepancy);
+
+            await _publishEndpoint.Publish(new EventBus.Messages.Events.TransitDiscrepancyDetectedIntegrationEvent(
+                discrepancy.Id,
+                order.Id,
+                shipment.Id,
+                request.WarehouseId,
+                sku,
+                0,
+                overageQty,
+                -overageQty,
+                shipment.Carrier ?? "N/A",
+                request.OperatorId
+            ), cancellationToken);
+        }
+
+        // 7. Update States
+        receipt.RecalculateStatus();
         order.UpdateWarehouse(request.WarehouseId);
         
         if (isFinalDestination)
         {
-            order.UpdateStatus(OutboundOrderStatus.Delivered); // End of transit
+            order.UpdateStatus(OutboundOrderStatus.Delivered);
+            if (!string.IsNullOrWhiteSpace(request.BinCode))
+            {
+                bin.AssignOrder(order.OrderId);
+            }
         }
         else
         {
-            order.UpdateStatus(OutboundOrderStatus.Packed); // Reset status to Packed for next-leg dispatch
+            order.UpdateStatus(OutboundOrderStatus.Packed);
         }
 
-        // 5. Mark incoming shipment as Delivered at its current intermediate stop
         shipment.Deliver();
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Successfully received Transit Package for Order {OrderId} at Warehouse {WarehouseId}. Next-leg order is ready for dispatch.", request.OrderId, request.WarehouseId);
+        if (hasUnknownSkus)
+        {
+            var unknownList = string.Join(", ", unknownSkuList);
+            _logger.LogWarning("Transit received with unknown SKUs: {UnknownList}. Items moved to quarantine.", unknownList);
+            return Result<bool>.Failure(new Error("TransitReceive.UnknownSkuQuarantine", $"Processed with warnings. Unknown SKUs detected and moved to quarantine: {unknownList}"));
+        }
+
+        _logger.LogInformation("Successfully received Transit Package for Order {OrderId} at Warehouse {WarehouseId}.", request.OrderId, request.WarehouseId);
         return Result<bool>.Success(true);
     }
 }
