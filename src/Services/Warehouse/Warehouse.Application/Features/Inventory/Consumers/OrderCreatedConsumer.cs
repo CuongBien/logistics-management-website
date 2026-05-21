@@ -129,6 +129,7 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
             OrderId: msg.OrderId,
             TenantId: msg.TenantId ?? "DefaultTenant",
             CustomerId: msg.ConsignorId ?? "DefaultCustomer",
+            OperatorId: "System",
             WarehouseId: warehouse.Id,
             SourceShipmentNo: $"ASN-{msg.WaybillCode}",
             ExpectedLines: expectedLines
@@ -169,7 +170,8 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
         var cmd = new CreateInboundReceiptCommand(
             OrderId: msg.OrderId,
             TenantId: msg.TenantId ?? "DefaultTenant",
-            CustomerId: msg.ConsignorId,
+            CustomerId: msg.ConsignorId ?? "DefaultCustomer",
+            OperatorId: "System",
             WarehouseId: warehouse.Id,
             SourceShipmentNo: $"ASN-{msg.WaybillCode}",
             ExpectedLines: expectedLines
@@ -272,7 +274,8 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
         // Create Outbound Order
         var createOutboundCmd = new CreateOutboundOrderCommand(
             TenantId: msg.TenantId ?? "DefaultTenant",
-            CustomerId: msg.ConsignorId,
+            CustomerId: string.IsNullOrWhiteSpace(msg.ConsignorId) ? "cust-default" : msg.ConsignorId,
+            OperatorId: "System",
             WarehouseId: warehouseId,
             OrderId: msg.OrderId,
             OrderNo: msg.WaybillCode,

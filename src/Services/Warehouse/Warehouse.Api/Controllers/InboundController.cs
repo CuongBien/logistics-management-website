@@ -52,7 +52,9 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Guid>> CreateReceipt([FromBody] CreateInboundReceiptCommand command)
     {
-        var result = await Mediator.Send(command);
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var finalCommand = command with { OperatorId = operatorId };
+        var result = await Mediator.Send(finalCommand);
         return ToActionResult(result);
     }
 
@@ -122,7 +124,7 @@ public class InboundController : ApiControllerBase
             return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
         }
 
-        var command = new ReceiveTransitShipmentCommand(orderId, request.WarehouseId, operatorSub, request.ReceivedItems);
+        var command = new ReceiveTransitShipmentCommand(orderId, request.WarehouseId, operatorSub, request.ReceivedItems, request.BinCode);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }

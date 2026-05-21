@@ -22,6 +22,8 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
     /// Null for standard local inbound receipts.
     /// </summary>
     public Guid? FinalDestinationWarehouseId { get; private set; }
+    
+    public string? CreatedByOperatorId { get; private set; }
 
     // Navigation
     private readonly List<InboundReceiptLine> _lines = new();
@@ -30,7 +32,7 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
     // EF Core
     private InboundReceipt() { }
 
-    public InboundReceipt(Guid orderId, string tenantId, string customerId, Guid warehouseId, string receiptNo, string? sourceShipmentNo)
+    public InboundReceipt(Guid orderId, string tenantId, string customerId, Guid warehouseId, string receiptNo, string? sourceShipmentNo, string? createdByOperatorId = null)
     {
         Id = Guid.NewGuid();
         OrderId = orderId;
@@ -42,6 +44,7 @@ public class InboundReceipt : Entity<Guid>, IAggregateRoot, ISoftDelete
         SourceShipmentNo = sourceShipmentNo;
         Status = InboundReceiptStatus.Pending;
         IsDeleted = false;
+        CreatedByOperatorId = createdByOperatorId;
     }
 
     public void SetFinalDestination(Guid warehouseId)

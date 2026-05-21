@@ -28,6 +28,7 @@ public class OutboundOrderConfiguration : IEntityTypeConfiguration<OutboundOrder
         builder.Property(x => x.AllowPartial).IsRequired().HasDefaultValue(true);
         builder.Property(x => x.PlannedShipAt);
         builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(x => x.CreatedByOperatorId).HasMaxLength(100).IsRequired(false);
 
         builder.HasMany(x => x.Lines)
                .WithOne(x => x.OutboundOrder)

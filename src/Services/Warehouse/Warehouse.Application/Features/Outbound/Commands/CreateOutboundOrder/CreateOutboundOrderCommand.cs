@@ -8,6 +8,7 @@ public record OutboundOrderLineItem(string Sku, int Quantity, string Uom);
 public record CreateOutboundOrderCommand(
     string TenantId,
     string CustomerId,
+    string OperatorId,
     Guid WarehouseId,
     Guid OrderId,
     string OrderNo,

@@ -49,6 +49,8 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
     public decimal Weight { get; private set; }
     public decimal Volume { get; private set; }
 
+    public string? CreatedByOperatorId { get; private set; }
+
     private readonly List<OutboundOrderLine> _lines = new();
     public virtual IReadOnlyCollection<OutboundOrderLine> Lines => _lines.AsReadOnly();
 
@@ -69,7 +71,8 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         double? latitude = null,
         double? longitude = null,
         decimal weight = 0,
-        decimal volume = 0)
+        decimal volume = 0,
+        string? createdByOperatorId = null)
     {
         Id = orderId;
         OrderId = orderId;
@@ -89,6 +92,7 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         Volume = volume <= 0 ? weight * 0.003m : volume; // Default estimate CBM from weight
         Status = OutboundOrderStatus.Draft;
         CreatedAt = DateTime.UtcNow;
+        CreatedByOperatorId = createdByOperatorId;
     }
 
     public static OutboundOrder Create(
@@ -105,9 +109,10 @@ public class OutboundOrder : Entity<Guid>, IAggregateRoot
         double? latitude = null,
         double? longitude = null,
         decimal weight = 0,
-        decimal volume = 0)
+        decimal volume = 0,
+        string? createdByOperatorId = null)
     {
-        return new OutboundOrder(orderId, tenantId, customerId, warehouseId, orderNo, destinationAddress, destinationCity, priority, allowPartial, partnerId, latitude, longitude, weight, volume);
+        return new OutboundOrder(orderId, tenantId, customerId, warehouseId, orderNo, destinationAddress, destinationCity, priority, allowPartial, partnerId, latitude, longitude, weight, volume, createdByOperatorId);
     }
 
     // BUG-13 FIX: State machine guard — defines valid forward transitions.

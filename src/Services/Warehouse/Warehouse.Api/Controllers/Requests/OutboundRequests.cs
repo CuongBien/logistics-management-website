@@ -6,6 +6,7 @@ public class CreateOutboundOrderRequest
 {
     public Guid WarehouseId { get; set; }
     public Guid OrderId { get; set; }
+    public string CustomerId { get; set; } = default!;
     public string OrderNo { get; set; } = default!;
     public string? DestinationAddress { get; set; }
     public string? DestinationCity { get; set; }

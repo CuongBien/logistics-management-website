@@ -33,9 +33,9 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             return Result.Failure(new Error("Tenant.Missing", "TenantId is required for sorting operation."));
         }
 
-        if (string.IsNullOrWhiteSpace(request.CustomerId))
+        if (string.IsNullOrWhiteSpace(request.OperatorId))
         {
-            return Result.Failure(new Error("Customer.Missing", "CustomerId is required for sorting operation."));
+            return Result.Failure(new Error("Operator.Missing", "OperatorId is required for sorting operation."));
         }
 
         // 1. Determine Source Warehouse and find OutboundOrder
@@ -47,8 +47,11 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         Bin? bin = null;
         InboundReceipt? inboundReceipt = null;
 
+        string actualCustomerId = "";
+
         if (outboundOrder != null)
         {
+            actualCustomerId = outboundOrder.CustomerId;
             // Case A: Multi-leg Transit Order or already sorted order
             sourceWarehouseId = outboundOrder.WarehouseId;
             
@@ -82,6 +85,8 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             {
                 return Result.Failure(new Error("Outbound.InvalidOrderType", $"Sort action is reserved for standard courier orders (bưu cục lẻ) and cross-region consignments. No inbound receipt found for Order ID {request.OrderId}."));
             }
+
+            actualCustomerId = inboundReceipt.CustomerId;
 
             if (inboundReceipt.Lines.Count == 0)
             {
@@ -119,7 +124,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         // 2. Check RBAC Permission
         var zoneId = bin?.ZoneId; 
         var hasPermission = await _authService.HasPermissionAsync(
-            request.CustomerId, 
+            request.OperatorId, 
             sourceWarehouseId, 
             zoneId, 
             "outbound:sort", 
@@ -129,7 +134,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
         {
             return Result.Failure(new Error(
                 "Operator.Forbidden",
-                $"Operator '{request.CustomerId}' does not have permission 'outbound:sort' for warehouse '{sourceWarehouseId}' and zone '{zoneId}' (if applicable)."));
+                $"Operator '{request.OperatorId}' does not have permission 'outbound:sort' for warehouse '{sourceWarehouseId}' and zone '{zoneId}' (if applicable)."));
         }
 
         if (bin != null)
@@ -277,7 +282,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             outboundOrder = new OutboundOrder(
                 request.OrderId, 
                 request.TenantId, 
-                request.CustomerId, 
+                actualCustomerId, 
                 sourceWarehouseId, 
                 orderNo: $"SORTED-{request.OrderId.ToString()[..8].ToUpper()}",
                 destinationAddress: destWh!.Name,
@@ -288,7 +293,8 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
                 latitude: destLat,
                 longitude: destLon,
                 weight: totalWeight,
-                volume: totalVolume);
+                volume: totalVolume,
+                createdByOperatorId: request.OperatorId);
 
             _context.OutboundOrders.Add(outboundOrder);
 
@@ -356,7 +362,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             var shipmentNo = $"SHP-{sourceWarehouseId.ToString()[..8]}-{DateTime.UtcNow:yyyyMMddHHmmss}-{uniquePart}";
             shipment = new Shipment(
                 tenantId: request.TenantId,
-                customerId: request.CustomerId,
+                customerId: actualCustomerId,
                 shipmentNo: shipmentNo,
                 warehouseId: sourceWarehouseId,
                 destinationType: DestinationType.Warehouse,
@@ -386,7 +392,7 @@ public class SortOrderCommandHandler : IRequestHandler<SortOrderCommand, Result>
             resolvedDestinationId.ToString(),
             DateTime.UtcNow,
             request.TenantId,
-            request.CustomerId,
+            actualCustomerId,
             shipment.ShipmentNo), cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);

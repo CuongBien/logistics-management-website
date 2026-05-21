@@ -28,14 +28,14 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
 
         // Check permission
         var hasPermission = await _authService.HasPermissionAsync(
-            request.CustomerId,
+            request.OperatorId,
             request.WarehouseId,
             null,
             "outbound:create",
             cancellationToken);
         if (!hasPermission)
         {
-            return Result<Guid>.Failure(new Error("Forbidden", $"Operator '{request.CustomerId}' does not have permission 'outbound:create' for warehouse '{request.WarehouseId}'."));
+            return Result<Guid>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:create' for warehouse '{request.WarehouseId}'."));
         }
 
         if (request.Lines == null || !request.Lines.Any())
@@ -73,7 +73,8 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
             request.Latitude,
             request.Longitude,
             estimatedWeight,
-            estimatedVolume);
+            estimatedVolume,
+            request.OperatorId);
 
         // Map Lines (enforces unique SKU per order inside the entity)
         try

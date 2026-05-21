@@ -7,5 +7,5 @@ public record SortOrderCommand(
     Guid OrderId,
     Guid? DestinationWarehouseId,
     string TenantId,
-    string CustomerId,
+    string OperatorId,
     string? SourceShipmentNo) : IRequest<Result>;

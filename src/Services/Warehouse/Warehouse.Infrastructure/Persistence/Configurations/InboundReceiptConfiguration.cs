@@ -29,6 +29,7 @@ public class InboundReceiptConfiguration : IEntityTypeConfiguration<InboundRecei
         builder.Property(ir => ir.IsDeleted).IsRequired();
         builder.Property(ir => ir.DeletedAt);
         builder.Property(ir => ir.FinalDestinationWarehouseId).IsRequired(false);
+        builder.Property(ir => ir.CreatedByOperatorId).HasMaxLength(100).IsRequired(false);
 
         builder.HasIndex(ir => new { ir.TenantId, ir.ReceiptNo })
                .IsUnique()

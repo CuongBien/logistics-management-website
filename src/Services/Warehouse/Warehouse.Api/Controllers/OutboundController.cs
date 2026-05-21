@@ -54,10 +54,10 @@ public class OutboundController : ApiControllerBase
     public async Task<ActionResult> SortOrder([FromBody] SortOrderRequest request)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-        var customerId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(customerId))
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(operatorId))
         {
-            return BadRequest(new { Code = "TenantOrCustomer.MissingClaim", Message = "Missing tenant/customer claim in access token." });
+            return BadRequest(new { Code = "TenantOrOperator.MissingClaim", Message = "Missing tenant/operator claim in access token." });
         }
 
         var sourceShipmentNo = request.SourceShipmentNo;
@@ -70,7 +70,7 @@ public class OutboundController : ApiControllerBase
             request.OrderId,
             request.DestinationWarehouseId,
             tenantId,
-            customerId,
+            operatorId,
             sourceShipmentNo);
 
         var result = await Mediator.Send(finalCommand);
@@ -82,10 +82,14 @@ public class OutboundController : ApiControllerBase
     public async Task<ActionResult<Guid>> CreateOrder([FromBody] CreateOutboundOrderRequest request)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-        var customerId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        
+        var customerId = string.IsNullOrWhiteSpace(request.CustomerId) ? "cust-default" : request.CustomerId;
+
         var command = new Warehouse.Application.Features.Outbound.Commands.CreateOutboundOrder.CreateOutboundOrderCommand(
             tenantId, 
-            customerId, 
+            customerId,
+            operatorId,
             request.WarehouseId, 
             request.OrderId, 
             request.OrderNo,
