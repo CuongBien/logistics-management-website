@@ -71,6 +71,10 @@ public static class WMSDbContextSeed
                     context.Bins.Add(bin);
                     await context.SaveChangesAsync();
 
+                    var binReturn = new Bin(wh.Id, zone.Id, "BIN-RETURN");
+                    context.Bins.Add(binReturn);
+                    await context.SaveChangesAsync();
+
                     if (whId == ctId)
                     {
                         var binCt = new Bin(wh.Id, zone.Id, "BIN-CT-001");
@@ -109,6 +113,27 @@ public static class WMSDbContextSeed
 
                 await context.SaveChangesAsync();
                 logger.LogInformation("Successfully seeded default Warehouse Routes Next-Hop Matrix.");
+            }
+
+            // 3. Ensure BIN-RETURN exists for all warehouses
+            var existingWarehouses = await context.Warehouses.ToListAsync();
+            foreach (var wh in existingWarehouses)
+            {
+                var returnBinExists = await context.Bins.AnyAsync(b => b.WarehouseId == wh.Id && b.BinCode == "BIN-RETURN");
+                if (!returnBinExists)
+                {
+                    var zone = await context.Zones.FirstOrDefaultAsync(z => z.Block.WarehouseId == wh.Id);
+                    if (zone != null)
+                    {
+                        var binReturn = new Bin(wh.Id, zone.Id, "BIN-RETURN");
+                        context.Bins.Add(binReturn);
+                        logger.LogInformation("Seeded missing BIN-RETURN for warehouse {WarehouseCode}", wh.Code);
+                    }
+                }
+            }
+            if (context.ChangeTracker.HasChanges())
+            {
+                await context.SaveChangesAsync();
             }
         }
         catch (Exception ex)
