@@ -101,6 +101,16 @@ public class Shipment : Entity<Guid>, IAggregateRoot
         Status = ShipmentStatus.Delivered;
     }
 
+    public void MarkReturned()
+    {
+        Status = ShipmentStatus.Returned;
+    }
+
+    public void MarkFailed()
+    {
+        Status = ShipmentStatus.Failed;
+    }
+
     public void AddOrder(Guid outboundOrderId)
     {
         if (_orders.Any(x => x.OutboundOrderId == outboundOrderId))

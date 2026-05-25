@@ -13,5 +13,7 @@ public enum InventoryLedgerReason
     AdjustDecrease = 9,   // Điều chỉnh giảm (Kiểm kê)
     Expired = 10,         // Hủy giữ do hết hạn (TTL)
     TransitReceived = 11, // Nhận hàng trung chuyển chặng Mega Hub
-    InternalTransfer = 12 // Dịch chuyển nội bộ giữa các Bin
+    InternalTransfer = 12, // Dịch chuyển nội bộ giữa các Bin
+    OrderCancelled = 13,
+    ReturnToOrigin = 14
 }
