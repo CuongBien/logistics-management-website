@@ -30,3 +30,7 @@ public class PickOrderRequest
 {
     public string? WaveId { get; set; }
 }
+
+public record PutawayCancelledOrderRequest(string TargetBinCode);
+
+public record ReceiveReturnShipmentRequest(string TargetBinCode);

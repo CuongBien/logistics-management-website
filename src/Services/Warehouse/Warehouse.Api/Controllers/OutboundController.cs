@@ -190,4 +190,34 @@ public class OutboundController : ApiControllerBase
         var command = new Warehouse.Application.Features.Outbound.Commands.DispatchShipment.DispatchShipmentCommand(id, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
         return ToActionResult(await Mediator.Send(command));
     }
+
+    [HttpPost("orders/{id:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> CancelOrder(Guid id)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.CancelOutboundOrder.CancelOutboundOrderCommand(id, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("orders/{id:guid}/putaway")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> PutawayCancelledOrder(Guid id, [FromBody] PutawayCancelledOrderRequest request)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.PutawayCancelledOrder.PutawayCancelledOrderCommand(
+            id, 
+            request.TargetBinCode, 
+            CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("shipments/{id:guid}/return")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> ReturnShipment(Guid id, [FromBody] ReceiveReturnShipmentRequest request)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.ReceiveReturnShipment.ReceiveReturnShipmentCommand(
+            id, 
+            request.TargetBinCode, 
+            CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
 }
