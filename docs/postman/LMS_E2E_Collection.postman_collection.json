@@ -7528,6 +7528,738 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "Cancellation & RTO Flows",
+            "item": [
+                {
+                    "name": "Flow 1: Cancel Unpicked Order (Auto-Release)",
+                    "item": [
+                        {
+                            "name": "1. Create Outbound Order (To Cancel)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.environment.set('cancelUnpickedOrderId', jsonData);",
+                                            "pm.test('Order Created', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"{{$guid}}\",\n    \"orderNo\": \"ORD-{{$randomInt}}\",\n    \"customerId\": \"{{customer_id}}\",\n    \"destinationAddress\": \"123 Cancel St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 2,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "2. Allocate Stock",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('Allocated', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{cancelUnpickedOrderId}}/allocate",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{cancelUnpickedOrderId}}",
+                                        "allocate"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "3. Cancel Order (Auto-release)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('Cancelled', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{cancelUnpickedOrderId}}/cancel",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{cancelUnpickedOrderId}}",
+                                        "cancel"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "Flow 2: Cancel Picked Order -> Putaway",
+                    "item": [
+                        {
+                            "name": "1. Create Outbound Order (To Cancel later)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.environment.set('cancelPickedOrderId', jsonData);",
+                                            "pm.test('Order Created', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"{{$guid}}\",\n    \"orderNo\": \"ORD-{{$randomInt}}\",\n    \"customerId\": \"{{customer_id}}\",\n    \"destinationAddress\": \"123 Cancel St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 2,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "2. Allocate Stock",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('Allocated', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{cancelPickedOrderId}}/allocate",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{cancelPickedOrderId}}",
+                                        "allocate"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "3. Pick Stock",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('Pick tasks generated', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{cancelPickedOrderId}}/pick",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{cancelPickedOrderId}}",
+                                        "pick"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"waveId\": \"WAVE-CANCEL-001\"\n}"
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "4. Get Pick Tasks",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData.length > 0) {",
+                                            "    pm.environment.set('cancelPickTaskId', jsonData[0].id);",
+                                            "}",
+                                            "pm.test('Got tasks', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{cancelPickedOrderId}}/pick-tasks",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{cancelPickedOrderId}}",
+                                        "pick-tasks"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "5. Confirm Pick",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('Confirmed pick', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/pick-tasks/{{cancelPickTaskId}}/confirm",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "pick-tasks",
+                                        "{{cancelPickTaskId}}",
+                                        "confirm"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "6. Cancel Order (Requires Putaway)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('Cancelled', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{cancelPickedOrderId}}/cancel",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{cancelPickedOrderId}}",
+                                        "cancel"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "7. Putaway Cancelled Order",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('Putaway success', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{cancelPickedOrderId}}/putaway",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{cancelPickedOrderId}}",
+                                        "putaway"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"targetBinCode\": \"BIN-RETURN\"\n}"
+                                }
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "Flow 3: RTO Shipment Putaway",
+                    "item": [
+                        {
+                            "name": "1. Create Outbound Order",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.environment.set('rtoOrderId', jsonData);",
+                                            "pm.test('Order Created', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"{{$guid}}\",\n    \"orderNo\": \"ORD-{{$randomInt}}\",\n    \"customerId\": \"{{customer_id}}\",\n    \"destinationAddress\": \"123 Cancel St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 2,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "2. Allocate Stock",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{rtoOrderId}}/allocate",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{rtoOrderId}}",
+                                        "allocate"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "3. Pick Stock",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{rtoOrderId}}/pick",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{rtoOrderId}}",
+                                        "pick"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "4. Get Pick Tasks",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData.length > 0) {",
+                                            "    pm.environment.set('rtoPickTaskId', jsonData[0].id);",
+                                            "}"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{rtoOrderId}}/pick-tasks",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{rtoOrderId}}",
+                                        "pick-tasks"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "5. Confirm Pick",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/pick-tasks/{{rtoPickTaskId}}/confirm",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "pick-tasks",
+                                        "{{rtoPickTaskId}}",
+                                        "confirm"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "6. Pack Order",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{rtoOrderId}}/pack",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{rtoOrderId}}",
+                                        "pack"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "7. Ship Order (Assign Shipment)",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{rtoOrderId}}/ship",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{rtoOrderId}}",
+                                        "ship"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "8. Get Shipment ID",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.environment.set('rtoShipmentId', jsonData.shipmentId);"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/orders/{{rtoOrderId}}/shipment",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "orders",
+                                        "{{rtoOrderId}}",
+                                        "shipment"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "9. Dispatch Shipment",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{rtoShipmentId}}/dispatch",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{rtoShipmentId}}",
+                                        "dispatch"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "10. RTO Shipment Putaway",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('RTO Putaway success', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/shipments/{{rtoShipmentId}}/return",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "shipments",
+                                        "{{rtoShipmentId}}",
+                                        "return"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"targetBinCode\": \"BIN-RETURN\"\n}"
+                                }
+                            },
+                            "response": []
+                        }
+                    ]
+                }
+            ]
         }
     ]
 }
