@@ -220,4 +220,29 @@ public class OutboundController : ApiControllerBase
             CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
         return ToActionResult(await Mediator.Send(command));
     }
+
+    [HttpPost("returns/disposition")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> ProcessReturnDisposition([FromBody] ProcessReturnDispositionRequest request)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var customerId = "cust-default"; // Hoặc lấy từ claim nếu có
+
+        var command = new Warehouse.Application.Features.Outbound.Commands.ProcessReturnDisposition.ProcessReturnDispositionCommand(
+            request.WarehouseId,
+            request.Sku,
+            request.Quantity,
+            request.Condition,
+            request.TargetBinCode,
+            request.ReferenceId,
+            request.ReferenceType,
+            request.Notes,
+            operatorId,
+            tenantId,
+            customerId
+        );
+
+        return ToActionResult(await Mediator.Send(command));
+    }
 }
