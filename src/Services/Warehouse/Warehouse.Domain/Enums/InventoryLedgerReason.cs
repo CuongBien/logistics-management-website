@@ -15,5 +15,7 @@ public enum InventoryLedgerReason
     TransitReceived = 11, // Nhận hàng trung chuyển chặng Mega Hub
     InternalTransfer = 12, // Dịch chuyển nội bộ giữa các Bin
     OrderCancelled = 13,
-    ReturnToOrigin = 14
+    ReturnToOrigin = 14,
+    ReturnDispositionRestock = 15,
+    ReturnDispositionScrap = 16
 }
