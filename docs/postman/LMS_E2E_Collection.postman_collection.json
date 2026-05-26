@@ -8258,6 +8258,71 @@
                             "response": []
                         }
                     ]
+                },
+                {
+                    "name": "Flow 4: QC Return Disposition",
+                    "item": [
+                        {
+                            "name": "1. QC Disposition (Good -> Restock)",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/returns/disposition",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "returns",
+                                        "disposition"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"sku\": \"SKU-RED-TSHIRT\",\n    \"quantity\": 1,\n    \"condition\": 1,\n    \"targetBinCode\": \"BIN-A1-01\",\n    \"referenceId\": \"{{rtoShipmentId}}\",\n    \"referenceType\": \"Shipment\",\n    \"notes\": \"QC passed, restocking\"\n}"
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "2. QC Disposition (Damaged -> Scrap)",
+                            "event": [],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{wms_url}}/api/outbound/returns/disposition",
+                                    "host": [
+                                        "{{wms_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "outbound",
+                                        "returns",
+                                        "disposition"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"sku\": \"SKU-RED-TSHIRT\",\n    \"quantity\": 1,\n    \"condition\": 2,\n    \"targetBinCode\": null,\n    \"referenceId\": \"{{rtoShipmentId}}\",\n    \"referenceType\": \"Shipment\",\n    \"notes\": \"Item damaged during RTO transit\"\n}"
+                                }
+                            },
+                            "response": []
+                        }
+                    ]
                 }
             ]
         }
