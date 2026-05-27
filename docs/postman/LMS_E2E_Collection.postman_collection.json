@@ -7303,7 +7303,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"customerId\": \"{{customerId}}\",\n    \"sku\": \"SKU-BLUE-SHIRT\",\n    \"sourceBinId\": \"{{sourceBinId_E}}\",\n    \"destinationBinId\": \"{{destBinId_E}}\",\n    \"quantity\": 50\n}"
+                                    "raw": "{\n    \"warehouseId\": \"f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6\",\n    \"customerId\": \"{{customerId}}\",\n    \"sku\": \"SKU-BLUE-JEANS\",\n    \"sourceBinId\": \"{{sourceBinId_E}}\",\n    \"destinationBinId\": \"{{destBinId_E}}\",\n    \"quantity\": 50\n}"
                                 },
                                 "url": {
                                     "raw": "{{wms_url}}/api/inventory/transfer",
@@ -8325,6 +8325,264 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "Smart Wave Planning (Auto-Waving)",
+            "item": [
+                {
+                    "name": "1. Create Single-Item Order",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.environment.set(\"singleOrderId\", \"fb4fd4e2-4b20-41d4-856f-d0d853917c0f\");",
+                                    "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"fb4fd4e2-4b20-41d4-856f-d0d853917c0f\",\n    \"orderNo\": \"ORD-SGL-C607D68A\",\n    \"destinationAddress\": \"123 Single St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "2. Create Multi-Item Order",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.environment.set(\"multiOrderId\", \"f43aae64-a8e8-465c-99f3-3f766fb2630a\");",
+                                    "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"f43aae64-a8e8-465c-99f3-3f766fb2630a\",\n    \"orderNo\": \"ORD-MUL-309CE23B\",\n    \"destinationAddress\": \"456 Multi St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        },\n        {\n            \"sku\": \"SKU-BLUE-JEANS\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "3. Allocate Single Order",
+                    "event": [],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{singleOrderId}}/allocate",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{singleOrderId}}",
+                                "allocate"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "4. Allocate Multi Order",
+                    "event": [],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{multiOrderId}}/allocate",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{multiOrderId}}",
+                                "allocate"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "5. Auto Plan Waves (Trigger Engine)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Total Orders Planned > 0\", function () { pm.expect(jsonData.totalOrdersPlanned).to.be.above(0); });"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/waves/auto-plan",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "waves",
+                                "auto-plan"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"maxSingleItemOrdersPerWave\": 50,\n    \"maxMultiItemOrdersPerWave\": 20\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "6. Check Single Order PickTasks",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"WaveId starts with WAVE-SGL\", function () { pm.expect(jsonData[0].waveId).to.include(\"WAVE-SGL\"); });"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{singleOrderId}}/pick-tasks",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{singleOrderId}}",
+                                "pick-tasks"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "7. Check Multi Order PickTasks",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"WaveId starts with WAVE-MUL\", function () { pm.expect(jsonData[0].waveId).to.include(\"WAVE-MUL\"); });"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{multiOrderId}}/pick-tasks",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{multiOrderId}}",
+                                "pick-tasks"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Tests for the auto wave planner engine"
         }
     ]
 }
