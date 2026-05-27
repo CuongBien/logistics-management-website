@@ -4,9 +4,16 @@ namespace Warehouse.Domain.Exceptions;
 
 public class InsufficientStockException : DomainException
 {
+    public string Sku { get; }
+    public int Requested { get; }
+    public int Available { get; }
+
     public InsufficientStockException(string sku, int requested, int available)
         : base($"Insufficient stock for SKU '{sku}'. Requested: {requested}, Available: {available}.")
     {
+        Sku = sku;
+        Requested = requested;
+        Available = available;
     }
 }
 

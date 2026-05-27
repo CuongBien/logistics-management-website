@@ -21,6 +21,10 @@ public class PickTask : Entity<Guid>
     public string? WaveId { get; private set; }
     public DateTime? PickedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    
+    // Put-To-Wall
+    public string? TargetCubbyBinCode { get; private set; }
+    public DateTime? PutToWallAt { get; private set; }
 
     // Navigation Properties
     public virtual OutboundOrderLine OutboundOrderLine { get; private set; } = default!;
@@ -76,5 +80,14 @@ public class PickTask : Entity<Guid>
         Status = PickTaskStatus.Failed;
         AssignedOperatorId = operatorId;
         // Có thể thêm trường Remark/Reason sau này nếu cần
+    }
+
+    public void PutToWall(string cubbyBinCode)
+    {
+        if (Status != PickTaskStatus.Completed)
+            throw new InvalidOperationException($"Cannot put to wall from status {Status}");
+            
+        TargetCubbyBinCode = cubbyBinCode;
+        PutToWallAt = DateTime.UtcNow;
     }
 }
