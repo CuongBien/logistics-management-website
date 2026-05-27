@@ -98,8 +98,38 @@ public sealed class AllocateStockCommandHandler : IRequestHandler<AllocateStockC
             }
             catch (InsufficientStockException ex)
             {
-                _logger.LogWarning(ex, "Insufficient stock for SKU {Sku} in Order {OrderId}", line.Sku, order.Id);
-                allocationErrors.Add($"SKU {line.Sku}: {ex.Message}");
+                if (order.AllowPartial && ex.Available > 0)
+                {
+                    try
+                    {
+                        var correlationId = $"ALLOC-PARTIAL-{order.Id}-{line.Sku}-{line.ReservedQty}";
+                        var reservationId = await _inventoryService.ReserveAsync(
+                            tenantId: order.TenantId,
+                            warehouseId: order.WarehouseId,
+                            sku: line.Sku,
+                            quantity: ex.Available,
+                            referenceId: order.Id.ToString(),
+                            referenceType: ReservationType.OutboundOrder,
+                            operatorSub: request.OperatorId,
+                            correlationId: correlationId,
+                            cancellationToken: cancellationToken
+                        );
+
+                        line.UpdateReserved(line.ReservedQty + ex.Available);
+                        _logger.LogInformation("Partially reserved {Reserved} of {Requested} for SKU {Sku}", ex.Available, line.RequestedQty, line.Sku);
+                        allocationErrors.Add($"SKU {line.Sku}: Partially allocated {ex.Available}/{line.RequestedQty}.");
+                    }
+                    catch (Exception partialEx)
+                    {
+                        _logger.LogError(partialEx, "Error partially allocating stock for SKU {Sku} in Order {OrderId}", line.Sku, order.Id);
+                        allocationErrors.Add($"SKU {line.Sku}: System error during partial allocation");
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(ex, "Insufficient stock for SKU {Sku} in Order {OrderId}", line.Sku, order.Id);
+                    allocationErrors.Add($"SKU {line.Sku}: {ex.Message}");
+                }
                 allLinesAllocated = false;
             }
             catch (Exception ex)
@@ -133,6 +163,11 @@ public sealed class AllocateStockCommandHandler : IRequestHandler<AllocateStockC
 
         if (!allLinesAllocated)
         {
+            if (order.AllowPartial && anyLineReserved)
+            {
+                // Partial allocation is allowed and successful
+                return Result<bool>.Success(true);
+            }
             return Result<bool>.Failure(new Error("OutboundOrder.PartialAllocation", string.Join("; ", allocationErrors)));
         }
 
