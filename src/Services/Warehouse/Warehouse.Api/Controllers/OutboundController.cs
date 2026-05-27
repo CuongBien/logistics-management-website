@@ -259,4 +259,13 @@ public class OutboundController : ApiControllerBase
         );
         return ToActionResult(await Mediator.Send(command));
     }
+
+    [HttpGet("waves/{waveId}/pick-tasks")]
+    [ProducesResponseType(typeof(List<Warehouse.Application.Features.Outbound.Queries.GetOptimizedPickTasks.PickTaskDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<Warehouse.Application.Features.Outbound.Queries.GetOptimizedPickTasks.PickTaskDto>>> GetOptimizedPickTasks(string waveId)
+    {
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var query = new Warehouse.Application.Features.Outbound.Queries.GetOptimizedPickTasks.GetOptimizedPickTasksQuery(waveId, operatorId);
+        return ToActionResult(await Mediator.Send(query));
+    }
 }
