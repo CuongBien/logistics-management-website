@@ -18,4 +18,25 @@ public interface IInventoryService
     Task<bool> ReleaseAsync(Guid reservationId, string? operatorSub = null, CancellationToken cancellationToken = default);
     
     Task<bool> ConsumeAsync(Guid reservationId, string? operatorSub = null, CancellationToken cancellationToken = default);
+
+    Task AdjustAsync(
+        string tenantId,
+        Guid warehouseId,
+        Guid binId,
+        string sku,
+        int quantityDiff,
+        string referenceId,
+        string? operatorSub = null,
+        CancellationToken cancellationToken = default);
+
+    Task MoveAsync(
+        string tenantId,
+        Guid warehouseId,
+        Guid sourceBinId,
+        Guid destinationBinId,
+        string sku,
+        int quantity,
+        string referenceId,
+        string? operatorSub = null,
+        CancellationToken cancellationToken = default);
 }

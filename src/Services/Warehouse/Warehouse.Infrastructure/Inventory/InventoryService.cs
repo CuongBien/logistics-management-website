@@ -206,4 +206,108 @@ public class InventoryService : IInventoryService
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
+
+    public async Task AdjustAsync(
+        string tenantId,
+        Guid warehouseId,
+        Guid binId,
+        string sku,
+        int quantityDiff,
+        string referenceId,
+        string? operatorSub = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (quantityDiff == 0) return;
+
+        var inventoryItem = await _context.InventoryItems
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.BinId == binId && x.Sku == sku, cancellationToken);
+
+        if (inventoryItem == null)
+        {
+            if (quantityDiff < 0)
+                throw new InvalidOperationException($"Cannot decrease inventory for non-existent item {sku} in bin {binId}");
+
+            // Create new inventory item if it doesn't exist and we are adding. Assuming 'default-customer' for now as it's not provided in context.
+            inventoryItem = InventoryItem.Create(sku, 0, tenantId, "default-customer", warehouseId, binId);
+            _context.InventoryItems.Add(inventoryItem);
+        }
+
+        if (quantityDiff > 0)
+        {
+            inventoryItem.Restock(quantityDiff);
+        }
+        else
+        {
+            inventoryItem.Deduct(-quantityDiff);
+        }
+
+        var reason = quantityDiff > 0 ? InventoryLedgerReason.AdjustIncrease : InventoryLedgerReason.AdjustDecrease;
+        
+        var ledger = InventoryLedger.Create(
+            inventoryItem,
+            reason,
+            quantityDiff,
+            referenceId,
+            "CycleCount",
+            operatorSub,
+            null);
+
+        _context.InventoryLedgers.Add(ledger);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task MoveAsync(
+        string tenantId,
+        Guid warehouseId,
+        Guid sourceBinId,
+        Guid destinationBinId,
+        string sku,
+        int quantity,
+        string referenceId,
+        string? operatorSub = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (quantity <= 0) throw new ArgumentException("Quantity must be positive", nameof(quantity));
+
+        var sourceItem = await _context.InventoryItems
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.BinId == sourceBinId && x.Sku == sku, cancellationToken);
+
+        if (sourceItem == null || sourceItem.QuantityOnHand - sourceItem.ReservedQty < quantity)
+            throw new InsufficientStockException(sku, quantity, sourceItem?.QuantityOnHand - sourceItem?.ReservedQty ?? 0);
+
+        var destItem = await _context.InventoryItems
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.BinId == destinationBinId && x.Sku == sku, cancellationToken);
+
+        if (destItem == null)
+        {
+            destItem = InventoryItem.Create(sku, 0, tenantId, sourceItem.CustomerId, warehouseId, destinationBinId);
+            _context.InventoryItems.Add(destItem);
+        }
+
+        // Deduct from source
+        sourceItem.Deduct(quantity);
+        var sourceLedger = InventoryLedger.Create(
+            sourceItem,
+            InventoryLedgerReason.InternalTransfer,
+            -quantity,
+            referenceId,
+            "Replenishment",
+            operatorSub,
+            null);
+        _context.InventoryLedgers.Add(sourceLedger);
+
+        // Add to dest
+        destItem.Restock(quantity);
+        var destLedger = InventoryLedger.Create(
+            destItem,
+            InventoryLedgerReason.InternalTransfer,
+            quantity,
+            referenceId,
+            "Replenishment",
+            operatorSub,
+            null);
+        _context.InventoryLedgers.Add(destLedger);
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }
