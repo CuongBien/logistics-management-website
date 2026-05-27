@@ -66,6 +66,14 @@ public sealed class PackOrderCommandHandler : IRequestHandler<PackOrderCommand, 
             line.UpdatePacked(line.PickedQty);
         }
 
+        // Release the Wall Bin if the order was assigned to one
+        var wallBin = await _context.Bins.FirstOrDefaultAsync(b => b.CurrentOrderId == order.Id && b.BinCode.Contains("WALL"), cancellationToken);
+        if (wallBin != null)
+        {
+            wallBin.Release();
+            _logger.LogInformation("Released Wall Bin {BinCode} after packing order {OrderId}", wallBin.BinCode, order.Id);
+        }
+
         order.UpdateStatus(OutboundOrderStatus.Packed);
         await _context.SaveChangesAsync(cancellationToken);
 
