@@ -45,7 +45,9 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000017"), Code = "inventory:transfer", Resource = "inventory", Action = "transfer", IsActive = true },
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000018"), Code = "outbound:cancel", Resource = "outbound", Action = "cancel", IsActive = true },
             new { Id = Guid.Parse("00000000-0000-0000-0000-000000000019"), Code = "outbound:putaway", Resource = "outbound", Action = "putaway", IsActive = true },
-            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000020"), Code = "outbound:return", Resource = "outbound", Action = "return", IsActive = true }
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000020"), Code = "outbound:return", Resource = "outbound", Action = "return", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000021"), Code = "inventory:count", Resource = "inventory", Action = "count", IsActive = true },
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000022"), Code = "inventory:replenish", Resource = "inventory", Action = "replenish", IsActive = true }
         );
     }
 }

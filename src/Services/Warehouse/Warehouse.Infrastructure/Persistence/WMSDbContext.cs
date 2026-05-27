@@ -40,6 +40,8 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<WarehouseRoute> WarehouseRoutes => Set<WarehouseRoute>();
     public DbSet<TransitDiscrepancy> TransitDiscrepancies => Set<TransitDiscrepancy>();
     public DbSet<InboundDiscrepancy> InboundDiscrepancies => Set<InboundDiscrepancy>();
+    public DbSet<CountTask> CountTasks => Set<CountTask>();
+    public DbSet<ReplenishmentTask> ReplenishmentTasks => Set<ReplenishmentTask>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
