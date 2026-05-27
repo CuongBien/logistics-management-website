@@ -245,4 +245,18 @@ public class OutboundController : ApiControllerBase
 
         return ToActionResult(await Mediator.Send(command));
     }
+
+    [HttpPost("waves/auto-plan")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<Warehouse.Application.Features.Outbound.Commands.AutoPlanWaves.AutoPlanWavesResult>> AutoPlanWaves([FromBody] AutoPlanWavesRequest request)
+    {
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var command = new Warehouse.Application.Features.Outbound.Commands.AutoPlanWaves.AutoPlanWavesCommand(
+            request.WarehouseId,
+            operatorId,
+            request.MaxSingleItemOrdersPerWave,
+            request.MaxMultiItemOrdersPerWave
+        );
+        return ToActionResult(await Mediator.Send(command));
+    }
 }
