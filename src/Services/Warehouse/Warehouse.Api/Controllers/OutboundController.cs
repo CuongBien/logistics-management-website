@@ -268,4 +268,22 @@ public class OutboundController : ApiControllerBase
         var query = new Warehouse.Application.Features.Outbound.Queries.GetOptimizedPickTasks.GetOptimizedPickTasksQuery(waveId, operatorId);
         return ToActionResult(await Mediator.Send(query));
     }
+
+    [HttpPost("orders/{id:guid}/split")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<Guid>> SplitOrder(Guid id)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.SplitOrder.SplitOutboundOrderCommand(id, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("waves/{waveId}/put-to-wall")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<Warehouse.Application.Features.Outbound.Commands.PutToWall.PutToWallResult>> PutToWall(string waveId, [FromBody] PutToWallRequest request)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.PutToWall.PutToWallCommand(waveId, request.Sku, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        return ToActionResult(await Mediator.Send(command));
+    }
 }
+
+public record PutToWallRequest(string Sku);
