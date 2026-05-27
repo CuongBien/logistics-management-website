@@ -14,13 +14,18 @@ public class Bin : Entity<Guid>, ISoftDelete
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 
+    public string? Aisle { get; private set; }
+    public string? Rack { get; private set; }
+    public string? Shelf { get; private set; }
+    public int PickSequence { get; private set; }
+    
     // Navigation
     public Zone Zone { get; private set; } = default!;
 
     // EF Core
     private Bin() { }
 
-    public Bin(Guid warehouseId, Guid zoneId, string binCode, BinStatus status = BinStatus.Available)
+    public Bin(Guid warehouseId, Guid zoneId, string binCode, BinStatus status = BinStatus.Available, string? aisle = null, string? rack = null, string? shelf = null, int pickSequence = 0)
     {
         Id = Guid.NewGuid();
         WarehouseId = warehouseId;
@@ -29,6 +34,20 @@ public class Bin : Entity<Guid>, ISoftDelete
         Status = status.ToString();
         Version = 1;
         IsDeleted = false;
+        
+        Aisle = aisle;
+        Rack = rack;
+        Shelf = shelf;
+        PickSequence = pickSequence;
+    }
+
+    public void UpdateLocation(string? aisle, string? rack, string? shelf, int pickSequence)
+    {
+        Aisle = aisle;
+        Rack = rack;
+        Shelf = shelf;
+        PickSequence = pickSequence;
+        Version++;
     }
 
     public void Delete()

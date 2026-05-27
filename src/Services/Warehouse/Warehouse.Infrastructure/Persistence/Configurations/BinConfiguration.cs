@@ -18,6 +18,11 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
         builder.Property(b => b.Version).IsConcurrencyToken();
         builder.Property(b => b.WarehouseId).IsRequired();
 
+        builder.Property(b => b.Aisle).HasMaxLength(20).IsRequired(false);
+        builder.Property(b => b.Rack).HasMaxLength(20).IsRequired(false);
+        builder.Property(b => b.Shelf).HasMaxLength(20).IsRequired(false);
+        builder.Property(b => b.PickSequence).IsRequired().HasDefaultValue(0);
+
         builder.HasIndex(b => new { b.WarehouseId, b.BinCode })
                .IsUnique()
                .HasFilter("\"IsDeleted\" = false");
@@ -45,7 +50,11 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
                 BinCode = "BIN-A1-01",
                 Status = "Available",
                 Version = 1,
-                IsDeleted = false
+                IsDeleted = false,
+                Aisle = "A",
+                Rack = "1",
+                Shelf = "01",
+                PickSequence = 1
             },
             new {
                 Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
@@ -54,7 +63,11 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
                 BinCode = "BIN-A1-02",
                 Status = "Available",
                 Version = 1,
-                IsDeleted = false
+                IsDeleted = false,
+                Aisle = "A",
+                Rack = "1",
+                Shelf = "02",
+                PickSequence = 2
             },
             new {
                 Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
@@ -63,7 +76,11 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
                 BinCode = "BIN-B1-01",
                 Status = "Available",
                 Version = 1,
-                IsDeleted = false
+                IsDeleted = false,
+                Aisle = "B",
+                Rack = "1",
+                Shelf = "01",
+                PickSequence = 1
             }
         });
     }

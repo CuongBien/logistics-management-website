@@ -63,25 +63,25 @@ public static class WMSDbContextSeed
                     context.Blocks.Add(block);
                     await context.SaveChangesAsync();
 
-                    var zone = new Zone(block.Id, 0); // Zone 0 = Standard
+                    var zone = new Zone(block.Id, ZoneType.Picking); // Updated enum usage
                     context.Zones.Add(zone);
                     await context.SaveChangesAsync();
 
-                    var bin = new Bin(wh.Id, zone.Id, "BIN-A1-01");
+                    var bin = new Bin(wh.Id, zone.Id, "BIN-A1-01", BinStatus.Available, "A", "1", "01", 1);
                     context.Bins.Add(bin);
                     await context.SaveChangesAsync();
 
-                    var binReturn = new Bin(wh.Id, zone.Id, "BIN-RETURN");
+                    var binReturn = new Bin(wh.Id, zone.Id, "BIN-RETURN", BinStatus.Available, "RET", "1", "1", 9999);
                     context.Bins.Add(binReturn);
                     await context.SaveChangesAsync();
 
-                    var binScrap = new Bin(wh.Id, zone.Id, "BIN-SCRAP");
+                    var binScrap = new Bin(wh.Id, zone.Id, "BIN-SCRAP", BinStatus.Available, "SCR", "1", "1", 9999);
                     context.Bins.Add(binScrap);
                     await context.SaveChangesAsync();
 
                     if (whId == ctId)
                     {
-                        var binCt = new Bin(wh.Id, zone.Id, "BIN-CT-001");
+                        var binCt = new Bin(wh.Id, zone.Id, "BIN-CT-001", BinStatus.Available, "A", "1", "02", 2);
                         context.Bins.Add(binCt);
                         await context.SaveChangesAsync();
 
@@ -91,8 +91,45 @@ public static class WMSDbContextSeed
 
                     if (whId == hpId)
                     {
-                        var binHpStore = new Bin(wh.Id, zone.Id, "BIN-A1-02");
+                        var binHpStore = new Bin(wh.Id, zone.Id, "BIN-A1-02", BinStatus.Available, "A", "1", "02", 2);
                         context.Bins.Add(binHpStore);
+                        await context.SaveChangesAsync();
+                    }
+
+                    // Seed realistic layout for HCM Warehouse (sgId)
+                    if (whId == sgId)
+                    {
+                        logger.LogInformation("Seeding realistic warehouse layout for HCM Hub...");
+                        var aisles = new[] { "A", "B", "C", "D" };
+                        int currentSequence = 10;
+                        var bulkZones = new List<Zone>();
+
+                        // Thêm 1 Block và Zone mới cho Bulk Storage
+                        var bulkBlock = new Block(wh.Id, "BLK-BULK");
+                        wh.AddBlock(bulkBlock);
+                        context.Blocks.Add(bulkBlock);
+                        var bulkZone = new Zone(bulkBlock.Id, ZoneType.Storage);
+                        context.Zones.Add(bulkZone);
+                        await context.SaveChangesAsync();
+
+                        foreach (var aisle in aisles)
+                        {
+                            for (int rack = 1; rack <= 5; rack++) // 5 Racks per Aisle
+                            {
+                                for (int shelf = 1; shelf <= 3; shelf++) // 3 Shelves per Rack
+                                {
+                                    string rackStr = rack.ToString("D2");
+                                    string shelfStr = shelf.ToString("D2");
+                                    string binCode = $"BIN-{aisle}{rackStr}-{shelfStr}";
+                                    
+                                    // Bins ở Aisle A, B dùng làm Pick (Zone hiện tại), C, D dùng làm Bulk
+                                    var targetZoneId = (aisle == "A" || aisle == "B") ? zone.Id : bulkZone.Id;
+
+                                    var gridBin = new Bin(wh.Id, targetZoneId, binCode, BinStatus.Available, aisle, rackStr, shelfStr, currentSequence++);
+                                    context.Bins.Add(gridBin);
+                                }
+                            }
+                        }
                         await context.SaveChangesAsync();
                     }
                 }
