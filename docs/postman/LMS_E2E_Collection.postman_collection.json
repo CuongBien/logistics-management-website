@@ -8336,7 +8336,7 @@
                             "listen": "test",
                             "script": {
                                 "exec": [
-                                    "pm.environment.set(\"singleOrderId\", \"fb4fd4e2-4b20-41d4-856f-d0d853917c0f\");",
+                                    "pm.environment.set(\"singleOrderId\", \"93470707-0797-41b0-a8f8-4f55ea20a611\");",
                                     "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
                                 ],
                                 "type": "text/javascript"
@@ -8364,7 +8364,7 @@
                         },
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"fb4fd4e2-4b20-41d4-856f-d0d853917c0f\",\n    \"orderNo\": \"ORD-SGL-C607D68A\",\n    \"destinationAddress\": \"123 Single St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                            "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"93470707-0797-41b0-a8f8-4f55ea20a611\",\n    \"orderNo\": \"ORD-SGL-4647415B\",\n    \"destinationAddress\": \"123 Single St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
                         }
                     },
                     "response": []
@@ -8376,7 +8376,7 @@
                             "listen": "test",
                             "script": {
                                 "exec": [
-                                    "pm.environment.set(\"multiOrderId\", \"f43aae64-a8e8-465c-99f3-3f766fb2630a\");",
+                                    "pm.environment.set(\"multiOrderId\", \"ee449770-b1b7-4be0-a608-cad501e7d5cf\");",
                                     "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
                                 ],
                                 "type": "text/javascript"
@@ -8404,7 +8404,7 @@
                         },
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"f43aae64-a8e8-465c-99f3-3f766fb2630a\",\n    \"orderNo\": \"ORD-MUL-309CE23B\",\n    \"destinationAddress\": \"456 Multi St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        },\n        {\n            \"sku\": \"SKU-BLUE-JEANS\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
+                            "raw": "{\n    \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\n    \"orderId\": \"ee449770-b1b7-4be0-a608-cad501e7d5cf\",\n    \"orderNo\": \"ORD-MUL-4184BEDB\",\n    \"destinationAddress\": \"456 Multi St\",\n    \"destinationCity\": \"HCM\",\n    \"priority\": 1,\n    \"allowPartial\": true,\n    \"lines\": [\n        {\n            \"sku\": \"SKU-RED-TSHIRT\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        },\n        {\n            \"sku\": \"SKU-BLUE-JEANS\",\n            \"quantity\": 1,\n            \"uom\": \"PCS\"\n        }\n    ]\n}"
                         }
                     },
                     "response": []
@@ -8472,7 +8472,10 @@
                                 "exec": [
                                     "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
                                     "var jsonData = pm.response.json();",
-                                    "pm.test(\"Total Orders Planned > 0\", function () { pm.expect(jsonData.totalOrdersPlanned).to.be.above(0); });"
+                                    "pm.test(\"Total Orders Planned > 0\", function () { pm.expect(jsonData.totalOrdersPlanned).to.be.above(0); });",
+                                    "if (jsonData.createdWaveIds && jsonData.createdWaveIds.length > 0) {",
+                                    "    pm.environment.set(\"testWaveId\", jsonData.createdWaveIds[0]);",
+                                    "}"
                                 ],
                                 "type": "text/javascript"
                             }
@@ -8506,14 +8509,21 @@
                     "response": []
                 },
                 {
-                    "name": "6. Check Single Order PickTasks",
+                    "name": "6. Get Optimized Pick Tasks for Wave",
                     "event": [
                         {
                             "listen": "test",
                             "script": {
                                 "exec": [
+                                    "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
                                     "var jsonData = pm.response.json();",
-                                    "pm.test(\"WaveId starts with WAVE-SGL\", function () { pm.expect(jsonData[0].waveId).to.include(\"WAVE-SGL\"); });"
+                                    "pm.test(\"Returns list of pick tasks\", function () { pm.expect(jsonData).to.be.an(\"array\"); });",
+                                    "if (jsonData.length > 0) {",
+                                    "    pm.test(\"PickTasks are sorted and contain physical location\", function() {",
+                                    "        pm.expect(jsonData[0]).to.have.property(\"pickSequence\");",
+                                    "        pm.expect(jsonData[0]).to.have.property(\"aisle\");",
+                                    "    });",
+                                    "}"
                                 ],
                                 "type": "text/javascript"
                             }
@@ -8528,15 +8538,15 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{wms_url}}/api/outbound/orders/{{singleOrderId}}/pick-tasks",
+                            "raw": "{{wms_url}}/api/outbound/waves/{{testWaveId}}/pick-tasks",
                             "host": [
                                 "{{wms_url}}"
                             ],
                             "path": [
                                 "api",
                                 "outbound",
-                                "orders",
-                                "{{singleOrderId}}",
+                                "waves",
+                                "{{testWaveId}}",
                                 "pick-tasks"
                             ]
                         }
