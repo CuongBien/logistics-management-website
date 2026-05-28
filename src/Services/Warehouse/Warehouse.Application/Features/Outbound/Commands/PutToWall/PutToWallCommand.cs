@@ -64,7 +64,7 @@ public sealed class PutToWallCommandHandler : IRequestHandler<PutToWallCommand, 
                      && b.BinCode.Contains("WALL"))
             .FirstOrDefaultAsync(cancellationToken);
 
-        Bin targetBin;
+        Bin? targetBin;
 
         if (existingAssignedBin != null)
         {

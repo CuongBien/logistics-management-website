@@ -9290,6 +9290,181 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "11. Advanced FEFO & Lot Tracking",
+            "item": [
+                {
+                    "name": "1. Create Inbound Receipt (FEFO Test)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "pm.collectionVariables.set(\"fefoOrderId\", pm.variables.replaceIn('{{$guid}}'));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.collectionVariables.set(\"fefoReceiptId\", jsonData);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"orderId\": \"{{fefoOrderId}}\",\r\n    \"tenantId\": \"{{tenantId}}\",\r\n    \"customerId\": \"{{customerId}}\",\r\n    \"warehouseId\": \"{{warehouseId}}\",\r\n    \"sourceShipmentNo\": \"ASN-FEFO-TEST\",\r\n    \"expectedLines\": [\r\n        {\r\n            \"skuCode\": \"A0-001\",\r\n            \"expectedQuantity\": 100\r\n        }\r\n    ]\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2. Receive Item - Lot 1 (Late Expiry)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"orderId\": \"{{fefoOrderId}}\",\r\n    \"skuCode\": \"A0-001\",\r\n    \"binCode\": \"BIN-A1-01\",\r\n    \"quantity\": 50,\r\n    \"lotNo\": \"LOT-DEC-2026\",\r\n    \"expiryDate\": \"2026-12-31T00:00:00Z\"\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{fefoReceiptId}}/receive",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{fefoReceiptId}}",
+                                "receive"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "3. Receive Item - Lot 2 (Early Expiry)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"orderId\": \"{{fefoOrderId}}\",\r\n    \"skuCode\": \"A0-001\",\r\n    \"binCode\": \"BIN-A1-01\",\r\n    \"quantity\": 50,\r\n    \"lotNo\": \"LOT-JUN-2026\",\r\n    \"expiryDate\": \"2026-06-30T00:00:00Z\"\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{fefoReceiptId}}/receive",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{fefoReceiptId}}",
+                                "receive"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4. Create Outbound Order (Demand 50)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.collectionVariables.set(\"fefoOutboundOrderId\", jsonData);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"tenantId\": \"{{tenantId}}\",\r\n    \"customerId\": \"{{customerId}}\",\r\n    \"warehouseId\": \"{{warehouseId}}\",\r\n    \"priority\": 1,\r\n    \"orderNo\": \"OUT-FEFO-TEST\",\r\n    \"lines\": [\r\n        {\r\n            \"sku\": \"A0-001\",\r\n            \"requestedQty\": 50\r\n        }\r\n    ]\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "5. Allocate Stock (Should pick Lot 2 - Jun)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{fefoOutboundOrderId}}/allocate",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{fefoOutboundOrderId}}",
+                                "allocate"
+                            ]
+                        }
+                    }
+                }
+            ]
         }
     ]
 }
