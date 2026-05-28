@@ -22,7 +22,11 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
         builder.Property(x => x.BinId).IsRequired();
         builder.Property(x => x.Sku).IsRequired().HasMaxLength(100);
 
-        builder.HasIndex(x => new { x.TenantId, x.WarehouseId, x.Sku, x.BinId }).IsUnique();
+        builder.Property(x => x.LotNo).HasMaxLength(100);
+        builder.Property(x => x.ExpiryDate);
+
+        // Include LotNo in the unique index so multiple lots of the same SKU can be stored in the same Bin
+        builder.HasIndex(x => new { x.TenantId, x.WarehouseId, x.Sku, x.BinId, x.LotNo }).IsUnique();
 
         builder.Property(x => x.QuantityOnHand).IsRequired();
         builder.Property(x => x.ReservedQty).IsRequired();
