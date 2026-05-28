@@ -205,6 +205,8 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         // --- CROSS DOCK INTERCEPTION ---
         bool isCrossDockSuggested = false;
         Guid? crossDockTaskId = null;
+        bool isPutawaySuggested = false;
+        Guid? putawayTaskId = null;
 
         // Ensure this is not a Transit receipt
         bool isTransit = receipt.FinalDestinationWarehouseId.HasValue && receipt.FinalDestinationWarehouseId.Value != receipt.WarehouseId;
@@ -252,10 +254,58 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             }
         }
 
+        // --- DIRECTED PUTAWAY ---
+        if (!isCrossDockSuggested && !isTransit && !isUnknown && !isOverage && 
+            (targetBin.Zone.ZoneType == ZoneType.Staging.ToString() || targetBin.Zone.ZoneType == ZoneType.QC.ToString()))
+        {
+            // Smart Suggestion: find a bin in Storage containing this SKU and Lot
+            var existingBinId = await _context.InventoryItems
+                .Where(i => i.WarehouseId == receipt.WarehouseId 
+                         && i.Sku == request.SkuCode 
+                         && i.LotNo == request.LotNo)
+                .Select(i => i.BinId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            Bin? suggestedBin = null;
+
+            if (existingBinId != Guid.Empty)
+            {
+                suggestedBin = await _context.Bins.Include(b => b.Zone).FirstOrDefaultAsync(b => b.Id == existingBinId && b.Zone.ZoneType == ZoneType.Storage.ToString(), cancellationToken);
+            }
+
+            if (suggestedBin == null)
+            {
+                // Fallback to any available empty bin in Storage
+                suggestedBin = await _context.Bins
+                    .Include(b => b.Zone)
+                    .Where(b => b.WarehouseId == receipt.WarehouseId 
+                             && b.Zone.ZoneType == ZoneType.Storage.ToString()
+                             && b.Status == "Available")
+                    .FirstOrDefaultAsync(cancellationToken);
+            }
+
+            if (suggestedBin != null)
+            {
+                var putawayTask = new PutawayTask(
+                    receipt.TenantId,
+                    receipt.WarehouseId,
+                    receipt.Id,
+                    request.SkuCode,
+                    request.LotNo,
+                    request.Quantity,
+                    targetBin.Id,
+                    suggestedBin.Id
+                );
+                _context.PutawayTasks.Add(putawayTask);
+                isPutawaySuggested = true;
+                putawayTaskId = putawayTask.Id;
+            }
+        }
+
         // 6. Save entity + outbox message atomically.
         await _context.SaveChangesAsync(cancellationToken);
 
-        var response = new ReceiveInboundItemResponse(isCrossDockSuggested, crossDockTaskId);
+        var response = new ReceiveInboundItemResponse(isCrossDockSuggested, crossDockTaskId, isPutawaySuggested, putawayTaskId);
         return Result<ReceiveInboundItemResponse>.Success(response);
     }
 }

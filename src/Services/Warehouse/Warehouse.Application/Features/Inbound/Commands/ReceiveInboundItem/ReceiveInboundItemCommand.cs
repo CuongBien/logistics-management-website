@@ -17,5 +17,7 @@ public record ReceiveInboundItemCommand(
 
 public record ReceiveInboundItemResponse(
     bool IsCrossDockSuggested,
-    Guid? CrossDockTaskId
+    Guid? CrossDockTaskId,
+    bool IsPutawaySuggested = false,
+    Guid? PutawayTaskId = null
 );
