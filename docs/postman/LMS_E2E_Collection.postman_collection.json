@@ -9465,6 +9465,136 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "12. Directed Put-away",
+            "item": [
+                {
+                    "name": "1. Create Inbound Receipt (Putaway Test)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const newUuid = pm.variables.replaceIn('{{$guid}}');",
+                                    "pm.environment.set(\"putawayOrderId\", newUuid);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var rawText = pm.response.text().replace(/\"/g, '');",
+                                    "pm.environment.set(\"putawayReceiptId\", rawText);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"orderId\": \"{{putawayOrderId}}\",\r\n    \"tenantId\": \"{{tenantId}}\",\r\n    \"customerId\": \"{{customerId}}\",\r\n    \"warehouseId\": \"{{warehouseId}}\",\r\n    \"sourceShipmentNo\": \"ASN-PUTAWAY-TEST\",\r\n    \"expectedLines\": [\r\n        {\r\n            \"skuCode\": \"A0-001\",\r\n            \"expectedQuantity\": 100\r\n        }\r\n    ]\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2. Receive Item at Dock (Generates Putaway)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Putaway task generated\", function () {",
+                                    "    pm.expect(jsonData.isPutawaySuggested).to.be.true;",
+                                    "    pm.expect(jsonData.putawayTaskId).to.not.be.null;",
+                                    "});",
+                                    "if (jsonData.putawayTaskId) {",
+                                    "    pm.environment.set(\"putawayTaskId\", jsonData.putawayTaskId);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"orderId\": \"{{putawayOrderId}}\",\r\n    \"skuCode\": \"A0-001\",\r\n    \"binCode\": \"BIN-DOCK\",\r\n    \"quantity\": 100\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{putawayReceiptId}}/receive",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{putawayReceiptId}}",
+                                "receive"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "3. Complete Putaway Task (Soft Override)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"scannedDestinationBinCode\": \"BIN-C02-02\"\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/putaway-tasks/{{putawayTaskId}}/complete",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "putaway-tasks",
+                                "{{putawayTaskId}}",
+                                "complete"
+                            ]
+                        }
+                    }
+                }
+            ]
         }
     ]
 }
