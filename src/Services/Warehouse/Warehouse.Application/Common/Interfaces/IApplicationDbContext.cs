@@ -39,6 +39,7 @@ public interface IApplicationDbContext
     DbSet<InboundDiscrepancy> InboundDiscrepancies { get; }
     DbSet<CountTask> CountTasks { get; }
     DbSet<ReplenishmentTask> ReplenishmentTasks { get; }
+    DbSet<CrossDockTask> CrossDockTasks { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
