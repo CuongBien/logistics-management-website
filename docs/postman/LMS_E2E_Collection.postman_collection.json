@@ -9086,6 +9086,210 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "10. Cross-Docking",
+            "item": [
+                {
+                    "name": "1. Create Outbound Order (Backordered)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.collectionVariables.set(\"CD_OutboundOrderId\", jsonData);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n  \"tenantId\": \"default-tenant\",\r\n  \"customerId\": \"cust-default\",\r\n  \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\r\n  \"orderId\": \"{{$guid}}\",\r\n  \"orderNo\": \"CD-ORD-001\",\r\n  \"lines\": [\r\n    {\r\n      \"sku\": \"A0-001\",\r\n      \"quantity\": 500,\r\n      \"uom\": \"PCS\"\r\n    }\r\n  ],\r\n  \"allowPartial\": true\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2. Allocate Stock (Will Fail / Pending)",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{CD_OutboundOrderId}}/allocate",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{CD_OutboundOrderId}}",
+                                "allocate"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "3. Create Inbound Receipt",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.collectionVariables.set(\"CD_InboundOrderId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.collectionVariables.set(\"CD_ReceiptId\", jsonData);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n  \"warehouseId\": \"a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1\",\r\n  \"tenantId\": \"default-tenant\",\r\n  \"customerId\": \"cust-default\",\r\n  \"orderId\": \"{{CD_InboundOrderId}}\",\r\n  \"sourceShipmentNo\": \"CD-INB-001\",\r\n  \"expectedLines\": [\r\n    {\r\n      \"skuCode\": \"A0-001\",\r\n      \"expectedQuantity\": 500\r\n    }\r\n  ]\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4. Receive Item (Triggers Cross-Docking)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.isCrossDockSuggested) {",
+                                    "    pm.collectionVariables.set(\"CD_TaskId\", jsonData.crossDockTaskId);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n  \"orderId\": \"{{CD_InboundOrderId}}\",\r\n  \"skuCode\": \"A0-001\",\r\n  \"binCode\": \"BIN-DOCK-01\",\r\n  \"quantity\": 500\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{CD_ReceiptId}}/receive",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{CD_ReceiptId}}",
+                                "receive"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "5. Complete Cross Dock Task",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n  \"scannedDestinationBinCode\": \"BIN-STAGING-OUT-01\"\r\n}"
+                        },
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/cross-dock/{{CD_TaskId}}/complete",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "cross-dock",
+                                "{{CD_TaskId}}",
+                                "complete"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "6. Check Outbound Order Status (Should be Allocated)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{wms_url}}/api/outbound/orders/{{CD_OutboundOrderId}}",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "outbound",
+                                "orders",
+                                "{{CD_OutboundOrderId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
         }
     ]
 }
