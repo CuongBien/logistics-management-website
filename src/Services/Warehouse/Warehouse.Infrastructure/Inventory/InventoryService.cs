@@ -51,7 +51,8 @@ public class InventoryService : IInventoryService
                 var inventoryItem = await _context.InventoryItems
                     .Where(x => x.TenantId == tenantId && x.WarehouseId == warehouseId && x.Sku == sku)
                     .Where(x => x.QuantityOnHand - x.ReservedQty >= quantity)
-                    .OrderByDescending(x => x.QuantityOnHand - x.ReservedQty)
+                    .OrderBy(x => x.ExpiryDate == null ? DateTime.MaxValue : x.ExpiryDate)
+                    .ThenByDescending(x => x.QuantityOnHand - x.ReservedQty)
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (inventoryItem == null)
