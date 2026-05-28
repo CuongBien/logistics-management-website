@@ -43,6 +43,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<CountTask> CountTasks { get; set; } = default!;
     public DbSet<ReplenishmentTask> ReplenishmentTasks { get; set; } = default!;
     public DbSet<CrossDockTask> CrossDockTasks { get; set; } = default!;
+    public DbSet<PutawayTask> PutawayTasks { get; set; } = default!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
