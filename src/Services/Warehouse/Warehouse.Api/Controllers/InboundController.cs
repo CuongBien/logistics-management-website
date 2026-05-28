@@ -10,6 +10,7 @@ using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveTransitShipment;
 using Warehouse.Application.Features.Inbound.Queries.GetTransitDiscrepancies;
 using Warehouse.Application.Features.Inbound.Commands.ResolveTransitDiscrepancy;
+using Warehouse.Application.Features.Inbound.Commands.CrossDock;
 using Warehouse.Api.Controllers.Requests;
 
 namespace Warehouse.Api.Controllers;
@@ -65,7 +66,7 @@ public class InboundController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Receive(Guid receiptId, [FromBody] ReceiveInboundItemRequest request)
+    public async Task<ActionResult<ReceiveInboundItemResponse>> Receive(Guid receiptId, [FromBody] ReceiveInboundItemRequest request)
     {
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         if (string.IsNullOrWhiteSpace(operatorSub))
@@ -168,4 +169,33 @@ public class InboundController : ApiControllerBase
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }
+
+    /// <summary>
+    /// Hoàn tất tác vụ luân chuyển thẳng (Cross-dock)
+    /// </summary>
+    [HttpPost("cross-dock/{taskId:guid}/complete")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> CompleteCrossDockTask(
+        Guid taskId, 
+        [FromBody] CompleteCrossDockTaskRequest request)
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(operatorSub))
+        {
+            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
+        }
+
+        var command = new CompleteCrossDockTaskCommand(taskId, operatorSub, request.ScannedDestinationBinCode);
+        var result = await Mediator.Send(command);
+        return ToActionResult(result);
+    }
+}
+
+public class CompleteCrossDockTaskRequest
+{
+    public string ScannedDestinationBinCode { get; set; } = default!;
 }

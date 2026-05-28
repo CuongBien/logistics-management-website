@@ -11,4 +11,9 @@ public record ReceiveInboundItemCommand(
    string BinCode,
    string ScannedBy,
    int Quantity = 1
-) : IRequest<Result>;
+) : IRequest<Result<ReceiveInboundItemResponse>>;
+
+public record ReceiveInboundItemResponse(
+    bool IsCrossDockSuggested,
+    Guid? CrossDockTaskId
+);

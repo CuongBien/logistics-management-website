@@ -8,7 +8,7 @@ using EventBus.Messages.Events;
 
 namespace Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
 
-public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundItemCommand, Result>
+public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundItemCommand, Result<ReceiveInboundItemResponse>>
 {
     private readonly IApplicationDbContext _context;
     private readonly MassTransit.IPublishEndpoint _publishEndpoint;
@@ -24,7 +24,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         _authService = authService;
     }
 
-    public async Task<Result> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ReceiveInboundItemResponse>> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
     {
         // 1. Load InboundReceipt by ReceiptId with lines
         var receipt = await _context.InboundReceipts
@@ -33,7 +33,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             .FirstOrDefaultAsync(r => r.Id == request.ReceiptId, cancellationToken);
             
         if (receipt == null)
-            return Result.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
+            return Result<ReceiveInboundItemResponse>.Failure(new Error("InboundReceipt.NotFound", $"InboundReceipt with Id {request.ReceiptId} not found."));
 
         // 2. Validate SKU exists
         var isUnknown = false;
@@ -46,7 +46,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
         // 3. Validate OrderId belongs to this receipt
         if (receipt.OrderId != request.OrderId)
-            return Result.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));
+            return Result<ReceiveInboundItemResponse>.Failure(new Error("InboundReceipt.InvalidOrder", $"OrderId {request.OrderId} does not belong to receipt {request.ReceiptId}."));
 
         // 4. Load Bin by BinCode and WarehouseId (safety for multi-warehouse)
         var bin = await _context.Bins
@@ -54,9 +54,9 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             .ThenInclude(z => z.Block)
             .FirstOrDefaultAsync(b => b.BinCode == request.BinCode && b.WarehouseId == receipt.WarehouseId, cancellationToken);
         if (bin == null)
-            return Result.Failure(new Error("Bin.NotFound", $"Bin with Code {request.BinCode} not found."));
+            return Result<ReceiveInboundItemResponse>.Failure(new Error("Bin.NotFound", $"Bin with Code {request.BinCode} not found."));
         if (bin.Zone == null || bin.Zone.Block == null)
-            return Result.Failure(new Error("Bin.InvalidHierarchy", $"Bin with Code {request.BinCode} is missing zone/block hierarchy."));
+            return Result<ReceiveInboundItemResponse>.Failure(new Error("Bin.InvalidHierarchy", $"Bin with Code {request.BinCode} is missing zone/block hierarchy."));
 
         var hasPermission = await _authService.HasPermissionAsync(
             request.ScannedBy, 
@@ -67,7 +67,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
         if (!hasPermission)
         {
-            return Result.Failure(new Error(
+            return Result<ReceiveInboundItemResponse>.Failure(new Error(
                 "Operator.Forbidden",
                 $"Operator '{request.ScannedBy}' does not have permission 'inbound:receive' for warehouse '{bin.WarehouseId}' and zone '{bin.ZoneId}' (if applicable)."));
         }
@@ -181,9 +181,60 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             await _publishEndpoint.Publish(integrationEvent, cancellationToken);
         }
 
+        // --- CROSS DOCK INTERCEPTION ---
+        bool isCrossDockSuggested = false;
+        Guid? crossDockTaskId = null;
+
+        // Ensure this is not a Transit receipt
+        bool isTransit = receipt.FinalDestinationWarehouseId.HasValue && receipt.FinalDestinationWarehouseId.Value != receipt.WarehouseId;
+
+        if (!isTransit && !isUnknown && !isOverage)
+        {
+            // Find an outbound order that needs this SKU
+            var starvedOrderLine = await _context.OutboundOrderLines
+                .Include(l => l.OutboundOrder)
+                .Where(l => l.OutboundOrder.WarehouseId == receipt.WarehouseId
+                         && l.OutboundOrder.TenantId == receipt.TenantId
+                         && l.OutboundOrder.CustomerId == receipt.CustomerId
+                         && l.Sku == request.SkuCode
+                         && (l.OutboundOrder.Status == OutboundOrderStatus.PendingAllocation || l.OutboundOrder.Status == OutboundOrderStatus.PartiallyAllocated)
+                         && (l.RequestedQty - l.ReservedQty) > 0)
+                .OrderBy(l => l.OutboundOrder.CreatedAt) // Oldest first (FIFO allocation)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (starvedOrderLine != null)
+            {
+                var unallocatedDemand = starvedOrderLine.RequestedQty - starvedOrderLine.ReservedQty;
+                var crossDockQty = Math.Min(request.Quantity, unallocatedDemand);
+
+                // Find the Staging OUT bin
+                var stagingOutBin = await _context.Bins
+                    .Include(b => b.Zone)
+                    .FirstOrDefaultAsync(b => b.WarehouseId == receipt.WarehouseId && b.Zone.ZoneType == ZoneType.Staging.ToString() && b.BinCode.Contains("OUT"), cancellationToken);
+
+                if (stagingOutBin != null)
+                {
+                    var crossDockTask = new CrossDockTask(
+                        receipt.TenantId,
+                        receipt.WarehouseId,
+                        receipt.Id,
+                        starvedOrderLine.OutboundOrderId,
+                        request.SkuCode,
+                        crossDockQty,
+                        targetBin.Id,
+                        stagingOutBin.Id
+                    );
+                    _context.CrossDockTasks.Add(crossDockTask);
+                    isCrossDockSuggested = true;
+                    crossDockTaskId = crossDockTask.Id;
+                }
+            }
+        }
+
         // 6. Save entity + outbox message atomically.
         await _context.SaveChangesAsync(cancellationToken);
 
-        return Result.Success();
+        var response = new ReceiveInboundItemResponse(isCrossDockSuggested, crossDockTaskId);
+        return Result<ReceiveInboundItemResponse>.Success(response);
     }
 }
