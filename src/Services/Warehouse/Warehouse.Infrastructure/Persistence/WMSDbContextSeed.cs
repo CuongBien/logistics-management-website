@@ -131,6 +131,21 @@ public static class WMSDbContextSeed
                             }
                         }
                         await context.SaveChangesAsync();
+
+                        // Add Staging Block, Zone and Bins for Cross-Docking and Inbound/Outbound
+                        var stagingBlock = new Block(wh.Id, "BLK-STAGING");
+                        wh.AddBlock(stagingBlock);
+                        context.Blocks.Add(stagingBlock);
+                        var stagingZone = new Zone(stagingBlock.Id, ZoneType.Staging);
+                        context.Zones.Add(stagingZone);
+                        await context.SaveChangesAsync();
+
+                        var dockBin = new Bin(wh.Id, stagingZone.Id, "BIN-DOCK-01", BinStatus.Available, "DOCK", "1", "01", currentSequence++);
+                        context.Bins.Add(dockBin);
+
+                        var stagingOutBin = new Bin(wh.Id, stagingZone.Id, "BIN-STAGING-OUT-01", BinStatus.Available, "STG-OUT", "1", "01", currentSequence++);
+                        context.Bins.Add(stagingOutBin);
+                        await context.SaveChangesAsync();
                     }
                 }
                 
@@ -183,6 +198,24 @@ public static class WMSDbContextSeed
             if (context.ChangeTracker.HasChanges())
             {
                 await context.SaveChangesAsync();
+            }
+
+            // 4. Seed ERP SKU Mirrors (so SKUs are recognized and not treated as Unknown)
+            if (!await context.ErpSkuMirrors.AnyAsync())
+            {
+                logger.LogInformation("Seeding ERP SKU Mirrors...");
+                var now = DateTime.UtcNow;
+                var skus = new[]
+                {
+                    ErpSkuMirror.Create("default-tenant", "erp-A0-001", "A0-001", "Ao Thun Nam Basic", "PCS", "active", now, now),
+                    ErpSkuMirror.Create("default-tenant", "erp-A0-002", "A0-002", "Ao Thun Nu Basic", "PCS", "active", now, now),
+                    ErpSkuMirror.Create("default-tenant", "erp-A0-003", "A0-003", "Ao Khoac Nam", "PCS", "active", now, now),
+                    ErpSkuMirror.Create("default-tenant", "erp-SKU-RED-TSHIRT", "SKU-RED-TSHIRT", "Red T-Shirt", "PCS", "active", now, now),
+                    ErpSkuMirror.Create("default-tenant", "erp-SKU-BLUE-JEANS", "SKU-BLUE-JEANS", "Blue Jeans", "PCS", "active", now, now),
+                };
+                context.ErpSkuMirrors.AddRange(skus);
+                await context.SaveChangesAsync();
+                logger.LogInformation("Successfully seeded {Count} ERP SKU Mirrors.", skus.Length);
             }
         }
         catch (Exception ex)
