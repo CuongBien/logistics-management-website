@@ -26,6 +26,26 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
     public async Task<Result<ReceiveInboundItemResponse>> Handle(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
     {
+        const int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                return await ProcessReceiveAsync(request, cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (attempt == maxRetries) throw;
+                _context.ChangeTracker.Clear();
+                await Task.Delay(50 * attempt, cancellationToken);
+            }
+        }
+        
+        return Result<ReceiveInboundItemResponse>.Failure(new Error("Concurrency.Error", "Failed to receive item due to high concurrency. Please try again."));
+    }
+
+    private async Task<Result<ReceiveInboundItemResponse>> ProcessReceiveAsync(ReceiveInboundItemCommand request, CancellationToken cancellationToken)
+    {
         // 1. Load InboundReceipt by ReceiptId with lines
         var receipt = await _context.InboundReceipts
             .Include(r => r.Lines)
@@ -131,11 +151,12 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
             .FirstOrDefaultAsync(i => i.WarehouseId == warehouseId 
                                    && i.TenantId == receipt.TenantId 
                                    && i.Sku == request.SkuCode 
-                                   && i.BinId == targetBin.Id, cancellationToken);
+                                   && i.BinId == targetBin.Id
+                                   && i.LotNo == request.LotNo, cancellationToken);
 
         if (inventoryItem == null)
         {
-            inventoryItem = InventoryItem.Create(request.SkuCode, request.Quantity, receipt.TenantId, receipt.CustomerId, warehouseId, targetBin.Id);
+            inventoryItem = InventoryItem.Create(request.SkuCode, request.Quantity, receipt.TenantId, receipt.CustomerId, warehouseId, targetBin.Id, request.LotNo, request.ExpiryDate);
             _context.InventoryItems.Add(inventoryItem);
         }
         else

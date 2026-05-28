@@ -8,4 +8,6 @@ public class ReceiveInboundItemRequest
     public required string BinCode { get; init; }
     public string? ScannedBy { get; init; }
     public int Quantity { get; init; } = 1;
+    public string? LotNo { get; init; }
+    public DateTime? ExpiryDate { get; init; }
 }

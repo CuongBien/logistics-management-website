@@ -81,7 +81,9 @@ public class InboundController : ApiControllerBase
             request.SkuCode,
             request.BinCode,
             operatorSub,
-            request.Quantity
+            request.Quantity,
+            request.LotNo,
+            request.ExpiryDate
         );
 
         var result = await Mediator.Send(command);

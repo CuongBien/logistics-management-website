@@ -10,7 +10,9 @@ public record ReceiveInboundItemCommand(
    string SkuCode,
    string BinCode,
    string ScannedBy,
-   int Quantity = 1
+   int Quantity = 1,
+   string? LotNo = null,
+   DateTime? ExpiryDate = null
 ) : IRequest<Result<ReceiveInboundItemResponse>>;
 
 public record ReceiveInboundItemResponse(
