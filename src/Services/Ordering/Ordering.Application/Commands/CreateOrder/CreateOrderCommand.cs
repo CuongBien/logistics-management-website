@@ -12,6 +12,7 @@ public record CreateOrderCommand(
     string? Note,
     bool SaveToContacts = false,
     int FulfillmentMode = 1,
+    int OrderType = 1,
     string TenantId = "",
     string ConsignorId = "",
     string? SourceWarehouseCode = null,

@@ -74,7 +74,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
             request.ShippingFee,
             request.Weight,
             request.Note,
-            Ordering.Domain.Enums.OrderType.Parcel,
+            (Ordering.Domain.Enums.OrderType)request.OrderType,
             (Ordering.Domain.Enums.FulfillmentMode)request.FulfillmentMode,
             request.SourceWarehouseCode,
             consignorCity,

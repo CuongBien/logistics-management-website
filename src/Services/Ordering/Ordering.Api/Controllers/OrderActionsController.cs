@@ -54,6 +54,16 @@ public class OrderActionsController : ControllerBase
         var result = await _mediator.Send(new FailDeliveryCommand(orderId, request.Reason));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
+
+    /// <summary>
+    /// Hủy đơn hàng
+    /// </summary>
+    [HttpPut("cancel")]
+    public async Task<ActionResult<Result>> Cancel(Guid orderId, [FromBody] CancelRequest request)
+    {
+        var result = await _mediator.Send(new CancelOrderCommand(orderId, request.Reason));
+        return result.IsFailure ? BadRequest(result) : Ok(result);
+    }
 }
 
 // --- Request DTOs ---
@@ -61,3 +71,4 @@ public record PickupRequest(string DriverId);
 public record DispatchRequest(string DriverId, string RouteId);
 public record DeliverRequest(string ProofOfDeliveryUrl);
 public record FailRequest(string Reason);
+public record CancelRequest(string? Reason);

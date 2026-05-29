@@ -41,6 +41,9 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
         RuleFor(v => v.CodAmount)
             .GreaterThanOrEqualTo(0).WithMessage("COD amount cannot be negative.");
 
+        RuleFor(v => v.ShippingFee)
+            .GreaterThanOrEqualTo(0).WithMessage("Shipping fee cannot be negative.");
+
         RuleFor(v => v.Weight)
             .GreaterThan(0).WithMessage("Weight must be greater than zero.");
     }

@@ -20,15 +20,26 @@ public record OrderDto(
     decimal Weight,
     string? Note,
     DateTime CreatedAt,
+    string? ExternalReference,
+    string Type,
+    string Fulfillment,
+    string TenantId,
+    DateTime? LastModifiedAt,
     // Tracking
     string? PickupDriverId,
     string? WarehouseId,
+    string? DestinationWarehouseId,
     string? DeliveryDriverId,
+    string? RouteId,
     string? ProofOfDeliveryUrl,
     int DeliveryAttempts,
+    string? FailureReason,
     string? CreatedByOperatorId,
-    string? UpdatedByOperatorId
+    string? UpdatedByOperatorId,
+    List<OrderItemDto> Items
 );
+
+public record OrderItemDto(Guid Id, Guid Sku, string SkuCode, int Quantity, decimal Price);
 
 public record ConsigneeDto(string FullName, string Phone, AddressDto Address);
 public record AddressDto(string Street, string City, string State, string Country, string ZipCode);
@@ -46,6 +57,7 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Resul
     public async Task<Result<OrderDto>> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
     {
         var order = await _context.Orders
+            .Include(o => o.Items)
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == request.Id, cancellationToken);
 
@@ -73,13 +85,22 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Resul
             order.Weight,
             order.Note,
             order.CreatedAt,
+            order.ExternalReference,
+            order.Type.ToString(),
+            order.Fulfillment.ToString(),
+            order.TenantId,
+            order.LastModifiedAt,
             order.PickupDriverId,
             order.WarehouseId,
+            order.DestinationWarehouseId,
             order.DeliveryDriverId,
+            order.RouteId,
             order.ProofOfDeliveryUrl,
             order.DeliveryAttempts,
+            order.FailureReason,
             order.CreatedByOperatorId,
-            order.UpdatedByOperatorId
+            order.UpdatedByOperatorId,
+            order.Items.Select(i => new OrderItemDto(i.Id, i.Sku, i.SkuCode, i.Quantity, i.Price)).ToList()
         );
 
         return Result<OrderDto>.Success(dto);

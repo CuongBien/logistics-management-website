@@ -12,3 +12,5 @@ public record DispatchOrderCommand(Guid OrderId, string DriverId, string RouteId
 public record DeliverOrderCommand(Guid OrderId, string ProofOfDeliveryUrl) : IRequest<Result>;
 
 public record FailDeliveryCommand(Guid OrderId, string Reason) : IRequest<Result>;
+
+public record CancelOrderCommand(Guid OrderId, string? Reason = null) : IRequest<Result>;

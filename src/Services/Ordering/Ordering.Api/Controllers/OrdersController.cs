@@ -6,6 +6,7 @@ using Ordering.Application.Commands.CreateInboundRequest;
 using Ordering.Application.Queries.GetOrderById;
 using Ordering.Application.Queries.GetOrderStatusHistory;
 using Ordering.Application.Queries.GetOrderConsignee;
+using Ordering.Application.Queries.GetOrders;
 using Logistics.Core;
 
 namespace Ordering.Api.Controllers;
@@ -50,40 +51,51 @@ public class OrdersController : ControllerBase
             return BadRequest(result);
         }
 
-        return CreatedAtAction(nameof(Get), new { id = result.Value }, result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Value }, result);
     }
 
     [HttpPost("inbound-request")]
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Result<Guid>>> CreateInboundRequest(CreateInboundRequestCommand command)
+    public async Task<ActionResult<Result<Guid>>> CreateInboundRequest([FromBody] CreateInboundRequestCommand command)
     {
         var userId = CurrentUserClaims.GetCustomerId(User) ?? "Anonymous";
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(tenantId))
-        {
-            return BadRequest(Result<Guid>.Failure(new Error("Tenant.MissingClaim", "Missing tenant claim in access token.")));
-        }
-
-        _logger.LogInformation("Creating inbound request... userId={UserId}, tenantId={TenantId}", userId, tenantId);
-
-        var finalCommand = command with { ConsignorId = userId, TenantId = tenantId };
+        var finalCommand = command with 
+        { 
+            TenantId = string.IsNullOrWhiteSpace(command.TenantId) ? tenantId : command.TenantId,
+            ConsignorId = string.IsNullOrWhiteSpace(command.ConsignorId) ? userId : command.ConsignorId
+        };
 
         var result = await _mediator.Send(finalCommand);
+        return result.IsFailure ? BadRequest(result) : CreatedAtAction(nameof(GetById), new { id = result.Value }, result);
+    }
 
-        if (result.IsFailure)
-        {
-            return BadRequest(result);
-        }
-
-        return CreatedAtAction(nameof(Get), new { id = result.Value }, result);
+    [HttpGet]
+    public async Task<ActionResult<Result<PaginatedList<OrderSummaryDto>>>> GetOrders(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? tenantId = null,
+        [FromQuery] string? consignorId = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? type = null,
+        [FromQuery] string? fulfillment = null,
+        [FromQuery] string? searchTerm = null)
+    {
+        // Default to user's tenant if not explicitly requesting another (or if no permission to query others)
+        var userTenantId = CurrentUserClaims.GetTenantId(User);
+        var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) ? userTenantId : tenantId;
+        
+        var query = new GetOrdersQuery(page, pageSize, effectiveTenantId, consignorId, status, type, fulfillment, searchTerm);
+        var result = await _mediator.Send(query);
+        return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Result<OrderDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Result<OrderDto>>> Get(Guid id)
+    public async Task<ActionResult<Result<OrderDto>>> GetById(Guid id)
     {
         var query = new GetOrderByIdQuery(id);
         var result = await _mediator.Send(query);

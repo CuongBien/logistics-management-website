@@ -81,3 +81,31 @@ public class FailDeliveryCommandHandler : IRequestHandler<FailDeliveryCommand, R
         return Result.Success();
     }
 }
+
+public class CancelOrderCommandHandler : IRequestHandler<CancelOrderCommand, Result>
+{
+    private readonly IApplicationDbContext _context;
+
+    public CancelOrderCommandHandler(IApplicationDbContext context) => _context = context;
+
+    public async Task<Result> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
+    {
+        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == request.OrderId, cancellationToken);
+        if (order is null) return Result.Failure(new Error("Order.NotFound", "Order was not found."));
+
+        Result result;
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            result = order.Cancel();
+        }
+        else
+        {
+            result = order.CancelWithReason(request.Reason);
+        }
+        
+        if (result.IsFailure) return result;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+}

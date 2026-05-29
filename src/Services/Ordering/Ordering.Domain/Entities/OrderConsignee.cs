@@ -15,6 +15,8 @@ public class OrderConsignee
     public string State { get; private set; } = default!;
     public string Country { get; private set; } = default!;
     public string ZipCode { get; private set; } = default!;
+    public double? Latitude { get; private set; }
+    public double? Longitude { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     // EF Core
@@ -35,6 +37,8 @@ public class OrderConsignee
         State = source.Address.State;
         Country = source.Address.Country;
         ZipCode = source.Address.ZipCode;
+        Latitude = source.Latitude;
+        Longitude = source.Longitude;
         CreatedAt = DateTime.UtcNow;
     }
 }
