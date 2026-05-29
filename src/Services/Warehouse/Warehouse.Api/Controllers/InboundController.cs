@@ -10,6 +10,7 @@ using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveTransitShipment;
 using Warehouse.Application.Features.Inbound.Queries.GetTransitDiscrepancies;
 using Warehouse.Application.Features.Inbound.Commands.ResolveTransitDiscrepancy;
+using Warehouse.Application.Features.Inbound.Commands.ResolveInboundDiscrepancy;
 using Warehouse.Application.Features.Inbound.Commands.CrossDock;
 using Warehouse.Api.Controllers.Requests;
 
@@ -168,6 +169,30 @@ public class InboundController : ApiControllerBase
         }
 
         var command = new ResolveTransitDiscrepancyCommand(id, request.NewStatus, operatorSub, request.Notes);
+        var result = await Mediator.Send(command);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Giải quyết biên bản chênh lệch nhập hàng (OS&D)
+    /// </summary>
+    [HttpPost("discrepancies/{id:guid}/resolve")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ResolveInboundDiscrepancy(
+        Guid id, 
+        [FromBody] ResolveInboundDiscrepancyRequest request)
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(operatorSub))
+        {
+            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
+        }
+
+        var command = new ResolveInboundDiscrepancyCommand(id, request.NewStatus, operatorSub, request.Notes);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
     }
