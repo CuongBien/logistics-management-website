@@ -12,6 +12,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  GitMerge,
+  Users
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -30,7 +33,10 @@ const navItems: NavItem[] = [
   { label: "Inbound", href: "/inbound", icon: <PackageOpen className="h-4 w-4" /> },
   { label: "Outbound", href: "/outbound", icon: <Truck className="h-4 w-4" /> },
   { label: "Inventory", href: "/inventory", icon: <Boxes className="h-4 w-4" /> },
-  { label: "Warehouse", href: "/warehouse", icon: <Warehouse className="h-4 w-4" /> },
+  { label: "Warehouse Layout", href: "/wms/layout", icon: <Warehouse className="h-4 w-4" /> },
+  { label: "Internal Tasks", href: "/tasks", icon: <ClipboardList className="h-4 w-4" /> },
+  { label: "Cross-docking", href: "/crossdock", icon: <GitMerge className="h-4 w-4" /> },
+  { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
 ]
 
 const bottomItems: NavItem[] = [
