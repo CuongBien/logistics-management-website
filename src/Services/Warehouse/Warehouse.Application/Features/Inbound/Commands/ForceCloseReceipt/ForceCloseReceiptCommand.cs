@@ -29,6 +29,7 @@ public class ForceCloseReceiptCommandHandler : IRequestHandler<ForceCloseReceipt
     public async Task<Result> Handle(ForceCloseReceiptCommand request, CancellationToken cancellationToken)
     {
         var receipt = await _context.InboundReceipts
+            .Include(r => r.Lines)
             .FirstOrDefaultAsync(r => r.Id == request.ReceiptId, cancellationToken);
 
         if (receipt == null)
@@ -57,6 +58,24 @@ public class ForceCloseReceiptCommandHandler : IRequestHandler<ForceCloseReceipt
 
         // Force Close the receipt
         receipt.ForceClose();
+
+        // Detect Shortages and create Discrepancies
+        foreach (var line in receipt.Lines)
+        {
+            if (line.ExpectedQuantity > line.ReceivedQuantity)
+            {
+                var discrepancy = new InboundDiscrepancy(
+                    receipt.Id,
+                    receipt.WarehouseId,
+                    line.Sku,
+                    line.ExpectedQuantity,
+                    line.ReceivedQuantity,
+                    request.ClosedBySub,
+                    "Shortage detected upon Force Close."
+                );
+                _context.InboundDiscrepancies.Add(discrepancy);
+            }
+        }
 
         // Emit integration event so OMS knows this is "closed" despite not being fully received.
         var integrationEvent = new ShipmentReceivedIntegrationEvent(
