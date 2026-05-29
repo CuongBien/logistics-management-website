@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { InventoryItemDto } from "@/types/wms-inventory"
 import { getInventoryList, reserveStock, releaseStock } from "@/lib/api/wms-inventory"
 import { InventoryDataTable } from "@/components/wms/inventory/InventoryDataTable"
+import { TransferStockDialog } from "@/components/wms/inventory/TransferStockDialog"
+import { ReconcileDialog } from "@/components/wms/inventory/ReconcileDialog"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Loader2, Boxes, Layers, ShieldCheck, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
@@ -12,6 +14,11 @@ import { Button } from "@/components/ui/button"
 export default function InventoryOverviewPage() {
   const [inventoryList, setInventoryList] = useState<InventoryItemDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Dialog States
+  const [selectedItem, setSelectedItem] = useState<InventoryItemDto | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [reconcileOpen, setReconcileOpen] = useState(false)
 
   // Fetch all inventory list
   const fetchInventory = async () => {
@@ -32,6 +39,7 @@ export default function InventoryOverviewPage() {
 
   // Action dispatcher
   const handleAction = async (action: 'transfer' | 'reconcile' | 'reserve' | 'release', item: InventoryItemDto) => {
+    setSelectedItem(item)
     if (action === 'reserve') {
       try {
         await reserveStock(item.id, 5) // Default demo amount for fast verification
@@ -49,11 +57,9 @@ export default function InventoryOverviewPage() {
         toast.error(e.message || "Giải phóng thất bại")
       }
     } else if (action === 'transfer') {
-      // Placeholder for Step 3 dialog trigger
-      toast.info(`[Chức năng Điều chuyển] Kích hoạt popup điều chuyển cho SKU ${item.sku} tại kệ ${item.binCode}`)
+      setTransferOpen(true)
     } else if (action === 'reconcile') {
-      // Placeholder for Step 3 dialog trigger
-      toast.info(`[Chức năng Cân bằng] Kích hoạt popup cân bằng/kiểm kê cho SKU ${item.sku} tại kệ ${item.binCode}`)
+      setReconcileOpen(true)
     }
   }
 
@@ -158,6 +164,20 @@ export default function InventoryOverviewPage() {
           <InventoryDataTable data={inventoryList} onAction={handleAction} />
         </div>
       )}
+
+      {/* Interactive Action Dialogs */}
+      <TransferStockDialog 
+        item={selectedItem}
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        onSuccess={fetchInventory}
+      />
+      <ReconcileDialog 
+        item={selectedItem}
+        open={reconcileOpen}
+        onOpenChange={setReconcileOpen}
+        onSuccess={fetchInventory}
+      />
     </div>
   )
 }
