@@ -1,8 +1,8 @@
 {
     "info": {
-        "name": "Logistics E2E \u2013 Full Flow",
+        "name": "Logistics E2E – Full Flow",
         "_postman_id": "lms-e2e-collection-v1",
-        "description": "Postman Collection ki\u1ec3m th\u1eed End-to-End to\u00e0n b\u1ed9 lu\u1ed3ng v\u1eadn chuy\u1ec3n (Updated: 2026-05-18 00:11:18).",
+        "description": "Postman Collection kiểm thử End-to-End toàn bộ luồng vận chuyển (Updated: 2026-05-18 00:11:18).",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -138,7 +138,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"code\": \"PARTNER-001\",\n  \"name\": \"C\u00f4ng ty TNHH MTV Ti\u1ebfp V\u1eadn\",\n  \"type\": 1,\n  \"phone\": \"0901234567\",\n  \"address\": \"123 Nguyen Trai\",\n  \"city\": \"Ho Chi Minh\"\n}"
+                            "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"code\": \"PARTNER-001\",\n  \"name\": \"Công ty TNHH MTV Tiếp Vận\",\n  \"type\": 1,\n  \"phone\": \"0901234567\",\n  \"address\": \"123 Nguyen Trai\",\n  \"city\": \"Ho Chi Minh\"\n}"
                         },
                         "url": {
                             "raw": "{{masterdata_url}}/api/Partners",
@@ -155,7 +155,7 @@
             ]
         },
         {
-            "name": "STEP 0 \u2013 Setup Dev IAM",
+            "name": "STEP 0 – Setup Dev IAM",
             "request": {
                 "method": "POST",
                 "header": [],
@@ -171,7 +171,7 @@
                         "setup-admin"
                     ]
                 },
-                "description": "G\u00e1n quy\u1ec1n Admin cho User hi\u1ec7n t\u1ea1i \u0111\u1ec3 c\u00f3 th\u1ec3 ch\u1ea1y c\u00e1c b\u01b0\u1edbc ti\u1ebfp theo m\u00e0 kh\u00f4ng b\u1ecb l\u1ed7i 403 Forbidden."
+                "description": "Gán quyền Admin cho User hiện tại để có thể chạy các bước tiếp theo mà không bị lỗi 403 Forbidden."
             }
         },
         {
@@ -202,7 +202,7 @@
                             ]
                         }
                     },
-                    "description": "G\u00e1n m\u1ed9t Role (v\u00ed d\u1ee5: manager, admin) cho m\u1ed9t nh\u00e2n vi\u00ean t\u1ea1i m\u1ed9t Kho c\u1ee5 th\u1ec3 \u0111\u1ec3 ph\u00e2n quy\u1ec1n."
+                    "description": "Gán một Role (ví dụ: manager, admin) cho một nhân viên tại một Kho cụ thể để phân quyền."
                 }
             ]
         },
@@ -508,7 +508,7 @@
                             ]
                         }
                     },
-                    "description": "L\u1ea5y to\u00e0n b\u1ed9 l\u1ecbch s\u1eed bi\u1ebfn \u0111\u1ed9ng (Inbound, Outbound, Reserve, Release...) c\u1ee7a m\u1ed9t Inventory Item c\u1ee5 th\u1ec3."
+                    "description": "Lấy toàn bộ lịch sử biến động (Inbound, Outbound, Reserve, Release...) của một Inventory Item cụ thể."
                 },
                 {
                     "name": "Reconcile Inventory",
@@ -536,7 +536,7 @@
                             ]
                         }
                     },
-                    "description": "K\u00edch ho\u1ea1t \u0111\u1ed1i so\u00e1t to\u00e0n b\u1ed9 kho ho\u1eb7c theo WarehouseId. Ph\u00e1t hi\u1ec7n sai l\u1ec7ch gi\u1eefa Snapshot v\u00e0 Ledger."
+                    "description": "Kích hoạt đối soát toàn bộ kho hoặc theo WarehouseId. Phát hiện sai lệch giữa Snapshot và Ledger."
                 },
                 {
                     "name": "Reserve Stock (Idempotent Test - Fixed ID)",
@@ -564,7 +564,7 @@
                             ]
                         }
                     },
-                    "description": "G\u1eedi request n\u00e0y nhi\u1ec1u l\u1ea7n v\u1edbi c\u00f9ng correlationId 'FIXED-ID-12345'. H\u1ec7 th\u1ed1ng s\u1ebd ch\u1ec9 th\u1ef1c hi\u1ec7n tr\u1eeb kho 1 l\u1ea7n duy nh\u1ea5t."
+                    "description": "Gửi request này nhiều lần với cùng correlationId 'FIXED-ID-12345'. Hệ thống sẽ chỉ thực hiện trừ kho 1 lần duy nhất."
                 }
             ]
         },
@@ -573,7 +573,7 @@
             "item": [
                 {
                     "name": "Scenario 1: Consolidation (Same Destination)",
-                    "description": "Test gom 2 \u0111\u01a1n h\u00e0ng v\u00e0o c\u00f9ng 1 chuy\u1ebfn xe.",
+                    "description": "Test gom 2 đơn hàng vào cùng 1 chuyến xe.",
                     "item": [
                         {
                             "name": "Step 1: Create Order A",
@@ -691,7 +691,7 @@
                 },
                 {
                     "name": "Scenario 2: Manual Shipment Assignment",
-                    "description": "G\u00e1n \u0111\u01a1n h\u00e0ng v\u00e0o m\u1ed9t ShipmentId c\u1ee5 th\u1ec3 c\u00f3 s\u1eb5n.",
+                    "description": "Gán đơn hàng vào một ShipmentId cụ thể có sẵn.",
                     "item": [
                         {
                             "name": "Step A: Create Empty Shipment (Pre-condition)",
@@ -764,7 +764,7 @@
                 },
                 {
                     "name": "Scenario 3: Idempotency (Double Ship)",
-                    "description": "Nh\u1ea5n Ship 2 l\u1ea7n \u0111\u1ec3 \u0111\u1ea3m b\u1ea3o kh\u00f4ng tr\u1eeb kho 2 l\u1ea7n.",
+                    "description": "Nhấn Ship 2 lần để đảm bảo không trừ kho 2 lần.",
                     "item": [
                         {
                             "name": "Step 6: Ship Order (Repeat 1)",
@@ -810,11 +810,11 @@
         },
         {
             "name": "WMS Smart Routing & Consolidation (Next-Hop & Haversine)",
-            "description": "Ki\u1ec3m th\u1eed c\u00e1c t\u00ecnh hu\u1ed1ng gom \u0111\u01a1n n\u00e2ng cao: \u0110\u1ecbnh tuy\u1ebfn ch\u1eb7ng ch\u1eb7ng (Can Tho -> HCM -> Hanoi -> Hai Phong), l\u1ef1a ch\u1ecdn ph\u01b0\u01a1ng ti\u1ec7n t\u1ef1 \u0111\u1ed9ng b\u1eb1ng c\u00f4ng th\u1ee9c Haversine, gom \u0111\u01a1n th\u00f4ng minh v\u00e0 t\u1ef1 \u0111\u1ed9ng t\u00e1ch chuy\u1ebfn khi qu\u00e1 gi\u1edbi h\u1ea1n t\u1ea3i tr\u1ecdng xe.",
+            "description": "Kiểm thử các tình huống gom đơn nâng cao: Định tuyến chặng chặng (Can Tho -> HCM -> Hanoi -> Hai Phong), lựa chọn phương tiện tự động bằng công thức Haversine, gom đơn thông minh và tự động tách chuyến khi quá giới hạn tải trọng xe.",
             "item": [
                 {
                     "name": "Scenario 1: Cross-Province Next-Hop Routing (Can Tho to Hai Phong)",
-                    "description": "\u0110\u01a1n \u0111i H\u1ea3i Phong (~1500km) s\u1ebd \u0111\u01b0\u1ee3c \u0111\u1ecbnh tuy\u1ebfn t\u1ef1 \u0111\u1ed9ng ch\u1eb7ng ch\u1eb7ng ch\u1eb7ng \u0111\u1ea7u sang kho HCM Mega Hub (WH-SG-002) thay v\u00ec \u0111i th\u1eb3ng t\u1edbi H\u1ea3i Ph\u00f2ng.",
+                    "description": "Đơn đi Hải Phong (~1500km) sẽ được định tuyến tự động chặng chặng chặng đầu sang kho HCM Mega Hub (WH-SG-002) thay vì đi thẳng tới Hải Phòng.",
                     "item": [
                         {
                             "name": "Step A00: Setup Dev IAM (Assign Warehouse Admin)",
@@ -1114,7 +1114,7 @@
                             }
                         },
                         {
-                            "name": "Step H1: Get Loaded Shipment (Ch\u1eb7ng 1)",
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -1145,7 +1145,7 @@
                             ]
                         },
                         {
-                            "name": "Step H2: Dispatch Shipment (Ch\u1eb7ng 1)",
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
                             "request": {
                                 "method": "POST",
                                 "url": {
@@ -1167,7 +1167,7 @@
                 },
                 {
                     "name": "Scenario 2: Same Next-Hop Consolidation (Can Tho to Hanoi)",
-                    "description": "\u0110\u01a1n th\u1ee9 2 \u0111i H\u00e0 N\u1ed9i (~1400km) c\u0169ng \u0111\u01b0\u1ee3c t\u1ef1 \u0111\u1ed9ng chuy\u1ec3n h\u01b0\u1edbng ch\u1eb7ng \u0111\u1ea7u sang kho HCM Mega Hub (WH-SG-002) v\u00e0 GOM CHUNG v\u00e0o xe c\u1ee7a \u0111\u01a1n Scenario 1 do c\u00f2n \u0111\u1ee7 ch\u1ed7.",
+                    "description": "Đơn thứ 2 đi Hà Nội (~1400km) cũng được tự động chuyển hướng chặng đầu sang kho HCM Mega Hub (WH-SG-002) và GOM CHUNG vào xe của đơn Scenario 1 do còn đủ chỗ.",
                     "item": [
                         {
                             "name": "Step A00: Setup Dev IAM (Assign Warehouse Admin)",
@@ -1467,7 +1467,7 @@
                             }
                         },
                         {
-                            "name": "Step H1: Get Loaded Shipment (Ch\u1eb7ng 1)",
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -1498,7 +1498,7 @@
                             ]
                         },
                         {
-                            "name": "Step H2: Dispatch Shipment (Ch\u1eb7ng 1)",
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
                             "request": {
                                 "method": "POST",
                                 "url": {
@@ -1520,7 +1520,7 @@
                 },
                 {
                     "name": "Scenario 3: Capacity Limit Exceeded (Exceeds Container 25T Limit)",
-                    "description": "\u0110\u01a1n th\u1ee9 3 si\u00eau n\u1eb7ng (26 T\u1ea5n) \u0111i H\u00e0 N\u1ed9i. Do v\u01b0\u1ee3t qu\u00e1 t\u1ea3i tr\u1ecdng t\u1ed1i \u0111a c\u1ee7a xe Container (25 T\u1ea5n), thu\u1eadt to\u00e1n s\u1ebd t\u1eeb ch\u1ed1i gh\u00e9p chung xe v\u00e0 t\u1ef1 \u0111\u1ed9ng t\u1ea1o chuy\u1ebfn xe (Shipment) m\u1edbi ri\u00eang bi\u1ec7t.",
+                    "description": "Đơn thứ 3 siêu nặng (26 Tấn) đi Hà Nội. Do vượt quá tải trọng tối đa của xe Container (25 Tấn), thuật toán sẽ từ chối ghép chung xe và tự động tạo chuyến xe (Shipment) mới riêng biệt.",
                     "item": [
                         {
                             "name": "Step A00: Setup Dev IAM (Assign Warehouse Admin)",
@@ -1820,7 +1820,7 @@
                             }
                         },
                         {
-                            "name": "Step H1: Get Loaded Shipment (Ch\u1eb7ng 1)",
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -1851,7 +1851,7 @@
                             ]
                         },
                         {
-                            "name": "Step H2: Dispatch Shipment (Ch\u1eb7ng 1)",
+                            "name": "Step H2: Dispatch Shipment (Chặng 1)",
                             "request": {
                                 "method": "POST",
                                 "url": {
@@ -1873,7 +1873,7 @@
                 },
                 {
                     "name": "Scenario 4: Multi-Leg Hub Transit (Can Tho -> HCM -> Hanoi -> Hai Phong)",
-                    "description": "\u0110\u01a1n \u0111i H\u1ea3i Phong (~1500km) s\u1ebd \u0111\u01b0\u1ee3c \u0111\u1ecbnh tuy\u1ebfn t\u1ef1 \u0111\u1ed9ng ch\u1eb7ng ch\u1eb7ng ch\u1eb7ng \u0111\u1ea7u sang kho HCM Mega Hub (WH-SG-002) thay v\u00ec \u0111i th\u1eb3ng t\u1edbi H\u1ea3i Ph\u00f2ng.",
+                    "description": "Đơn đi Hải Phong (~1500km) sẽ được định tuyến tự động chặng chặng chặng đầu sang kho HCM Mega Hub (WH-SG-002) thay vì đi thẳng tới Hải Phòng.",
                     "item": [
                         {
                             "name": "Step A00: Setup Dev IAM (Assign Warehouse Admin)",
@@ -2144,7 +2144,7 @@
                             }
                         },
                         {
-                            "name": "Step H: Trigger Smart Auto Ship (Ch\u1eb7ng 1: Can Tho -> HCM)",
+                            "name": "Step H: Trigger Smart Auto Ship (Chặng 1: Can Tho -> HCM)",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -2173,7 +2173,7 @@
                             }
                         },
                         {
-                            "name": "Step H1: Get Loaded Shipment (Ch\u1eb7ng 1: Can Tho -> HCM)",
+                            "name": "Step H1: Get Loaded Shipment (Chặng 1: Can Tho -> HCM)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -2204,7 +2204,7 @@
                             ]
                         },
                         {
-                            "name": "Step H2: Dispatch Shipment (Ch\u1eb7ng 1: Can Tho -> HCM)",
+                            "name": "Step H2: Dispatch Shipment (Chặng 1: Can Tho -> HCM)",
                             "request": {
                                 "method": "POST",
                                 "url": {
@@ -2223,7 +2223,7 @@
                             }
                         },
                         {
-                            "name": "Step I: Receive Transit at HCM Mega Hub (Ch\u1eb7ng 1 -> Ch\u1eb7ng 2) - Overage",
+                            "name": "Step I: Receive Transit at HCM Mega Hub (Chặng 1 -> Chặng 2) - Overage",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -2252,7 +2252,7 @@
                             }
                         },
                         {
-                            "name": "Step J: Trigger Smart Auto Ship at HCM Mega Hub (Ch\u1eb7ng 2: HCM -> Hanoi)",
+                            "name": "Step J: Trigger Smart Auto Ship at HCM Mega Hub (Chặng 2: HCM -> Hanoi)",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -2281,7 +2281,7 @@
                             }
                         },
                         {
-                            "name": "Step J1: Get Loaded Shipment (Ch\u1eb7ng 2: HCM -> Hanoi)",
+                            "name": "Step J1: Get Loaded Shipment (Chặng 2: HCM -> Hanoi)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -2312,7 +2312,7 @@
                             ]
                         },
                         {
-                            "name": "Step J2: Dispatch Shipment (Ch\u1eb7ng 2: HCM -> Hanoi)",
+                            "name": "Step J2: Dispatch Shipment (Chặng 2: HCM -> Hanoi)",
                             "request": {
                                 "method": "POST",
                                 "url": {
@@ -2360,7 +2360,7 @@
                             }
                         },
                         {
-                            "name": "Step L: Trigger Smart Auto Ship at Hanoi Mega Hub (Ch\u1eb7ng 3: Hanoi -> Hai Phong)",
+                            "name": "Step L: Trigger Smart Auto Ship at Hanoi Mega Hub (Chặng 3: Hanoi -> Hai Phong)",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -2389,7 +2389,7 @@
                             }
                         },
                         {
-                            "name": "Step L1: Get Loaded Shipment (Ch\u1eb7ng 3: Hanoi -> Hai Phong)",
+                            "name": "Step L1: Get Loaded Shipment (Chặng 3: Hanoi -> Hai Phong)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -2420,7 +2420,7 @@
                             ]
                         },
                         {
-                            "name": "Step L2: Dispatch Shipment (Ch\u1eb7ng 3: Hanoi -> Hai Phong)",
+                            "name": "Step L2: Dispatch Shipment (Chặng 3: Hanoi -> Hai Phong)",
                             "request": {
                                 "method": "POST",
                                 "url": {
@@ -2670,7 +2670,7 @@
                                             "    pm.expect(res.length).to.equal(1);",
                                             "    const item = res[0];",
                                             "    pm.expect(item.status).to.equal(6); // OverageReturnedToOrigin",
-                                            "    pm.expect(item.notes).to.contain(\"L\u1eadp l\u1ec7nh RTO\");",
+                                            "    pm.expect(item.notes).to.contain(\"Lập lệnh RTO\");",
                                             "});"
                                         ],
                                         "type": "javascript"
@@ -2703,7 +2703,7 @@
                                             "    pm.collectionVariables.set(\"warehouseId\", wh.id);",
                                             "    console.log(\"Resolved Warehouse WH-CT-001 ID: \" + wh.id);",
                                             "} else {",
-                                            "    console.log(\"\u26a0\ufe0f Warehouse WH-CT-001 not found, setting default ID\");",
+                                            "    console.log(\"⚠️ Warehouse WH-CT-001 not found, setting default ID\");",
                                             "    pm.collectionVariables.set(\"warehouseId\", \"73c683b5-4bfa-4ad1-ad14-bd1f2c4a92c4\");",
                                             "}",
                                             "pm.test(\"Warehouses list retrieved\", function () {",
@@ -2756,7 +2756,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"destinationWarehouseCode\": \"WH-CT-001\",\n    \"items\": [\n        {\n            \"skuCode\": \"SKU-AO-001\",\n            \"quantity\": 500\n        }\n    ],\n    \"note\": \"Nh\u1eadp h\u00e0ng kho C\u1ea7n Th\u01a1\"\n}"
+                                    "raw": "{\n    \"destinationWarehouseCode\": \"WH-CT-001\",\n    \"items\": [\n        {\n            \"skuCode\": \"SKU-AO-001\",\n            \"quantity\": 500\n        }\n    ],\n    \"note\": \"Nhập hàng kho Cần Thơ\"\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders/inbound-request",
@@ -2907,7 +2907,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Tr\u1ea7n Qu\u1ed1c Tu\u1ea5n\",\n        \"phone\": \"0987654321\",\n        \"address\": {\n            \"street\": \"123 L\u00ea L\u1ee3i\",\n            \"city\": \"H\u1ea3i Ph\u00f2ng\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"180000\"\n        },\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 150000,\n    \"shippingFee\": 30000,\n    \"weight\": 0.5,\n    \"fulfillmentMode\": 2,\n    \"note\": \"Xu\u1ea5t kho C\u1ea7n Th\u01a1 giao H\u1ea3i Ph\u00f2ng\"\n}"
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Trần Quốc Tuấn\",\n        \"phone\": \"0987654321\",\n        \"address\": {\n            \"street\": \"123 Lê Lợi\",\n            \"city\": \"Hải Phòng\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"180000\"\n        },\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 150000,\n    \"shippingFee\": 30000,\n    \"weight\": 0.5,\n    \"fulfillmentMode\": 2,\n    \"note\": \"Xuất kho Cần Thơ giao Hải Phòng\"\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders",
@@ -3273,7 +3273,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguy\u1ec5n V\u0103n B\",\n        \"phone\": \"0912345678\",\n        \"address\": {\n            \"street\": \"456 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o\",\n            \"city\": \"\u0110\u00e0 N\u1eb5ng\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"550000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 300000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"H\u00e0ng b\u01b0u c\u1ee5c l\u1ebb - y\u00eau c\u1ea7u pickup t\u1eadn n\u01a1i\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop C\u1ea7n Th\u01a1 (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 C\u1ea7n Th\u01a1 Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"C\u1ea7n Th\u01a1\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguyễn Văn B\",\n        \"phone\": \"0912345678\",\n        \"address\": {\n            \"street\": \"456 Trần Hưng Đạo\",\n            \"city\": \"Đà Nẵng\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"550000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 300000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"Hàng bưu cục lẻ - yêu cầu pickup tận nơi\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop Cần Thơ (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 Cần Thơ Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"Cần Thơ\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders",
@@ -3723,7 +3723,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguy\u1ec5n V\u0103n B2\",\n        \"phone\": \"0912345678\",\n        \"address\": {\n            \"street\": \"456 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o\",\n            \"city\": \"\u0110\u00e0 N\u1eb5ng\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"550000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 400000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"\u0110\u01a1n l\u1ebb test gom h\u00e0ng (Consolidation Flow)\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop C\u1ea7n Th\u01a1 (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 C\u1ea7n Th\u01a1 Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"C\u1ea7n Th\u01a1\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguyễn Văn B2\",\n        \"phone\": \"0912345678\",\n        \"address\": {\n            \"street\": \"456 Trần Hưng Đạo\",\n            \"city\": \"Đà Nẵng\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"550000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 400000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"Đơn lẻ test gom hàng (Consolidation Flow)\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop Cần Thơ (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 Cần Thơ Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"Cần Thơ\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders",
@@ -4300,7 +4300,7 @@
                                             "    pm.collectionVariables.set(\"warehouseId\", wh.id);",
                                             "    console.log(\"Resolved Warehouse WH-CT-001 ID: \" + wh.id);",
                                             "} else {",
-                                            "    console.log(\"\u26a0\ufe0f Warehouse WH-CT-001 not found, setting default ID\");",
+                                            "    console.log(\"⚠️ Warehouse WH-CT-001 not found, setting default ID\");",
                                             "    pm.collectionVariables.set(\"warehouseId\", \"73c683b5-4bfa-4ad1-ad14-bd1f2c4a92c4\");",
                                             "}",
                                             "pm.test(\"Warehouses list retrieved\", function () {",
@@ -4353,7 +4353,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"destinationWarehouseCode\": \"WH-CT-001\",\n    \"items\": [\n        {\n            \"skuCode\": \"SKU-AO-001\",\n            \"quantity\": 500\n        }\n    ],\n    \"note\": \"Nh\u1eadp h\u00e0ng kho C\u1ea7n Th\u01a1\"\n}"
+                                    "raw": "{\n    \"destinationWarehouseCode\": \"WH-CT-001\",\n    \"items\": [\n        {\n            \"skuCode\": \"SKU-AO-001\",\n            \"quantity\": 500\n        }\n    ],\n    \"note\": \"Nhập hàng kho Cần Thơ\"\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders/inbound-request",
@@ -4504,7 +4504,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Tr\u1ea7n Qu\u1ed1c Tu\u1ea5n\",\n        \"phone\": \"0987654321\",\n        \"address\": {\n            \"street\": \"123 L\u00ea L\u1ee3i\",\n            \"city\": \"H\u1ea3i Ph\u00f2ng\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"180000\"\n        },\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 150000,\n    \"shippingFee\": 30000,\n    \"weight\": 0.5,\n    \"fulfillmentMode\": 2,\n    \"note\": \"Xu\u1ea5t kho C\u1ea7n Th\u01a1 giao H\u1ea3i Ph\u00f2ng\"\n}"
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Trần Quốc Tuấn\",\n        \"phone\": \"0987654321\",\n        \"address\": {\n            \"street\": \"123 Lê Lợi\",\n            \"city\": \"Hải Phòng\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"180000\"\n        },\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 150000,\n    \"shippingFee\": 30000,\n    \"weight\": 0.5,\n    \"fulfillmentMode\": 2,\n    \"note\": \"Xuất kho Cần Thơ giao Hải Phòng\"\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders",
@@ -4795,7 +4795,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguy\u1ec5n V\u0103n C (Gom Chung)\",\n        \"phone\": \"0912345678\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 500000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"\u0110\u01a1n l\u1ebb gom chung v\u00e0o chuy\u1ebfn xe Case A\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop C\u1ea7n Th\u01a1 (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 C\u1ea7n Th\u01a1 Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"C\u1ea7n Th\u01a1\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguyễn Văn C (Gom Chung)\",\n        \"phone\": \"0912345678\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 500000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"Đơn lẻ gom chung vào chuyến xe Case A\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop Cần Thơ (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 Cần Thơ Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"Cần Thơ\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders",
@@ -5653,7 +5653,7 @@
                             }
                         },
                         {
-                            "name": "10. Load Order A into Shipment (Ch\u1eb7ng 1: Can Tho -> HCM) (WMS)",
+                            "name": "10. Load Order A into Shipment (Chặng 1: Can Tho -> HCM) (WMS)",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -5682,7 +5682,7 @@
                             }
                         },
                         {
-                            "name": "11. Get Loaded Shipment ID (Ch\u1eb7ng 1: Can Tho -> HCM)",
+                            "name": "11. Get Loaded Shipment ID (Chặng 1: Can Tho -> HCM)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -5739,7 +5739,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguy\u1ec5n V\u0103n D (Multi-Leg)\",\n        \"phone\": \"0912345678\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 300000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"\u0110\u01a1n Courier test di chuy\u1ec3n \u0111a ch\u1eb7ng (Consolidation + Multi-Leg)\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop C\u1ea7n Th\u01a1 (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 C\u1ea7n Th\u01a1 Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"C\u1ea7n Th\u01a1\",\n            \"country\": \"Vi\u1ec7t Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
+                                    "raw": "{\n    \"consignee\": {\n        \"fullName\": \"Nguyễn Văn D (Multi-Leg)\",\n        \"phone\": \"0912345678\",\n        \"partnerId\": \"WH-HP-007\",\n        \"latitude\": 20.844912,\n        \"longitude\": 106.688079,\n        \"address\": {\n            \"street\": \"50 Lach Tray\",\n            \"city\": \"Hai Phong\",\n            \"state\": \"Hai Phong Province\",\n            \"country\": \"Vietnam\",\n            \"zipCode\": \"180000\"\n        }\n    },\n    \"skuCodes\": [\n        \"SKU-AO-001\"\n    ],\n    \"codAmount\": 300000,\n    \"shippingFee\": 35000,\n    \"weight\": 1.2,\n    \"fulfillmentMode\": 1,\n    \"note\": \"Đơn Courier test di chuyển đa chặng (Consolidation + Multi-Leg)\",\n    \"sourceWarehouseCode\": \"WH-CT-001\",\n    \"consignor\": {\n        \"fullName\": \"Shop Cần Thơ (E2E Source)\",\n        \"phone\": \"0901234567\",\n        \"address\": {\n            \"street\": \"99 Cần Thơ Ave\",\n            \"city\": \"Can Tho\",\n            \"state\": \"Cần Thơ\",\n            \"country\": \"Việt Nam\",\n            \"zipCode\": \"900000\"\n        }\n    }\n}"
                                 },
                                 "url": {
                                     "raw": "{{oms_url}}/api/orders",
@@ -6100,7 +6100,7 @@
                             }
                         },
                         {
-                            "name": "23. Load Order A into Shipment (Ch\u1eb7ng 2: HCM -> Hanoi) (WMS)",
+                            "name": "23. Load Order A into Shipment (Chặng 2: HCM -> Hanoi) (WMS)",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -6129,7 +6129,7 @@
                             }
                         },
                         {
-                            "name": "24. Get Loaded Shipment ID (Ch\u1eb7ng 2: HCM -> Hanoi)",
+                            "name": "24. Get Loaded Shipment ID (Chặng 2: HCM -> Hanoi)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -6323,7 +6323,7 @@
                             }
                         },
                         {
-                            "name": "30. Load Order A into Shipment (Ch\u1eb7ng 3: Hanoi -> Hai Phong) (WMS)",
+                            "name": "30. Load Order A into Shipment (Chặng 3: Hanoi -> Hai Phong) (WMS)",
                             "request": {
                                 "method": "POST",
                                 "header": [
@@ -6352,7 +6352,7 @@
                             }
                         },
                         {
-                            "name": "31. Get Loaded Shipment ID (Ch\u1eb7ng 3: Hanoi -> Hai Phong)",
+                            "name": "31. Get Loaded Shipment ID (Chặng 3: Hanoi -> Hai Phong)",
                             "request": {
                                 "method": "GET",
                                 "url": {
@@ -9593,6 +9593,206 @@
                             ]
                         }
                     }
+                }
+            ]
+        },
+        {
+            "name": "13. Inbound OS&D (Shortages & Force Close)",
+            "item": [
+                {
+                    "name": "0. Setup Dev IAM (Assign Admin) - Operator",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/dev/account/setup",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "dev",
+                                "account",
+                                "setup"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"role\": \"Operator\"\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "1. Create Inbound Receipt (Expect 10)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"orderId\": \"{{osdOrderId}}\",\n    \"tenantId\": \"{{tenantId}}\",\n    \"customerId\": \"{{customerId}}\",\n    \"warehouseId\": \"{{warehouseId}}\",\n    \"sourceShipmentNo\": \"ASN-OSD-TEST\",\n    \"expectedLines\": [\n        {\n            \"skuCode\": \"A0-001\",\n            \"expectedQuantity\": 10\n        }\n    ]\n}"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const newUuid = pm.variables.replaceIn('{{$guid}}');",
+                                    "pm.environment.set(\"osdOrderId\", newUuid);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var rawText = pm.response.text().replace(/\"/g, '');",
+                                    "pm.environment.set(\"osdReceiptId\", rawText);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2. Receive Partial (Qty 4)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{osdReceiptId}}/receive",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{osdReceiptId}}",
+                                "receive"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"orderId\": \"{{osdOrderId}}\",\n    \"skuCode\": \"A0-001\",\n    \"binCode\": \"BIN-DOCK\",\n    \"quantity\": 4\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "3. Force Close Receipt (Generates Shortage)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/receipts/{{osdReceiptId}}/force-close",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "receipts",
+                                "{{osdReceiptId}}",
+                                "force-close"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "4. Resolve Discrepancy (Replace {{discrepancyId}} with ID from DB)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wms_url}}/api/inbound/discrepancies/{{discrepancyId}}/resolve",
+                            "host": [
+                                "{{wms_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "inbound",
+                                "discrepancies",
+                                "{{discrepancyId}}",
+                                "resolve"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"newStatus\": 2,\n    \"notes\": \"Merchant forgot to pack 6 items. Liability confirmed.\"\n}"
+                        }
+                    },
+                    "response": []
                 }
             ]
         }
