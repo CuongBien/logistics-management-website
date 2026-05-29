@@ -1,0 +1,32 @@
+# Ignore frontend dependency and build output
+fe/node_modules
+fe/.next
+fe/out
+fe/build
+
+# Ignore C# build artifacts and dependencies
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+
+# Ignore local databases and SQLite files
+*.db
+*.db-journal
+*.sqlite
+
+# Ignore logs and temp files
+*.log
+scratch/
+.gemini/
+seq_logs.json
+
+# Ignore Git directory
+.git
+.gitignore
+
+# Ignore Docker data volumes if mapped locally
+postgres_data/
+postgres_keycloak_data/
+rabbitmq_data/
+seq_data/
