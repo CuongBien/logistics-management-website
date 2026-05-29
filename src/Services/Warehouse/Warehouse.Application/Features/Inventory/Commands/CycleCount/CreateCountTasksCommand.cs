@@ -45,7 +45,7 @@ public sealed class CreateCountTasksCommandHandler : IRequestHandler<CreateCount
         var newTasks = new List<CountTask>();
         foreach (var item in inventoryItems)
         {
-            var task = new CountTask(item.TenantId, item.WarehouseId, item.BinId, item.Sku, item.QuantityOnHand);
+            var task = new CountTask(item.TenantId, item.WarehouseId, item.BinId, item.Sku, item.LotNo, item.ExpiryDate, item.QuantityOnHand);
             newTasks.Add(task);
         }
 

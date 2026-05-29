@@ -15,6 +15,8 @@ public class InventoryReconciliationReport : Entity<Guid>
     public string Sku { get; private set; } = default!;
     public Guid WarehouseId { get; private set; }
     public Guid BinId { get; private set; }
+    public string? LotNo { get; private set; }
+    public DateTime? ExpiryDate { get; private set; }
 
     public int SnapshotQty { get; private set; }
     public int LedgerQty { get; private set; }
@@ -36,6 +38,8 @@ public class InventoryReconciliationReport : Entity<Guid>
             Sku = item.Sku,
             WarehouseId = item.WarehouseId,
             BinId = item.BinId,
+            LotNo = item.LotNo,
+            ExpiryDate = item.ExpiryDate,
             SnapshotQty = item.QuantityOnHand,
             LedgerQty = ledgerQty,
             DetectedAt = DateTime.UtcNow,

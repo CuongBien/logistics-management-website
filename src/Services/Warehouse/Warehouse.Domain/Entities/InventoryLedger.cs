@@ -11,6 +11,8 @@ public class InventoryLedger : Entity<Guid>
     public string Sku { get; private set; } = default!;
     public Guid WarehouseId { get; private set; }
     public Guid BinId { get; private set; }
+    public string? LotNo { get; private set; }
+    public DateTime? ExpiryDate { get; private set; }
     
     public InventoryLedgerReason Reason { get; private set; }
     
@@ -60,6 +62,8 @@ public class InventoryLedger : Entity<Guid>
             Sku = item.Sku,
             WarehouseId = item.WarehouseId,
             BinId = item.BinId,
+            LotNo = item.LotNo,
+            ExpiryDate = item.ExpiryDate,
             Reason = reason,
             DeltaQty = deltaQty,
             BalanceAfter = balanceAfter ?? item.QuantityOnHand,

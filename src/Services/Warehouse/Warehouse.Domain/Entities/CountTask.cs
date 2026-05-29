@@ -16,6 +16,8 @@ public class CountTask : Entity<Guid>, ISoftDelete
     public Guid WarehouseId { get; private set; }
     public Guid BinId { get; private set; }
     public string Sku { get; private set; } = default!;
+    public string? LotNo { get; private set; }
+    public DateTime? ExpiryDate { get; private set; }
     public int ExpectedQty { get; private set; }
     public int? CountedQty { get; private set; }
     public CountTaskStatus Status { get; private set; }
@@ -28,13 +30,15 @@ public class CountTask : Entity<Guid>, ISoftDelete
 
     private CountTask() { }
 
-    public CountTask(string tenantId, Guid warehouseId, Guid binId, string sku, int expectedQty)
+    public CountTask(string tenantId, Guid warehouseId, Guid binId, string sku, string? lotNo, DateTime? expiryDate, int expectedQty)
     {
         Id = Guid.NewGuid();
         TenantId = tenantId;
         WarehouseId = warehouseId;
         BinId = binId;
         Sku = sku;
+        LotNo = lotNo;
+        ExpiryDate = expiryDate;
         ExpectedQty = expectedQty;
         Status = CountTaskStatus.Pending;
         IsDeleted = false;
