@@ -348,3 +348,68 @@ export interface ApiResult<T = unknown> {
     message: string;
   };
 }
+
+// --- Tasks ---
+export type TaskStatus = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled';
+
+export interface PutawayTask {
+  id: string;
+  sku: string;
+  quantity: number;
+  sourceBinId: string;
+  suggestedBinId: string;
+  status: TaskStatus;
+}
+
+export interface ReplenishmentTask {
+  id: string;
+  sku: string;
+  quantity: number;
+  fromBinId: string;
+  toBinId: string;
+  status: TaskStatus;
+}
+
+export interface CycleCountTask {
+  id: string;
+  binId: string;
+  sku: string;
+  expectedQty: number;
+  countedQty?: number;
+  status: 'Pending' | 'Counted' | 'Approved' | 'Rejected';
+  operatorId?: string;
+}
+
+// --- Cross-Dock ---
+export type CrossDockTaskStatus = 'Pending' | 'InProgress' | 'Completed' | 'Failed';
+
+export interface CrossDockTask {
+  id: string;
+  tenantId: string;
+  inboundReceiptId: string;
+  outboundOrderId: string;
+  sku: string;
+  quantity: number;
+  inboundStagingBinId: string; 
+  inboundStagingBinCode: string;
+  outboundStagingBinId: string;
+  outboundStagingBinCode: string;
+  status: CrossDockTaskStatus;
+  operatorId?: string;
+  completedAt?: string;
+}
+
+// --- MasterData ---
+export interface Partner {
+  id: string;
+  tenantId: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
