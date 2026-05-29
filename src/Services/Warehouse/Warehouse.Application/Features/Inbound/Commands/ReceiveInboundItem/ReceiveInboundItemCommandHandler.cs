@@ -270,7 +270,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
 
             if (existingBinId != Guid.Empty)
             {
-                suggestedBin = await _context.Bins.Include(b => b.Zone).FirstOrDefaultAsync(b => b.Id == existingBinId && b.Zone.ZoneType == ZoneType.Storage.ToString(), cancellationToken);
+                suggestedBin = await _context.Bins.Include(b => b.Zone).FirstOrDefaultAsync(b => b.Id == existingBinId && b.Zone.ZoneType == ZoneType.Storage.ToString() && b.Status != BinStatus.Full.ToString(), cancellationToken);
             }
 
             if (suggestedBin == null)
@@ -280,7 +280,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
                     .Include(b => b.Zone)
                     .Where(b => b.WarehouseId == receipt.WarehouseId 
                              && b.Zone.ZoneType == ZoneType.Storage.ToString()
-                             && b.Status == "Available")
+                             && b.Status == BinStatus.Available.ToString())
                     .FirstOrDefaultAsync(cancellationToken);
             }
 

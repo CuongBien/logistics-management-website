@@ -1,9 +1,12 @@
+using Logistics.Core;
 using Microsoft.AspNetCore.Mvc;
 using Warehouse.Application.Features.Layout.Commands.CreateBin;
 using Warehouse.Application.Features.Layout.Commands.CreateBlock;
 using Warehouse.Application.Features.Layout.Commands.CreateWarehouse;
 using Warehouse.Application.Features.Layout.Commands.CreateZone;
+using Warehouse.Application.Features.Layout.Commands.UpdateBinStatus;
 using Warehouse.Application.Features.Layout.Queries;
+using Warehouse.Domain.Enums;
 
 namespace Warehouse.Api.Controllers;
 
@@ -51,6 +54,15 @@ public class WarehouseController : ApiControllerBase
         var result = await Mediator.Send(new CreateBinCommand(request.WarehouseId, id, request.BinCode));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
+
+    [HttpPut("bins/{id}/status")]
+    public async Task<IActionResult> UpdateBinStatus(Guid id, [FromBody] UpdateBinStatusRequest request)
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var result = await Mediator.Send(new UpdateBinStatusCommand(id, request.NewStatus, operatorSub));
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+    }
 }
 
 public record CreateBinRequest(Guid WarehouseId, string BinCode);
+public record UpdateBinStatusRequest(BinStatus NewStatus);
