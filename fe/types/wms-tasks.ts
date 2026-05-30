@@ -34,4 +34,5 @@ export interface CycleCountTaskDto {
   operatorName?: string;
   completedAt?: string;
   notes?: string;
+  supervisorNotes?: string;
 }

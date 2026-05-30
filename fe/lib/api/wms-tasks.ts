@@ -69,7 +69,8 @@ let mockCycleCountTasks: CycleCountTaskDto[] = [
     status: "Approved",
     operatorName: "Nguyễn Văn Khoa",
     completedAt: "2026-05-30T07:45:00Z",
-    notes: "Tồn kho khớp tuyệt đối."
+    notes: "Không phát hiện sai lệch thực tế.",
+    supervisorNotes: "Đã duyệt - Số liệu trùng khớp hoàn hảo."
   },
   {
     id: "CC-TASK-002",
@@ -157,7 +158,7 @@ export async function approveCycleCount(id: string, notes: string): Promise<Cycl
   mockCycleCountTasks[index] = {
     ...mockCycleCountTasks[index],
     status: "Approved",
-    notes: notes || "Phê duyệt điều chỉnh tồn kho vật lý"
+    supervisorNotes: notes || "Phê duyệt điều chỉnh tồn kho vật lý"
   };
   return mockCycleCountTasks[index];
 }
@@ -169,7 +170,7 @@ export async function rejectCycleCount(id: string, notes: string): Promise<Cycle
   mockCycleCountTasks[index] = {
     ...mockCycleCountTasks[index],
     status: "Rejected",
-    notes: notes || "Không đồng ý điều chỉnh số liệu"
+    supervisorNotes: notes || "Không đồng ý điều chỉnh số liệu"
   };
   return mockCycleCountTasks[index];
 }

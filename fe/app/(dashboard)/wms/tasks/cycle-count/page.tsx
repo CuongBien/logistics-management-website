@@ -447,9 +447,14 @@ export default function CycleCountTasksPage() {
                         ) : task.status === "Pending" ? (
                           <span className="text-[10px] text-muted-foreground/60 italic font-medium">Đang kiểm...</span>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground/80 font-bold font-mono text-[9px] uppercase tracking-wide">
-                            LỊCH SỬ DUYỆT
-                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenApproval(task)}
+                            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-[10px] font-bold h-7 px-3.5 rounded-md transition-colors"
+                          >
+                            Xem Lịch Sử
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
