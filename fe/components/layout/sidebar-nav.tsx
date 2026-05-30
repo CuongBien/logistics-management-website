@@ -40,7 +40,7 @@ const navItems: NavItem[] = [
   { label: "Warehouse Layout", href: "/wms/layout", icon: <Warehouse className="h-4 w-4" /> },
   { label: "Internal Tasks", href: "/tasks", icon: <ClipboardList className="h-4 w-4" /> },
   { label: "Cross-docking", href: "/wms/tasks/cross-dock", icon: <GitMerge className="h-4 w-4" /> },
-  { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
+  { label: "Master Data", href: "/master-data/items", icon: <Users className="h-4 w-4" /> },
 ]
 
 const bottomItems: NavItem[] = [
