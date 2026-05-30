@@ -14,7 +14,9 @@ import {
   ChevronRight,
   ClipboardList,
   GitMerge,
-  Users
+  Users,
+  Layers,
+  RefreshCw
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -30,12 +32,14 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: <LayoutDashboard className="h-4 w-4" /> },
   { label: "Orders", href: "/orders", icon: <ShoppingCart className="h-4 w-4" /> },
-  { label: "Inbound", href: "/inbound", icon: <PackageOpen className="h-4 w-4" /> },
-  { label: "Outbound", href: "/outbound", icon: <Truck className="h-4 w-4" /> },
+  { label: "Inbound", href: "/wms/inbound/receipts", icon: <PackageOpen className="h-4 w-4" /> },
+  { label: "Outbound", href: "/wms/outbound/orders", icon: <Truck className="h-4 w-4" /> },
+  { label: "Wave Planning", href: "/wms/outbound/waves", icon: <Layers className="h-4 w-4" /> },
+  { label: "Returns & RTO", href: "/wms/outbound/returns", icon: <RefreshCw className="h-4 w-4" /> },
   { label: "Inventory", href: "/wms/inventory", icon: <Boxes className="h-4 w-4" /> },
   { label: "Warehouse Layout", href: "/wms/layout", icon: <Warehouse className="h-4 w-4" /> },
   { label: "Internal Tasks", href: "/tasks", icon: <ClipboardList className="h-4 w-4" /> },
-  { label: "Cross-docking", href: "/crossdock", icon: <GitMerge className="h-4 w-4" /> },
+  { label: "Cross-docking", href: "/wms/tasks/cross-dock", icon: <GitMerge className="h-4 w-4" /> },
   { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
   { label: "Staff", href: "/wms/staff", icon: <Users className="h-4 w-4" /> },
   { label: "Role Management", href: "/wms/roles", icon: <Settings className="h-4 w-4" /> },
