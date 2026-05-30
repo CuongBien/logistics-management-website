@@ -1,6 +1,15 @@
 import { PutawayTaskDto, ReplenishmentTaskDto, CycleCountTaskDto } from "@/types/wms-tasks";
+import { fetchApi } from "@/lib/api-client"; // Standard API Client with JWT Auth and Next.js proxy rewrite support
 
-// In-memory static database to persist modifications during the React session
+// ============================================================================
+// DUAL-MODE API STRATEGY (MOCK VS REAL DATABASE CONNECTION)
+// ============================================================================
+// - Set USE_MOCK to 'true' to use high-fidelity mock data (prevents blank pages when DB is empty).
+// - Set USE_MOCK to 'false' to pull real tasks directly from the WMS Postgres Database in Docker!
+// ============================================================================
+const USE_MOCK = true; 
+
+// In-memory static database to persist modifications during the React session (when in Mock mode)
 let mockPutawayTasks: PutawayTaskDto[] = [
   {
     id: "PT-TASK-001",
@@ -78,7 +87,7 @@ let mockCycleCountTasks: CycleCountTaskDto[] = [
     sku: "BIMTA-HUG-M",
     expectedQty: 120,
     countedQty: 118,
-    status: "Counted", // Counts submitted by scanner but awaiting supervisor decision
+    status: "Counted", 
     operatorName: "Trần Thị Vân",
     completedAt: "2026-05-30T09:30:00Z",
     notes: "Phát hiện rách bao bì 2 bịch do cọ xát thành sắt ô kệ."
@@ -94,83 +103,150 @@ let mockCycleCountTasks: CycleCountTaskDto[] = [
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// ----------------------------------------------------------------------------
+// 1. GET ALL PUTAWAY TASKS
+// ----------------------------------------------------------------------------
 export async function getPutawayTasks(): Promise<PutawayTaskDto[]> {
-  await delay(500);
-  return [...mockPutawayTasks];
+  if (USE_MOCK) {
+    await delay(400);
+    return [...mockPutawayTasks];
+  }
+  
+  // Real Database API call via Next.js Proxy to WMS container
+  // Route matches WMS Api: [Route("api/inbound/putaway-tasks")]
+  return await fetchApi<PutawayTaskDto[]>("wms", "/inbound/putaway-tasks");
 }
 
+// ----------------------------------------------------------------------------
+// 2. GET ALL REPLENISHMENT TASKS
+// ----------------------------------------------------------------------------
 export async function getReplenishmentTasks(): Promise<ReplenishmentTaskDto[]> {
-  await delay(500);
-  return [...mockReplenishmentTasks];
+  if (USE_MOCK) {
+    await delay(400);
+    return [...mockReplenishmentTasks];
+  }
+  
+  return await fetchApi<ReplenishmentTaskDto[]>("wms", "/inventory/tasks/replenish");
 }
 
+// ----------------------------------------------------------------------------
+// 3. GET ALL CYCLE COUNT TASKS
+// ----------------------------------------------------------------------------
 export async function getCycleCountTasks(): Promise<CycleCountTaskDto[]> {
-  await delay(500);
-  return [...mockCycleCountTasks];
+  if (USE_MOCK) {
+    await delay(400);
+    return [...mockCycleCountTasks];
+  }
+  
+  return await fetchApi<CycleCountTaskDto[]>("wms", "/inventory/tasks/cycle-count");
 }
 
+// ----------------------------------------------------------------------------
+// 4. TRIGGER REPLENISHMENT ALGORITHM
+// ----------------------------------------------------------------------------
 export async function generateReplenishment(): Promise<ReplenishmentTaskDto[]> {
-  await delay(500);
-  // Auto-generate replenishment tasks simulating algorithm trigger
-  const newTasks: ReplenishmentTaskDto[] = [
-    {
-      id: `RP-TASK-00${mockReplenishmentTasks.length + 1}`,
-      sku: "BIMTA-HUG-M",
-      quantity: 40,
-      fromBinCode: "DS-BABY-02",
-      toBinCode: "PK-BABY-01",
-      status: "Pending",
-      operatorName: "Trần Thị Vân",
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: `RP-TASK-00${mockReplenishmentTasks.length + 2}`,
-      sku: "DAUAN-SIMPLY-1L",
-      quantity: 120,
-      fromBinCode: "DS-GROC-05",
-      toBinCode: "PK-GROC-01",
-      status: "Pending",
-      operatorName: "Nguyễn Văn Khoa",
-      createdAt: new Date().toISOString()
-    }
-  ];
-  mockReplenishmentTasks = [...newTasks, ...mockReplenishmentTasks];
-  return mockReplenishmentTasks;
+  if (USE_MOCK) {
+    await delay(600);
+    const newTasks: ReplenishmentTaskDto[] = [
+      {
+        id: `RP-TASK-00${mockReplenishmentTasks.length + 1}`,
+        sku: "BIMTA-HUG-M",
+        quantity: 40,
+        fromBinCode: "DS-BABY-02",
+        toBinCode: "PK-BABY-01",
+        status: "Pending",
+        operatorName: "Trần Thị Vân",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: `RP-TASK-00${mockReplenishmentTasks.length + 2}`,
+        sku: "DAUAN-SIMPLY-1L",
+        quantity: 120,
+        fromBinCode: "DS-GROC-05",
+        toBinCode: "PK-GROC-01",
+        status: "Pending",
+        operatorName: "Nguyễn Văn Khoa",
+        createdAt: new Date().toISOString()
+      }
+    ];
+    mockReplenishmentTasks = [...newTasks, ...mockReplenishmentTasks];
+    return mockReplenishmentTasks;
+  }
+  
+  // Real Database Trigger Endpoint
+  // Controller: [Route("api/inventory/tasks")] -> [HttpPost("replenish/generate")]
+  // Defaulting tenantId to 'default-tenant' and warehouseId to active ATL-01 GUID
+  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b"; // Active South ATL-01
+  return await fetchApi<ReplenishmentTaskDto[]>("wms", `/inventory/tasks/replenish/generate?tenantId=default-tenant&warehouseId=${defaultWarehouseId}`, {
+    method: "POST"
+  });
 }
 
+// ----------------------------------------------------------------------------
+// 5. GENERATE AUTO-CYCLE COUNT TASK
+// ----------------------------------------------------------------------------
 export async function generateCycleCount(binCode: string, sku: string): Promise<CycleCountTaskDto> {
-  await delay(500);
-  const newTask: CycleCountTaskDto = {
-    id: `CC-TASK-00${mockCycleCountTasks.length + 1}`,
-    binCode,
-    sku,
-    expectedQty: Math.floor(Math.random() * 200) + 10,
-    status: "Pending"
-  };
-  mockCycleCountTasks = [newTask, ...mockCycleCountTasks];
-  return newTask;
+  if (USE_MOCK) {
+    await delay(500);
+    const newTask: CycleCountTaskDto = {
+      id: `CC-TASK-00${mockCycleCountTasks.length + 1}`,
+      binCode,
+      sku,
+      expectedQty: Math.floor(Math.random() * 200) + 10,
+      status: "Pending"
+    };
+    mockCycleCountTasks = [newTask, ...mockCycleCountTasks];
+    return newTask;
+  }
+  
+  // Real Database Trigger Endpoint: [HttpPost("cycle-count/generate")]
+  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
+  return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/generate?tenantId=default-tenant&warehouseId=${defaultWarehouseId}&maxTasks=1`, {
+    method: "POST"
+  });
 }
 
+// ----------------------------------------------------------------------------
+// 6. APPROVE CYCLE COUNT DISCREPANCY
+// ----------------------------------------------------------------------------
 export async function approveCycleCount(id: string, notes: string): Promise<CycleCountTaskDto> {
-  await delay(500);
-  const index = mockCycleCountTasks.findIndex((task) => task.id === id);
-  if (index === -1) throw new Error("Cycle count task not found");
-  mockCycleCountTasks[index] = {
-    ...mockCycleCountTasks[index],
-    status: "Approved",
-    supervisorNotes: notes || "Phê duyệt điều chỉnh tồn kho vật lý"
-  };
-  return mockCycleCountTasks[index];
+  if (USE_MOCK) {
+    await delay(500);
+    const index = mockCycleCountTasks.findIndex((task) => task.id === id);
+    if (index === -1) throw new Error("Cycle count task not found");
+    mockCycleCountTasks[index] = {
+      ...mockCycleCountTasks[index],
+      status: "Approved",
+      supervisorNotes: notes || "Phê duyệt điều chỉnh tồn kho vật lý"
+    };
+    return mockCycleCountTasks[index];
+  }
+  
+  // Real Database Approval: [HttpPost("cycle-count/{taskId:guid}/approve")]
+  return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/${id}/approve`, {
+    method: "POST"
+  });
 }
 
+// ----------------------------------------------------------------------------
+// 7. REJECT CYCLE COUNT DISCREPANCY
+// ----------------------------------------------------------------------------
 export async function rejectCycleCount(id: string, notes: string): Promise<CycleCountTaskDto> {
-  await delay(500);
-  const index = mockCycleCountTasks.findIndex((task) => task.id === id);
-  if (index === -1) throw new Error("Cycle count task not found");
-  mockCycleCountTasks[index] = {
-    ...mockCycleCountTasks[index],
-    status: "Rejected",
-    supervisorNotes: notes || "Không đồng ý điều chỉnh số liệu"
-  };
-  return mockCycleCountTasks[index];
+  if (USE_MOCK) {
+    await delay(500);
+    const index = mockCycleCountTasks.findIndex((task) => task.id === id);
+    if (index === -1) throw new Error("Cycle count task not found");
+    mockCycleCountTasks[index] = {
+      ...mockCycleCountTasks[index],
+      status: "Rejected",
+      supervisorNotes: notes || "Không đồng ý điều chỉnh số liệu"
+    };
+    return mockCycleCountTasks[index];
+  }
+  
+  // Real Database Rejection (WMS backend controller)
+  return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/${id}/reject`, {
+    method: "POST"
+  });
 }
+
