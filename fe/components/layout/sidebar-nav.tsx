@@ -16,7 +16,8 @@ import {
   GitMerge,
   Users,
   Layers,
-  RefreshCw
+  RefreshCw,
+  BarChart3
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { label: "Warehouse Layout", href: "/wms/layout", icon: <Warehouse className="h-4 w-4" /> },
   { label: "Internal Tasks", href: "/wms/tasks/putaway", icon: <ClipboardList className="h-4 w-4" /> },
   { label: "Master Data", href: "/master-data/items", icon: <Users className="h-4 w-4" /> },
+  { label: "Reports", href: "/reports", icon: <BarChart3 className="h-4 w-4" /> },
 ]
 
 const bottomItems: NavItem[] = [
