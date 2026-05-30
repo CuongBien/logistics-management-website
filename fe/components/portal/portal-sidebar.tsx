@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 interface NavItem {
   label: string
@@ -35,31 +36,19 @@ interface PortalSidebarProps {
 
 export function PortalSidebar({ isOpen, onClose }: PortalSidebarProps) {
   const pathname = usePathname()
-  const [profile, setProfile] = useState({ fullName: 'Nguyễn Văn A', shopName: 'ShipHub Shop' })
+  const { data: session } = useSession()
 
-  useEffect(() => {
-    function loadProfile() {
-      const saved = localStorage.getItem('shiphub_profile')
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-          setProfile({ fullName: parsed.fullName || 'Nguyễn Văn A', shopName: parsed.shopName || 'ShipHub Shop' })
-        } catch (e) {
-          console.error(e)
-        }
-      }
-    }
-    loadProfile()
-    window.addEventListener('storage', loadProfile)
-    return () => window.removeEventListener('storage', loadProfile)
-  }, [])
-
-  const initials = profile.fullName
-    .split(' ')
-    .map((n) => n[0])
-    .slice(-2)
-    .join('')
-    .toUpperCase()
+  const initials = session?.user?.name
+    ? session.user.name
+        .split(' ')
+        .map((n) => n[0])
+        .slice(-2)
+        .join('')
+        .toUpperCase()
+    : 'U'
+    
+  const fullName = session?.user?.name || 'User'
+  const email = session?.user?.email || 'user@shiphub.vn'
 
   function isActive(href: string) {
     if (href === '/portal/dashboard') return pathname === href
@@ -144,8 +133,8 @@ export function PortalSidebar({ isOpen, onClose }: PortalSidebarProps) {
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{profile.fullName}</p>
-              <p className="truncate text-xs text-muted-foreground">{profile.shopName}</p>
+              <p className="truncate text-sm font-semibold">{fullName}</p>
+              <p className="truncate text-xs text-muted-foreground">{email}</p>
             </div>
           </Link>
         </div>

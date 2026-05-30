@@ -207,6 +207,7 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
         Guid? crossDockTaskId = null;
         bool isPutawaySuggested = false;
         Guid? putawayTaskId = null;
+        string? suggestedPutawayBinCode = null;
 
         // Ensure this is not a Transit receipt
         bool isTransit = receipt.FinalDestinationWarehouseId.HasValue && receipt.FinalDestinationWarehouseId.Value != receipt.WarehouseId;
@@ -299,13 +300,20 @@ public class ReceiveInboundItemCommandHandler : IRequestHandler<ReceiveInboundIt
                 _context.PutawayTasks.Add(putawayTask);
                 isPutawaySuggested = true;
                 putawayTaskId = putawayTask.Id;
+                suggestedPutawayBinCode = suggestedBin.BinCode;
             }
         }
 
         // 6. Save entity + outbox message atomically.
         await _context.SaveChangesAsync(cancellationToken);
 
-        var response = new ReceiveInboundItemResponse(isCrossDockSuggested, crossDockTaskId, isPutawaySuggested, putawayTaskId);
+        var response = new ReceiveInboundItemResponse(
+            isCrossDockSuggested, 
+            crossDockTaskId, 
+            isPutawaySuggested, 
+            putawayTaskId,
+            suggestedPutawayBinCode
+        );
         return Result<ReceiveInboundItemResponse>.Success(response);
     }
 }

@@ -40,14 +40,14 @@ function StatCard({ label, value, change, trend }: StatCardProps) {
 
 export function StatCards() {
   const stats: StatCardProps[] = [
-    { label: "Orders Today", value: "231", change: "+12%", trend: "up" },
-    { label: "Avg Pick Time", value: "4.2m", change: "-8%", trend: "up" },
-    { label: "Fill Rate", value: "98.4%", change: "+0.2%", trend: "up" },
-    { label: "On-Time Ship", value: "94.1%", change: "-1.2%", trend: "down" },
-    { label: "Active Workers", value: "18", change: "0", trend: "neutral" },
-    { label: "Units Processed", value: "3,847", change: "+156", trend: "up" },
-    { label: "Pending QC", value: "12", change: "+3", trend: "down" },
-    { label: "Dock Utilization", value: "67%", change: "+5%", trend: "up" },
+    { label: "Orders Today", value: "0", change: "0%", trend: "neutral" },
+    { label: "Avg Pick Time", value: "0m", change: "0%", trend: "neutral" },
+    { label: "Fill Rate", value: "0%", change: "0%", trend: "neutral" },
+    { label: "On-Time Ship", value: "0%", change: "0%", trend: "neutral" },
+    { label: "Active Workers", value: "0", change: "0", trend: "neutral" },
+    { label: "Units Processed", value: "0", change: "0", trend: "neutral" },
+    { label: "Pending QC", value: "0", change: "0", trend: "neutral" },
+    { label: "Dock Utilization", value: "0%", change: "0%", trend: "neutral" },
   ]
 
   return (

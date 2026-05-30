@@ -1,31 +1,28 @@
+import { getSession } from 'next-auth/react';
+
 // Real backend URLs (used only for display in Settings page)
-const OMS_BACKEND_URL = process.env.NEXT_PUBLIC_OMS_URL || 'http://localhost:5000';
-const WMS_BACKEND_URL = process.env.NEXT_PUBLIC_WMS_URL || 'http://localhost:5051';
+const OMS_BACKEND_URL = process.env.NEXT_PUBLIC_OMS_URL || 'http://127.0.0.1:5000';
+const WMS_BACKEND_URL = process.env.NEXT_PUBLIC_WMS_URL || 'http://127.0.0.1:5051';
 
 // Proxy paths — all requests go through Next.js rewrites to avoid CORS
 const OMS_PROXY = '/api/oms';
 const WMS_PROXY = '/api/wms';
+const MASTERDATA_PROXY = '/api/masterdata';
 
-export type ServiceTarget = 'oms' | 'wms';
+export type ServiceTarget = 'oms' | 'wms' | 'masterdata';
 
 function getBaseUrl(service: ServiceTarget): string {
-  return service === 'oms' ? OMS_PROXY : WMS_PROXY;
+  if (service === 'oms') return OMS_PROXY;
+  if (service === 'wms') return WMS_PROXY;
+  return MASTERDATA_PROXY;
 }
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('lms_auth_token');
+async function getToken(): Promise<string | null> {
+  const session = await getSession();
+  return (session as any)?.accessToken || null;
 }
 
-export function setToken(token: string) {
-  localStorage.setItem('lms_auth_token', token);
-}
-
-export function clearToken() {
-  localStorage.removeItem('lms_auth_token');
-}
-
-export function getStoredToken(): string | null {
+export async function getStoredToken(): Promise<string | null> {
   return getToken();
 }
 
@@ -58,9 +55,11 @@ export async function fetchApi<T = unknown>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  const token = getToken();
+  const token = await getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    console.warn("fetchApi: NO TOKEN FOUND IN SESSION!", await getSession());
   }
 
   if (options.correlationId) {
@@ -72,16 +71,19 @@ export async function fetchApi<T = unknown>(
   const response = await fetch(url, {
     ...restOptions,
     headers,
+    cache: 'no-store',
     body: body ? JSON.stringify(body) : undefined,
   });
 
   if (!response.ok) {
     let errorBody: unknown;
+    const text = await response.text();
     try {
-      errorBody = await response.json();
+      errorBody = text ? JSON.parse(text) : undefined;
     } catch {
-      errorBody = await response.text();
+      errorBody = text;
     }
+    console.error(`API Error ${response.status}: ${response.statusText}`, errorBody);
     throw new ApiError(response.status, response.statusText, errorBody);
   }
 

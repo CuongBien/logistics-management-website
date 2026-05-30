@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Logistics.Core;
 using Warehouse.Domain.Entities;
 using Warehouse.Domain.Enums;
 
@@ -11,6 +12,17 @@ public static class WMSDbContextSeed
     {
         try
         {
+            // Clean WMS transactional tables on every startup for fresh seed
+            try
+            {
+                logger.LogInformation("Cleaning WMS transactional tables for fresh seed...");
+                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\" CASCADE;");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not truncate transactional tables.");
+            }
+
             // 1. Seed Warehouses
             var ctId = Guid.Parse("b61a8f61-5238-4a18-809c-335cc293a025"); // Can Tho (Matching default Postman ID!)
             var sgId = Guid.Parse("a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"); // HCM
@@ -26,12 +38,12 @@ public static class WMSDbContextSeed
                 
                 try
                 {
-                    logger.LogInformation("Cleaning WMS transactional tables and layout for fresh seed...");
-                    await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"Bins\", \"Zones\", \"Blocks\" CASCADE;");
+                    logger.LogInformation("Cleaning WMS layout tables for fresh seed...");
+                    await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"Bins\", \"Zones\", \"Blocks\" CASCADE;");
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Could not truncate some transactional tables, proceeding with normal delete.");
+                    logger.LogWarning(ex, "Could not truncate layout tables, proceeding.");
                 }
                 
                 var oldCtWh = await context.Warehouses.FirstOrDefaultAsync(w => w.Id == ctId);
@@ -146,6 +158,15 @@ public static class WMSDbContextSeed
                         var stagingOutBin = new Bin(wh.Id, stagingZone.Id, "BIN-STAGING-OUT-01", BinStatus.Available, "STG-OUT", "1", "01", currentSequence++);
                         context.Bins.Add(stagingOutBin);
                         await context.SaveChangesAsync();
+
+                        // Seed Wall Bins (WALL-A-01 to WALL-A-10) for Put-to-Wall sorting
+                        for (int i = 1; i <= 10; i++)
+                        {
+                            string wallBinCode = $"WALL-A-{i:D2}";
+                            var wallBin = new Bin(wh.Id, stagingZone.Id, wallBinCode, BinStatus.Available, "WALL", "A", i.ToString("D2"), 900 + i);
+                            context.Bins.Add(wallBin);
+                        }
+                        await context.SaveChangesAsync();
                     }
                 }
                 
@@ -216,6 +237,34 @@ public static class WMSDbContextSeed
                 context.ErpSkuMirrors.AddRange(skus);
                 await context.SaveChangesAsync();
                 logger.LogInformation("Successfully seeded {Count} ERP SKU Mirrors.", skus.Length);
+            }
+
+            if (!await context.ErpSkuMirrors.AnyAsync(s => s.SkuCode == "SKU-001"))
+            {
+                var sku = ErpSkuMirror.Create("default-tenant", "erp-SKU-001", "SKU-001", "Test Product 001", "PCS", "active", DateTime.UtcNow, DateTime.UtcNow);
+                context.ErpSkuMirrors.Add(sku);
+            }
+
+            // 5. Seed Real Stock for HCM Warehouse (for Outbound/Pick testing)
+            var binRedTshirt = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-01" && b.WarehouseId == sgId);
+            var binBlueJeans = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-02" && b.WarehouseId == sgId);
+
+            if (binRedTshirt != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-RED-TSHIRT" && i.WarehouseId == sgId))
+            {
+                var invRed = InventoryItem.Create("SKU-RED-TSHIRT", 500, "default-tenant", "cust-default", sgId, binRedTshirt.Id, "LOT2026-01", null);
+                context.InventoryItems.Add(invRed);
+            }
+
+            if (binBlueJeans != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-BLUE-JEANS" && i.WarehouseId == sgId))
+            {
+                var invBlue = InventoryItem.Create("SKU-BLUE-JEANS", 200, "default-tenant", "cust-default", sgId, binBlueJeans.Id, "LOT2026-02", null);
+                context.InventoryItems.Add(invBlue);
+            }
+
+            if (context.ChangeTracker.HasChanges())
+            {
+                await context.SaveChangesAsync();
+                logger.LogInformation("Successfully seeded Real Stock for Outbound E2E Testing in HCMC Mega Hub.");
             }
         }
         catch (Exception ex)

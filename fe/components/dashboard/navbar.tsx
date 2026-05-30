@@ -3,7 +3,12 @@
 import { Bell, Settings, User, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+import { useSession } from "next-auth/react"
+
 export function Navbar() {
+  const { data: session } = useSession()
+  const userName = session?.user?.name || "Guest"
+  
   return (
     <header className="bg-[#C41E3A] text-white h-12 flex items-center justify-between px-4 border-b border-[#A01830]">
       <div className="flex items-center gap-4">
@@ -43,7 +48,7 @@ export function Navbar() {
         <Button variant="ghost" size="sm" className="text-white hover:bg-[#A01830] p-1 h-8 w-8">
           <User className="h-4 w-4" />
         </Button>
-        <span className="text-xs text-white/80 ml-2 hidden sm:inline">Admin</span>
+        <span className="text-xs text-white/80 ml-2 hidden sm:inline">{userName}</span>
       </div>
     </header>
   )

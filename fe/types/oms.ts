@@ -2,11 +2,11 @@ export type OrderStatus = 'New' | 'Confirmed' | 'AwaitingPickup' | 'PickedUp' | 
 
 export interface OrderSummaryDto {
   id: string;
-  orderNo: string;
+  waybillCode: string;
   status: OrderStatus;
   consigneeName: string;
-  consigneeCity: string;
-  totalWeight: number;
+  consigneePhone: string;
+  weight: number;
   codAmount: number;
   createdAt: string;
 }

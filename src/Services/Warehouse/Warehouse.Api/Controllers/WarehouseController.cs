@@ -16,7 +16,8 @@ public class WarehouseController : ApiControllerBase
     [HttpGet]
     public async Task<IActionResult> GetWarehouses()
     {
-        var result = await Mediator.Send(new GetWarehousesQuery());
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var result = await Mediator.Send(new GetWarehousesQuery(operatorSub));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
 

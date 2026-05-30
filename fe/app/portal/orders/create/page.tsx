@@ -6,6 +6,7 @@ import { useForm, UseFormReturn } from 'react-hook-form';
 import { format } from 'date-fns';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { fetchApi } from '@/lib/api-client';
 import { toast } from 'sonner';
 import {
   UserCircle,
@@ -574,30 +575,51 @@ export default function CreateOrderPage() {
     await new Promise((res) => setTimeout(res, 1500));
     setIsSubmitting(false);
 
-    // Save to user-specific localStorage orders database
-    const currentPhone = localStorage.getItem('shiphub_current_phone') || '0901234567';
-    const ordersKey = `shiphub_orders_${currentPhone}`;
-    const existing = localStorage.getItem(ordersKey);
-    const orderList = existing ? JSON.parse(existing) : [];
-
-    const newOrder = {
-      id: Math.floor(Math.random() * 1000000).toString(),
-      orderNo: 'SH' + format(new Date(), 'yyMMdd') + Math.floor(Math.random() * 9000 + 1000).toString(),
-      status: 'New',
-      consigneeName: data.receiverName,
-      consigneeCity: getProvinceName(data.receiverProvince),
-      totalWeight: data.weight,
-      codAmount: data.codAmount,
-      createdAt: new Date().toISOString(),
+    const payload = {
+      skuCodes: ["UNKNOWN-SKU"],
+      consignee: {
+        fullName: data.receiverName,
+        phone: data.receiverPhone,
+        address: {
+          street: data.receiverAddress,
+          city: getProvinceName(data.receiverProvince),
+          state: getDistrictName(data.receiverProvince, data.receiverDistrict),
+          country: "VN",
+          zipCode: data.receiverWard
+        }
+      },
+      consignor: {
+        fullName: data.senderName,
+        phone: data.senderPhone,
+        address: {
+          street: data.senderAddress,
+          city: getProvinceName(data.senderProvince),
+          state: getDistrictName(data.senderProvince, data.senderDistrict),
+          country: "VN",
+          zipCode: data.senderWard
+        }
+      },
+      codAmount: data.codAmount || 0,
+      shippingFee: estimatedFee || 0,
+      weight: data.weight || 0.1,
+      note: data.notes || "",
+      fulfillmentMode: 1,
+      orderType: 1
     };
 
-    orderList.unshift(newOrder);
-    localStorage.setItem(ordersKey, JSON.stringify(orderList));
-
-    toast.success('Đơn hàng đã được tạo thành công!');
-    form.reset();
-    setCurrentStep(0);
-    router.push('/portal/orders');
+    try {
+      const res = await fetchApi<{isSuccess: boolean}>('oms', '/orders', { method: 'POST', body: payload });
+      if (res && res.isSuccess) {
+        toast.success('Đơn hàng đã được tạo thành công!');
+        form.reset();
+        setCurrentStep(0);
+        router.push('/portal/orders');
+      } else {
+        toast.error('Có lỗi xảy ra khi tạo đơn hàng');
+      }
+    } catch (e) {
+      toast.error('Có lỗi xảy ra khi tạo đơn hàng');
+    }
   }
 
   // ──────────────────────────────────────────

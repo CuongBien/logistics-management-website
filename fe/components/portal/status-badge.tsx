@@ -76,7 +76,10 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status]
+  const config = statusConfig[status] || {
+    label: status || 'Unknown',
+    className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  }
 
   return (
     <Badge

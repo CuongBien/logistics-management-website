@@ -37,6 +37,8 @@ const navItems: NavItem[] = [
   { label: "Internal Tasks", href: "/tasks", icon: <ClipboardList className="h-4 w-4" /> },
   { label: "Cross-docking", href: "/crossdock", icon: <GitMerge className="h-4 w-4" /> },
   { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
+  { label: "Staff", href: "/wms/staff", icon: <Users className="h-4 w-4" /> },
+  { label: "Role Management", href: "/wms/roles", icon: <Settings className="h-4 w-4" /> },
 ]
 
 const bottomItems: NavItem[] = [

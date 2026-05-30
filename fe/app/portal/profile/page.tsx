@@ -96,13 +96,16 @@ export default function ProfilePage() {
   })
 
   useEffect(() => {
-    // Load profile from localStorage
-    const savedProfile = localStorage.getItem('shiphub_profile')
-    if (savedProfile) {
-      const parsed = JSON.parse(savedProfile)
-      setProfile(parsed)
-      form.reset(parsed)
+    // Just mock load profile without localStorage to avoid persistence issues
+    const defaultProfile = {
+      fullName: 'User ' + Math.floor(Math.random() * 100),
+      phone: '0901234567',
+      shopName: 'Shop Mặc định',
+      shopCategory: 'other',
+      address: '123 Đường Test, TP.HCM',
     }
+    setProfile(defaultProfile)
+    form.reset(defaultProfile)
   }, [form])
 
   async function onProfileSubmit(data: ProfileValues) {
@@ -110,12 +113,8 @@ export default function ProfilePage() {
     await new Promise((resolve) => setTimeout(resolve, 1000))
     setIsLoading(false)
 
-    localStorage.setItem('shiphub_profile', JSON.stringify(data))
     setProfile(data)
-    toast.success('Cập nhật thông tin tài khoản và cửa hàng thành công!')
-    
-    // Dispatch a storage event or refresh to update Sidebar/Topbar instantly
-    window.dispatchEvent(new Event('storage'))
+    toast.success('Cập nhật thông tin tài khoản và cửa hàng thành công (Lưu tạm trên bộ nhớ trình duyệt)!')
   }
 
   async function onPasswordSubmit(data: PasswordValues) {
@@ -128,9 +127,9 @@ export default function ProfilePage() {
   }
 
   function handleLogout() {
-    localStorage.removeItem('shiphub_auth')
     toast.success('Bạn đã đăng xuất tài khoản thành công.')
-    router.push('/portal/login')
+    // Redirect logic to use standard signOut if next-auth is added to portal, but for now just push to login
+    router.push('/login')
   }
 
   if (!profile) return null

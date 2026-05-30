@@ -19,5 +19,6 @@ public record ReceiveInboundItemResponse(
     bool IsCrossDockSuggested,
     Guid? CrossDockTaskId,
     bool IsPutawaySuggested = false,
-    Guid? PutawayTaskId = null
+    Guid? PutawayTaskId = null,
+    string? SuggestedPutawayBinCode = null
 );

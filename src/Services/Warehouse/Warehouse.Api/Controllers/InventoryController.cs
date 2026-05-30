@@ -62,6 +62,23 @@ public class InventoryController : ControllerBase
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetList()
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User);
+        // Note: For now we'll get all inventory across warehouses for this tenant
+        // A better approach would read the ActiveWarehouseId from headers/claims if passed.
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetInventoryList.GetInventoryListQuery(tenantId, null));
+        return Ok(result);
+    }
+
+    [HttpGet("by-sku/{sku}")]
+    public async Task<IActionResult> GetBySku(string sku)
+    {
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetInventoryBySku.GetInventoryBySkuQuery(sku));
+        return result.IsSuccess ? Ok(result.Value) : NotFound(new { Message = "Không tìm thấy tồn kho cho SKU này" });
+    }
+
     [HttpPost("reconcile")]
     public async Task<IActionResult> Reconcile([FromBody] ReconcileInventoryCommand command)
     {
