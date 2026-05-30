@@ -7,7 +7,7 @@ import { fetchApi } from "@/lib/api-client"; // Standard API Client with JWT Aut
 // - Set USE_MOCK to 'true' to use high-fidelity mock data (prevents blank pages when DB is empty).
 // - Set USE_MOCK to 'false' to pull real tasks directly from the WMS Postgres Database in Docker!
 // ============================================================================
-const USE_MOCK = true; 
+const USE_MOCK = false; 
 
 // In-memory static database to persist modifications during the React session (when in Mock mode)
 let mockPutawayTasks: PutawayTaskDto[] = [

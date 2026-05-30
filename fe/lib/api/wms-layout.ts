@@ -7,7 +7,7 @@ import { fetchApi } from '@/lib/api-client'; // Import standard fetchApi client 
 // - Set USE_MOCK to 'true' to use high-fidelity mock layout (Atlanta Hub and New York Crossdock).
 // - Set USE_MOCK to 'false' to read/write real layouts directly from WMS Postgres DB in Docker!
 // ============================================================================
-const USE_MOCK = true; 
+const USE_MOCK = false; 
 
 // Mocked database for warehouses (when in Mock Mode)
 const MOCK_WAREHOUSES: WarehouseDto[] = [
