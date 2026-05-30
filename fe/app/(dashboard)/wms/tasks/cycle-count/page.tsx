@@ -32,6 +32,15 @@ import {
 import { toast } from "sonner"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 export default function CycleCountTasksPage() {
   const pathname = usePathname()
@@ -39,7 +48,11 @@ export default function CycleCountTasksPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   
-  // Generating state
+  // Task creation state
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [creationMethod, setCreationMethod] = useState<"auto" | "manual">("auto")
+  const [manualBin, setManualBin] = useState("")
+  const [manualSku, setManualSku] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   
   // Approval dialog state
@@ -65,9 +78,21 @@ export default function CycleCountTasksPage() {
   const handleGenerateCycleCount = async () => {
     try {
       setIsGenerating(true)
-      // Call mock API generating task for diapers in ST-BABY-03
-      const generated = await generateCycleCount("ST-BABY-03", "BIMTA-HUG-M")
-      toast.success(`Đã tự động khởi tạo thành công phiên kiểm kho mới ${generated.id} tại ô kệ ST-BABY-03!`)
+      let generated;
+      if (creationMethod === "auto") {
+        generated = await generateCycleCount("ST-BABY-03", "BIMTA-HUG-M")
+        toast.success(`Đã tự động khởi tạo thành công phiên kiểm kho mới ${generated.id} tại ô kệ ST-BABY-03!`)
+      } else {
+        if (!manualBin.trim() || !manualSku.trim()) {
+          toast.error("Vui lòng nhập đầy đủ Mã Ô kệ và Mã SKU sản phẩm")
+          return
+        }
+        generated = await generateCycleCount(manualBin.toUpperCase().trim(), manualSku.toUpperCase().trim())
+        toast.success(`Đã phát lệnh kiểm đếm thủ công thành công cho SKU ${manualSku.toUpperCase().trim()} tại ô kệ ${manualBin.toUpperCase().trim()}. Mã tác vụ: ${generated.id}`)
+      }
+      setIsCreateOpen(false)
+      setManualBin("")
+      setManualSku("")
       await fetchTasks()
     } catch (e: any) {
       toast.error(e.message || "Tạo lệnh kiểm kho thất bại")
@@ -257,21 +282,11 @@ export default function CycleCountTasksPage() {
           </div>
 
           <Button
-            onClick={handleGenerateCycleCount}
-            disabled={isGenerating}
-            className="bg-[#C41E3A] hover:bg-[#A01830] text-white font-extrabold text-xs h-9 px-4 rounded-md shadow-sm w-full sm:w-auto"
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-[#C41E3A] hover:bg-[#A01830] text-white font-extrabold text-xs h-9 px-4 rounded-md shadow-sm w-full sm:w-auto flex items-center gap-1.5"
           >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                Đang tạo lệnh đếm...
-              </>
-            ) : (
-              <>
-                <Cpu className="h-3.5 w-3.5 mr-1.5" />
-                Tạo Lệnh Đếm Kho (Auto-generate)
-              </>
-            )}
+            <Plus className="h-4 w-4" />
+            Phát Lệnh Đếm Kho (Create Task)
           </Button>
         </div>
 
@@ -466,13 +481,134 @@ export default function CycleCountTasksPage() {
         </div>
       </div>
 
-      {/* Adjustment Decision Approval Modal Dialog */}
-      <AdjustmentApprovalDialog
-        isOpen={isApprovalOpen}
-        onClose={() => setIsApprovalOpen(false)}
-        task={selectedTask}
-        onSuccess={fetchTasks}
-      />
+        {/* Adjustment Decision Approval Modal Dialog */}
+        <AdjustmentApprovalDialog
+          isOpen={isApprovalOpen}
+          onClose={() => setIsApprovalOpen(false)}
+          task={selectedTask}
+          onSuccess={fetchTasks}
+        />
+
+        {/* Initiate Cycle Count Session Dialog */}
+        <Dialog open={isCreateOpen} onOpenChange={(open) => !open && setIsCreateOpen(false)}>
+          <DialogContent className="sm:max-w-[420px] bg-card border border-muted shadow-2xl rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-foreground font-extrabold text-lg">
+                <Cpu className="h-5 w-5 text-[#C41E3A] animate-pulse" />
+                Khởi Tạo Phiên Kiểm Kho
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground text-xs mt-1">
+                Chọn phương thức phát lệnh tự động từ hệ thống hoặc chủ động chỉ định SKU/Bin để nhân viên đi kiểm đếm vật lý.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Dynamic Form Content */}
+            <div className="space-y-4 my-2">
+               {/* Selection Tab Group */}
+               <div className="space-y-1.5">
+                 <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                   Phương Thức Khởi Tạo
+                 </Label>
+                 <div className="grid grid-cols-2 gap-2 bg-muted/60 p-1.5 rounded-xl border border-muted/30">
+                   <button
+                     type="button"
+                     onClick={() => setCreationMethod("auto")}
+                     className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                       creationMethod === "auto"
+                         ? "bg-background text-foreground shadow-sm border border-muted/20"
+                         : "text-muted-foreground hover:text-foreground"
+                     }`}
+                   >
+                     Tự động (WMS Auto)
+                   </button>
+                   <button
+                     type="button"
+                     onClick={() => setCreationMethod("manual")}
+                     className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                       creationMethod === "manual"
+                         ? "bg-background text-[#C41E3A] shadow-sm border border-muted/20"
+                         : "text-muted-foreground hover:text-foreground"
+                     }`}
+                   >
+                     Chỉ định thủ công
+                   </button>
+                 </div>
+               </div>
+
+               {/* Auto Method Description */}
+               {creationMethod === "auto" ? (
+                 <div className="bg-[#C41E3A]/5 border border-[#C41E3A]/10 p-3.5 rounded-xl text-xs space-y-1.5 text-muted-foreground">
+                   <p className="font-semibold text-foreground flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                     <Cpu className="h-3.5 w-3.5 text-[#C41E3A]" />
+                     Thuật toán tự động sinh lệnh
+                   </p>
+                   <p className="leading-relaxed text-[11px]">
+                     WMS sẽ quét ngẫu nhiên các ô kệ có giao dịch phát sinh lớn hoặc các mặt hàng vừa putaway mới nhập kho để phân công lệnh đếm tự động giúp kiểm tra dòng chảy tồn kho.
+                   </p>
+                 </div>
+               ) : (
+                 /* Manual Assignment Form Inputs */
+                 <div className="space-y-3.5 border border-muted p-4 rounded-xl bg-muted/20">
+                   <div className="space-y-1.5">
+                     <Label htmlFor="manual-bin" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                       Mã Vị Trí Ô Kệ (Bin Code) <span className="text-red-500">*</span>
+                     </Label>
+                     <Input
+                       id="manual-bin"
+                       placeholder="VD: ST-BABY-03, ST-ELEC-22..."
+                       value={manualBin}
+                       onChange={(e) => setManualBin(e.target.value)}
+                       className="bg-background border-muted h-9 rounded-md text-xs uppercase focus-visible:ring-[#C41E3A]"
+                     />
+                   </div>
+
+                   <div className="space-y-1.5">
+                     <Label htmlFor="manual-sku" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                       Mã SKU Sản Phẩm (Product SKU) <span className="text-red-500">*</span>
+                     </Label>
+                     <Input
+                       id="manual-sku"
+                       placeholder="VD: BIMTA-HUG-M, IPHONE15PM..."
+                       value={manualSku}
+                       onChange={(e) => setManualSku(e.target.value)}
+                       className="bg-background border-muted h-9 rounded-md text-xs uppercase focus-visible:ring-[#C41E3A]"
+                     />
+                   </div>
+                 </div>
+               )}
+            </div>
+
+            {/* Dialog Footer Actions */}
+            <DialogFooter className="gap-2 pt-2 border-t border-muted/60 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateOpen(false)}
+                className="rounded-xl text-xs h-9"
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                type="button"
+                onClick={handleGenerateCycleCount}
+                disabled={isGenerating || (creationMethod === "manual" && (!manualBin.trim() || !manualSku.trim()))}
+                className="bg-[#C41E3A] hover:bg-[#A01830] text-white font-extrabold rounded-xl text-xs h-9 shadow-md flex items-center gap-1.5"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Đang khởi tạo...
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Phát lệnh kiểm kho
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   )
 }
