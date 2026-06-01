@@ -209,32 +209,46 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
 
         {/* Current Roles Preview */}
         {operator.roles.length > 0 && (
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Quyền hiện tại (Nhấn X để gỡ quyền):</Label>
-            <div className="flex flex-wrap gap-1">
+          <div className="space-y-2 pb-1">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Các vai trò đang đảm nhiệm:
+            </Label>
+            <div className="grid gap-2 max-h-[165px] overflow-y-auto pr-1">
               {operator.roles.map((r, i) => (
-                <Badge 
-                  key={i} 
-                  variant="secondary" 
-                  className="text-xs font-medium pl-2.5 pr-1 py-0.5 flex items-center gap-1 bg-muted/75 text-foreground hover:bg-muted"
+                <div 
+                  key={i}
+                  className="flex items-center justify-between p-2 rounded-lg border border-muted bg-card hover:bg-muted/30 transition-colors"
                 >
-                  <span>{r.roleName} @ {r.warehouseName || r.warehouseId.split('-')[0]}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0">
+                    <Badge variant="outline" className="w-fit font-bold text-xs bg-primary/5 text-primary border-primary/20 shrink-0">
+                      {r.roleName}
+                    </Badge>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                      <Warehouse className="h-3.5 w-3.5 shrink-0 text-muted-foreground/75" />
+                      <span className="truncate font-medium text-foreground/80" title={r.warehouseName || r.warehouseId}>
+                        {r.warehouseName || r.warehouseId}
+                      </span>
+                    </div>
+                  </div>
+                  
                   {r.id && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleUnassign(r.id!, r.roleName)}
                       disabled={deletingId !== null}
-                      className="ml-1 p-0.5 rounded-full hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors focus:outline-none"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-md"
                       title="Gỡ vai trò này"
                     >
                       {deletingId === r.id ? (
-                        <Loader2 className="h-2.5 w-2.5 animate-spin text-destructive" />
+                        <Loader2 className="h-4 w-4 animate-spin text-destructive" />
                       ) : (
-                        <X className="h-2.5 w-2.5" />
+                        <Trash2 className="h-4 w-4" />
                       )}
-                    </button>
+                    </Button>
                   )}
-                </Badge>
+                </div>
               ))}
             </div>
           </div>

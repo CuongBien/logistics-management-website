@@ -82,7 +82,7 @@ export async function GET(req: Request) {
         const userRoles = roleAssignments.filter((r: any) => r.operatorSub === u.id).map((r: any) => ({
           id: r.id,
           warehouseId: r.warehouseId,
-          warehouseName: r.warehouseName || 'Kho chính',
+          warehouseName: r.warehouseName || r.warehouseId.split('-')[0],
           roleName: r.roleName,
           roleCode: r.roleCode
         }))

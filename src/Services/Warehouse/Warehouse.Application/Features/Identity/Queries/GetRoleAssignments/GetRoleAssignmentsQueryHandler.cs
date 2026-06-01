@@ -19,11 +19,13 @@ public class GetRoleAssignmentsQueryHandler : IRequestHandler<GetRoleAssignments
         var assignments = await _context.OperatorRoleAssignments
             .Include(a => a.OperatorProfile)
             .Include(a => a.Role)
+            .Include(a => a.Warehouse)
             .Where(a => a.Status == Domain.Entities.AssignmentStatus.Active)
             .Select(a => new RoleAssignmentDto(
                 a.Id,
                 a.OperatorProfile.OperatorSub,
                 a.WarehouseId.ToString(),
+                a.Warehouse.Name,
                 a.Role.Name,
                 a.Role.Code
             ))

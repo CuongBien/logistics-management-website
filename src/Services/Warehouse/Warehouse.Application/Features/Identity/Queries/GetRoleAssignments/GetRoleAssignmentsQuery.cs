@@ -5,6 +5,6 @@ using MediatR;
 
 namespace Warehouse.Application.Features.Identity.Queries.GetRoleAssignments;
 
-public record RoleAssignmentDto(Guid Id, string OperatorSub, string WarehouseId, string RoleName, string RoleCode);
+public record RoleAssignmentDto(Guid Id, string OperatorSub, string WarehouseId, string WarehouseName, string RoleName, string RoleCode);
 
 public record GetRoleAssignmentsQuery : IRequest<Result<List<RoleAssignmentDto>>>;
