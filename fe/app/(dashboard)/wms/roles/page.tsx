@@ -7,8 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { RoleDto, PermissionDto } from '@/types/wms-rbac';
 import { Plus, Edit } from 'lucide-react';
 import { RoleDialog } from './components/RoleDialog';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function RolesPage() {
+  const { toast } = useToast();
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [permissions, setPermissions] = useState<PermissionDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,11 +26,28 @@ export default function RolesPage() {
         fetch('/api/wms/permissions')
       ]);
 
-      const rolesData = await rolesRes.json();
-      const permsData = await permsRes.json();
+      let rolesData = null;
+      let permsData = null;
 
-      // Parse Roles
-      if (rolesData) {
+      try {
+        rolesData = await rolesRes.json();
+      } catch (e) {
+        console.error("Failed to parse roles JSON", e);
+      }
+
+      try {
+        permsData = await permsRes.json();
+      } catch (e) {
+        console.error("Failed to parse permissions JSON", e);
+      }
+
+      if (!rolesRes.ok) {
+        toast({
+          title: "Lỗi tải Vai trò (Roles)",
+          description: `Mã lỗi: ${rolesRes.status}. Chi tiết: ${rolesData?.details || rolesData?.error || 'Không thể kết nối đến WMS backend'}`,
+          variant: "destructive"
+        });
+      } else if (rolesData) {
         if (rolesData.isSuccess && Array.isArray(rolesData.value)) {
           setRoles(rolesData.value);
         } else if (Array.isArray(rolesData)) {
@@ -36,16 +55,26 @@ export default function RolesPage() {
         }
       }
 
-      // Parse Permissions
-      if (permsData) {
+      if (!permsRes.ok) {
+        toast({
+          title: "Lỗi tải Quyền hạn (Permissions)",
+          description: `Mã lỗi: ${permsRes.status}. Chi tiết: ${permsData?.details || permsData?.error || 'Không thể kết nối đến WMS backend'}`,
+          variant: "destructive"
+        });
+      } else if (permsData) {
         if (permsData.isSuccess && Array.isArray(permsData.value)) {
           setPermissions(permsData.value);
         } else if (Array.isArray(permsData)) {
           setPermissions(permsData);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load roles or permissions:", e);
+      toast({
+        title: "Lỗi kết nối",
+        description: `Không thể tải dữ liệu: ${e.message}`,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
