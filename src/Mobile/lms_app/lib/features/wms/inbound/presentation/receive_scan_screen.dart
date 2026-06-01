@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/inbound_provider.dart';
+import '../../../../../core/widgets/camera_scanner_dialog.dart';
 
 class ReceiveScanScreen extends ConsumerStatefulWidget {
   const ReceiveScanScreen({super.key});
@@ -140,6 +141,16 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
     }
   }
 
+  Future<void> _openCameraScanner() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CameraScannerDialog(),
+    );
+    if (result != null && result.isNotEmpty) {
+      _handleScan(result);
+    }
+  }
+
   void _showManualInputDialog() {
     final TextEditingController controller = TextEditingController();
     showDialog(
@@ -265,6 +276,16 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                             ),
                             child: const Icon(Icons.search),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: _openCameraScanner,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Icon(Icons.camera_alt),
                           ),
                         ],
                       ),
@@ -451,6 +472,10 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
                             Text('Quét cuối: $_lastScanned', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.camera_alt, color: AppColors.primary),
+                        onPressed: _openCameraScanner,
                       ),
                       IconButton(
                         icon: const Icon(Icons.keyboard, color: AppColors.primary),

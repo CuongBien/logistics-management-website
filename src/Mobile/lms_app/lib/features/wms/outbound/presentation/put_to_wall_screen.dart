@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
+import '../../../../../core/widgets/camera_scanner_dialog.dart';
 
 class PutToWallScreen extends ConsumerStatefulWidget {
   const PutToWallScreen({super.key});
@@ -109,6 +110,16 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
     }
   }
 
+  Future<void> _openCameraScanner() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CameraScannerDialog(),
+    );
+    if (result != null && result.isNotEmpty) {
+      _handleScan(result);
+    }
+  }
+
   void _showManualInputDialog() {
     final TextEditingController controller = TextEditingController();
     showDialog(
@@ -161,7 +172,7 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
       autofocus: true,
       child: Scaffold(
         appBar: AppBar(title: const Text('Chia chọn (Put-To-Wall)')),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -204,10 +215,10 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
               const SizedBox(height: 24),
 
               // Trạng thái cất hàng
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _waveId.isEmpty
+                      Expanded(
+                        child: _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _waveId.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -291,13 +302,36 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
                             ],
                           ),
               ),
-
-              // Bàn quét thủ công
+              // Bàn quét thủ công và Quét Camera
               if (_waveId.isNotEmpty)
-                ElevatedButton.icon(
-                  onPressed: _showManualInputDialog,
-                  icon: const Icon(Icons.keyboard),
-                  label: const Text('Nhập mã thủ công'),
+                const SizedBox(height: 16),
+              if (_waveId.isNotEmpty)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _openCameraScanner,
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text('Quét Camera'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showManualInputDialog,
+                        icon: const Icon(Icons.keyboard),
+                        label: const Text('Nhập mã thủ công'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),

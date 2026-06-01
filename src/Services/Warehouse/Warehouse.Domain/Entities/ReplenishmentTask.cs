@@ -20,6 +20,7 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
     public int RequestedQty { get; private set; }
     public ReplenishmentTaskStatus Status { get; private set; }
     public string? AssignedTo { get; private set; }
+    public DateTime CreatedAt { get; private set; }
     
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
@@ -39,6 +40,7 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
         DestinationBinId = destinationBinId;
         RequestedQty = requestedQty;
         Status = ReplenishmentTaskStatus.Pending;
+        CreatedAt = DateTime.UtcNow;
         IsDeleted = false;
     }
 

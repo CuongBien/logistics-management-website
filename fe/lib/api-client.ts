@@ -83,7 +83,15 @@ export async function fetchApi<T = unknown>(
     } catch {
       errorBody = text;
     }
-    console.error(`API Error ${response.status}: ${response.statusText}`, errorBody);
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        const { signOut } = require('next-auth/react');
+        signOut({ callbackUrl: '/login' });
+        // Prevent throwing so the page doesn't crash while redirecting
+        return new Promise(() => {}) as Promise<T>;
+      }
+    }
+    
     throw new ApiError(response.status, response.statusText, errorBody);
   }
 

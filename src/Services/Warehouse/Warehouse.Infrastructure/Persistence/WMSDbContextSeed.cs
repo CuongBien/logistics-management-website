@@ -16,7 +16,7 @@ public static class WMSDbContextSeed
             try
             {
                 logger.LogInformation("Cleaning WMS transactional tables for fresh seed...");
-                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\" CASCADE;");
+                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\", \"PutawayTasks\", \"ReplenishmentTasks\", \"CountTasks\" CASCADE;");
             }
             catch (Exception ex)
             {
@@ -265,6 +265,88 @@ public static class WMSDbContextSeed
             {
                 await context.SaveChangesAsync();
                 logger.LogInformation("Successfully seeded Real Stock for Outbound E2E Testing in HCMC Mega Hub.");
+            }
+
+            // 6. Seed Inbound Receipts
+            if (!await context.InboundReceipts.AnyAsync())
+            {
+                logger.LogInformation("Seeding Inbound Receipts...");
+                var receipt1 = new InboundReceipt(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "REC-2026-0001", null);
+                receipt1.AddLine(new InboundReceiptLine(receipt1.Id, "default-tenant", "cust-default", "SKU-RED-TSHIRT", 100));
+                receipt1.AddLine(new InboundReceiptLine(receipt1.Id, "default-tenant", "cust-default", "SKU-BLUE-JEANS", 50));
+
+                var receipt2 = new InboundReceipt(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "REC-2026-0002", null);
+                receipt2.AddLine(new InboundReceiptLine(receipt2.Id, "default-tenant", "cust-default", "SKU-RED-TSHIRT", 200));
+                
+                var receipt3 = new InboundReceipt(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "REC-2026-0003", null);
+                receipt3.AddLine(new InboundReceiptLine(receipt3.Id, "default-tenant", "cust-default", "A0-001", 150));
+
+                context.InboundReceipts.AddRange(receipt1, receipt2, receipt3);
+                await context.SaveChangesAsync();
+            }
+
+            // 7. Seed Outbound Orders
+            if (!await context.OutboundOrders.AnyAsync())
+            {
+                logger.LogInformation("Seeding Outbound Orders...");
+                var order1 = new OutboundOrder(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "OUT-2026-0001", "123 Main St", "HCMC");
+                order1.AddLine("SKU-RED-TSHIRT", 10, "PCS");
+                order1.AddLine("SKU-BLUE-JEANS", 5, "PCS");
+
+                var order2 = new OutboundOrder(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "OUT-2026-0002", "456 Elm St", "HCMC");
+                order2.AddLine("A0-001", 20, "PCS");
+
+                var order3 = new OutboundOrder(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "OUT-2026-0003", "789 Pine St", "Hanoi");
+                order3.AddLine("SKU-RED-TSHIRT", 50, "PCS");
+
+                context.OutboundOrders.AddRange(order1, order2, order3);
+                await context.SaveChangesAsync();
+            }
+
+            // 8. Seed Tasks (Putaway, Replenishment, Cycle Count)
+            if (!await context.PutawayTasks.AnyAsync())
+            {
+                logger.LogInformation("Seeding Putaway Tasks...");
+                var putawayBinRedTshirt = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-01" && b.WarehouseId == sgId);
+                var dockBin = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-DOCK-01" && b.WarehouseId == sgId);
+                var receipt = await context.InboundReceipts.FirstOrDefaultAsync();
+                if (putawayBinRedTshirt != null && dockBin != null && receipt != null)
+                {
+                    context.PutawayTasks.AddRange(
+                        new PutawayTask("default-tenant", sgId, receipt.Id, "SKU-RED-TSHIRT", null, 50, dockBin.Id, putawayBinRedTshirt.Id),
+                        new PutawayTask("default-tenant", sgId, receipt.Id, "A0-001", null, 100, dockBin.Id, putawayBinRedTshirt.Id)
+                    );
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.ReplenishmentTasks.AnyAsync())
+            {
+                logger.LogInformation("Seeding Replenishment Tasks...");
+                var binBulk = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-C01-01" && b.WarehouseId == sgId);
+                var binPick = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-01" && b.WarehouseId == sgId);
+                if (binBulk != null && binPick != null)
+                {
+                    context.ReplenishmentTasks.AddRange(
+                        new ReplenishmentTask("default-tenant", sgId, "SKU-RED-TSHIRT", binBulk.Id, binPick.Id, 100),
+                        new ReplenishmentTask("default-tenant", sgId, "SKU-BLUE-JEANS", binBulk.Id, binPick.Id, 50)
+                    );
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.CountTasks.AnyAsync())
+            {
+                logger.LogInformation("Seeding Cycle Count Tasks...");
+                var countBinRedTshirt = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-01" && b.WarehouseId == sgId);
+                if (countBinRedTshirt != null)
+                {
+                    context.CountTasks.AddRange(
+                        new CountTask("default-tenant", sgId, countBinRedTshirt.Id, "SKU-RED-TSHIRT", null, null, 500),
+                        new CountTask("default-tenant", sgId, countBinRedTshirt.Id, "A0-001", null, null, 150)
+                    );
+                    await context.SaveChangesAsync();
+                }
             }
         }
         catch (Exception ex)

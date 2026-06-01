@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/putaway_provider.dart';
+import '../../../../../core/widgets/camera_scanner_dialog.dart';
 
 class PutawayExecutionScreen extends ConsumerStatefulWidget {
   final String taskId;
@@ -69,6 +70,53 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
     }
   }
 
+  Future<void> _openCameraScanner() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CameraScannerDialog(),
+    );
+    if (result != null && result.isNotEmpty) {
+      _handleScan(result);
+    }
+  }
+
+  void _showManualInputDialog() {
+    final TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Nhập mã thủ công'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Nhập mã Vị trí (Bin)...',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+            onSubmitted: (value) {
+              Navigator.pop(context);
+              if (value.isNotEmpty) _handleScan(value.trim());
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                if (controller.text.isNotEmpty) _handleScan(controller.text.trim());
+              },
+              child: const Text('Xác nhận'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _scannerHelper.focusNode.dispose();
@@ -83,7 +131,7 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
       autofocus: true,
       child: Scaffold(
         appBar: AppBar(title: const Text('Cất Hàng (Putaway)')),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,6 +160,34 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _openCameraScanner,
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Quét Camera'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _showManualInputDialog,
+                      icon: const Icon(Icons.keyboard),
+                      label: const Text('Nhập thủ công'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

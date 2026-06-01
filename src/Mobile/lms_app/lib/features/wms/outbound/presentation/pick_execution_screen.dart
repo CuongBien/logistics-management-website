@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
+import '../../../../../core/widgets/camera_scanner_dialog.dart';
 
 class PickExecutionScreen extends ConsumerStatefulWidget {
   final String waveId;
@@ -83,6 +84,16 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Lấy sai sản phẩm! Yêu cầu: $targetSku'), backgroundColor: AppColors.error));
       }
+    }
+  }
+
+  Future<void> _openCameraScanner() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CameraScannerDialog(),
+    );
+    if (result != null && result.isNotEmpty) {
+      _handleScan(result);
     }
   }
 
@@ -181,7 +192,7 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
       autofocus: true,
       child: Scaffold(
         appBar: AppBar(title: const Text('Lấy Hàng (Pick Task)')),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -272,10 +283,25 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _showManualInputDialog,
-          tooltip: 'Nhập mã thủ công',
-          child: const Icon(Icons.keyboard),
+        floatingActionButton: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FloatingActionButton(
+              heroTag: 'camera',
+              onPressed: _openCameraScanner,
+              tooltip: 'Quét Camera',
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.camera_alt),
+            ),
+            const SizedBox(height: 16),
+            FloatingActionButton(
+              heroTag: 'keyboard',
+              onPressed: _showManualInputDialog,
+              tooltip: 'Nhập mã thủ công',
+              child: const Icon(Icons.keyboard),
+            ),
+          ],
         ),
       ),
     );

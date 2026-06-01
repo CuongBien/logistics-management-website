@@ -134,10 +134,10 @@ let mockWavesDb: WaveDto[] = [
 ];
 
 
-// Query & Mutation API Services
+import { fetchApi } from '../api-client';
+
 export const getOrders = async (): Promise<OutboundOrderDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [...mockOrdersDb];
+  return await fetchApi<OutboundOrderDto[]>('wms', '/outbound/orders');
 };
 
 export const getOrderById = async (id: string): Promise<OutboundOrderDto | undefined> => {
@@ -238,114 +238,59 @@ export const splitOrder = async (id: string, lineId: string, splitQty: number): 
 };
 
 export const getReturns = async (): Promise<OutboundReturnDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [...mockReturnsDb];
+  // Use a hardcoded warehouseId or get it from context/store. For testing, using HCM warehouse ID from seed.
+  const warehouseId = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1';
+  return await fetchApi<OutboundReturnDto[]>('wms', `/outbound/returns?warehouseId=${warehouseId}`);
 };
 
 export const processDisposition = async (id: string, disposition: 'Restocked' | 'Scrapped' | 'Penalized', notes?: string): Promise<{ success: boolean }> => {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  const ret = mockReturnsDb.find(r => r.id === id);
-  if (!ret) throw new Error("Return record not found");
+  const warehouseId = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1';
+  let condition = 1; // Good
+  if (disposition === 'Scrapped' || disposition === 'Penalized') condition = 2; // Damaged
+
+  await fetchApi<{ success: boolean }>('wms', `/outbound/returns/disposition`, {
+    method: 'POST',
+    body: JSON.stringify({
+      warehouseId,
+      sku: 'UNKNOWN', // Ideally, pass sku/qty from frontend, but we handle it via ReferenceId
+      quantity: 1, 
+      condition,
+      targetBinCode: disposition === 'Restocked' ? 'ST-B-01' : undefined,
+      referenceId: id,
+      referenceType: 'OutboundReturn',
+      notes: notes || 'Processed via Web UI'
+    })
+  });
   
-  ret.disposition = disposition;
-  if (notes) {
-    ret.notes = notes;
-  }
   return { success: true };
 };
 
 export const getWaves = async (): Promise<WaveDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [...mockWavesDb];
+  const warehouseId = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1';
+  return await fetchApi<WaveDto[]>('wms', `/outbound/waves?warehouseId=${warehouseId}`);
 };
 
 export const autoPlanWaves = async (): Promise<{ success: boolean; createdWavesCount: number }> => {
-  await new Promise(resolve => setTimeout(resolve, 800));
+  const warehouseId = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1';
+  const res = await fetchApi<{ createdWaveIds: string[], totalOrdersPlanned: number }>('wms', `/outbound/waves/auto-plan`, {
+    method: 'POST',
+    body: JSON.stringify({
+      warehouseId,
+      maxSingleItemOrdersPerWave: 50,
+      maxMultiItemOrdersPerWave: 20
+    })
+  });
   
-  // Find all New/Allocated orders that are not in a wave
-  const eligibleOrders = mockOrdersDb.filter(o => o.status === 'New' || o.status === 'Allocated');
-  if (eligibleOrders.length === 0) {
-    return { success: true, createdWavesCount: 0 };
-  }
-
-  // Segment them: single-item orders vs multi-item orders
-  const singleItemOrders = eligibleOrders.filter(o => o.lines.length === 1);
-  const multiItemOrders = eligibleOrders.filter(o => o.lines.length > 1);
-
-  let newWavesCount = 0;
-
-  if (singleItemOrders.length > 0) {
-    const waveId = `wave-${Date.now()}-1`;
-    const newWave: WaveDto = {
-      id: waveId,
-      waveNo: `WAVE-2026-${String(mockWavesDb.length + 1).padStart(4, '0')}`,
-      type: 'Single-Item',
-      orderCount: singleItemOrders.length,
-      status: 'New',
-      createdAt: new Date().toISOString()
-    };
-    mockWavesDb.push(newWave);
-    newWavesCount++;
-
-    // Update orders status to AwaitingPick or Picking
-    singleItemOrders.forEach(o => {
-      o.status = 'AwaitingPick';
-      if (!mockTimelinesDb[o.id]) mockTimelinesDb[o.id] = [];
-      mockTimelinesDb[o.id].push({
-        id: `tl-${Date.now()}-${o.id}`,
-        status: 'AwaitingPick',
-        occurredAt: new Date().toISOString(),
-        notes: `Gom đợt sóng lấy hàng thành công vào ${newWave.waveNo}.`,
-        operatorId: 'user-admin'
-      });
-    });
-  }
-
-  if (multiItemOrders.length > 0) {
-    const waveId = `wave-${Date.now()}-2`;
-    const newWave: WaveDto = {
-      id: waveId,
-      waveNo: `WAVE-2026-${String(mockWavesDb.length + 1).padStart(4, '0')}`,
-      type: 'Multi-Item',
-      orderCount: multiItemOrders.length,
-      status: 'New',
-      createdAt: new Date().toISOString()
-    };
-    mockWavesDb.push(newWave);
-    newWavesCount++;
-
-    // Update orders status to AwaitingPick or Picking
-    multiItemOrders.forEach(o => {
-      o.status = 'AwaitingPick';
-      if (!mockTimelinesDb[o.id]) mockTimelinesDb[o.id] = [];
-      mockTimelinesDb[o.id].push({
-        id: `tl-${Date.now()}-${o.id}`,
-        status: 'AwaitingPick',
-        occurredAt: new Date().toISOString(),
-        notes: `Gom đợt sóng lấy hàng thành công vào ${newWave.waveNo}.`,
-        operatorId: 'user-admin'
-      });
-    });
-  }
-
-  return { success: true, createdWavesCount: newWavesCount };
+  return { success: true, createdWavesCount: res.createdWaveIds?.length || 0 };
 };
 
 export const startWave = async (waveId: string): Promise<{ success: boolean }> => {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  const wave = mockWavesDb.find(w => w.id === waveId);
-  if (!wave) throw new Error("Wave not found");
-
-  wave.status = 'Picking';
+  await fetchApi<{ success: boolean }>('wms', `/outbound/waves/${waveId}/start`, { method: 'POST' });
   return { success: true };
 };
 
 export const releaseWave = async (waveId: string): Promise<{ success: boolean }> => {
-  await new Promise(resolve => setTimeout(resolve, 450));
-  const waveIndex = mockWavesDb.findIndex(w => w.id === waveId);
-  if (waveIndex === -1) throw new Error("Wave not found");
-
-  mockWavesDb.splice(waveIndex, 1);
+  await fetchApi<{ success: boolean }>('wms', `/outbound/waves/${waveId}/release`, { method: 'POST' });
   return { success: true };
 };
 

@@ -36,16 +36,16 @@ public class WarehouseController : ApiControllerBase
     }
 
     [HttpPost("{id}/blocks")]
-    public async Task<IActionResult> CreateBlock(Guid id, [FromBody] string blockCode)
+    public async Task<IActionResult> CreateBlock(Guid id, [FromBody] CreateBlockRequest request)
     {
-        var result = await Mediator.Send(new CreateBlockCommand(id, blockCode));
+        var result = await Mediator.Send(new CreateBlockCommand(id, request.BlockCode));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
 
     [HttpPost("blocks/{id}/zones")]
-    public async Task<IActionResult> CreateZone(Guid id, [FromBody] Domain.Enums.ZoneType zoneType)
+    public async Task<IActionResult> CreateZone(Guid id, [FromBody] CreateZoneRequest request)
     {
-        var result = await Mediator.Send(new CreateZoneCommand(id, zoneType));
+        var result = await Mediator.Send(new CreateZoneCommand(id, request.ZoneType));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
 
@@ -67,3 +67,5 @@ public class WarehouseController : ApiControllerBase
 
 public record CreateBinRequest(Guid WarehouseId, string BinCode);
 public record UpdateBinStatusRequest(BinStatus NewStatus);
+public record CreateBlockRequest(string BlockCode);
+public record CreateZoneRequest(ZoneType ZoneType);

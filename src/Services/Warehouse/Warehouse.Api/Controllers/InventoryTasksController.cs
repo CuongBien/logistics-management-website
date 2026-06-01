@@ -19,6 +19,32 @@ public class InventoryTasksController : ControllerBase
         _mediator = mediator;
     }
 
+    [HttpGet("cycle-count")]
+    public async Task<IActionResult> GetCycleCountTasks()
+    {
+        var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var query = new Warehouse.Application.Features.Inventory.Queries.GetCycleCountTasksList.GetCycleCountTasksListQuery(operatorSub);
+        var result = await _mediator.Send(query);
+        
+        if (!result.IsSuccess)
+            return BadRequest(result.Error);
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet("replenish")]
+    public async Task<IActionResult> GetReplenishmentTasks()
+    {
+        var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var query = new Warehouse.Application.Features.Inventory.Queries.GetReplenishmentTasksList.GetReplenishmentTasksListQuery(operatorSub);
+        var result = await _mediator.Send(query);
+        
+        if (!result.IsSuccess)
+            return BadRequest(result.Error);
+
+        return Ok(result.Value);
+    }
+
     [HttpPost("cycle-count/generate")]
     public async Task<IActionResult> GenerateCountTasks([FromQuery] string tenantId, [FromQuery] Guid warehouseId, [FromQuery] int maxTasks = 10)
     {

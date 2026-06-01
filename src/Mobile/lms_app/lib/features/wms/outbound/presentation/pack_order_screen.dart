@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
+import '../../../../../core/widgets/camera_scanner_dialog.dart';
 
 class PackOrderScreen extends ConsumerStatefulWidget {
   const PackOrderScreen({super.key});
@@ -195,6 +196,16 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
     }
   }
 
+  Future<void> _openCameraScanner() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CameraScannerDialog(),
+    );
+    if (result != null && result.isNotEmpty) {
+      _handleScan(result);
+    }
+  }
+
   void _showManualInputDialog() {
     final TextEditingController controller = TextEditingController();
     showDialog(
@@ -284,6 +295,16 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                             ),
                             child: const Icon(Icons.search),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: _openCameraScanner,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Icon(Icons.camera_alt),
                           ),
                         ],
                       ),
@@ -413,6 +434,10 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
                             Text('Quét cuối: $_lastScannedSku', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.camera_alt, color: AppColors.primary),
+                        onPressed: _openCameraScanner,
                       ),
                       IconButton(
                         icon: const Icon(Icons.keyboard, color: AppColors.primary),

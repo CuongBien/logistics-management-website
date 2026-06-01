@@ -13,6 +13,7 @@ export interface InboundReceiptDto {
   receiptNo: string;
   orderId: string;
   status: InboundReceiptStatus;
+  createdAt: string;
   lines: InboundReceiptLineDto[];
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
+import '../../../../../core/widgets/camera_scanner_dialog.dart';
 
 class DispatchLoadScreen extends ConsumerStatefulWidget {
   const DispatchLoadScreen({super.key});
@@ -126,6 +127,16 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
     }
   }
 
+  Future<void> _openCameraScanner() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CameraScannerDialog(),
+    );
+    if (result != null && result.isNotEmpty) {
+      _handleScan(result);
+    }
+  }
+
   void _showManualInputDialog() {
     final TextEditingController controller = TextEditingController();
     showDialog(
@@ -178,7 +189,7 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
       autofocus: true,
       child: Scaffold(
         appBar: AppBar(title: const Text('Xuất bến (Dispatch/Load)')),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -213,6 +224,16 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                         ),
                         child: const Icon(Icons.search),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: _openCameraScanner,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Icon(Icons.camera_alt),
                       ),
                     ],
                   ),
@@ -289,10 +310,34 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
               ),
 
               if (_shipmentId.isNotEmpty && !_isDispatched)
-                ElevatedButton.icon(
-                  onPressed: _showManualInputDialog,
-                  icon: const Icon(Icons.keyboard),
-                  label: const Text('Nhập mã thủ công'),
+                const SizedBox(height: 16),
+              if (_shipmentId.isNotEmpty && !_isDispatched)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _openCameraScanner,
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text('Quét Camera'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showManualInputDialog,
+                        icon: const Icon(Icons.keyboard),
+                        label: const Text('Nhập mã thủ công'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),

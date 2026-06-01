@@ -1,6 +1,4 @@
 import { WarehouseDto, WarehouseHierarchyDto, ZoneType, BinStatus } from '@/types/wms-layout';
-
-import { WarehouseDto, WarehouseHierarchyDto, ZoneType, BinStatus } from '@/types/wms-layout';
 import { fetchApi } from '../api-client';
 
 export const getWarehouses = async (): Promise<WarehouseDto[]> => {
@@ -21,14 +19,14 @@ export const createWarehouse = async (data: { code: string; name: string }) => {
 export const createBlock = async (warehouseId: string, blockCode: string) => {
   return fetchApi('wms', `/warehouse/${warehouseId}/blocks`, {
     method: 'POST',
-    body: blockCode // Note: backend expects [FromBody] string blockCode, which should be sent as a JSON string
+    body: { blockCode }
   });
 };
 
 export const createZone = async (blockId: string, type: ZoneType) => {
   return fetchApi('wms', `/warehouse/blocks/${blockId}/zones`, {
     method: 'POST',
-    body: type
+    body: { zoneType: type }
   });
 };
 

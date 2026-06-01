@@ -30,16 +30,14 @@ export default function LoginPage() {
     
     try {
       const res = await signIn('credentials', {
-        redirect: false,
+        redirect: true,
+        callbackUrl: '/',
         username,
         password,
       })
       
       if (res?.error) {
         setError('Tên đăng nhập hoặc mật khẩu không chính xác.')
-      } else {
-        router.push('/')
-        router.refresh()
       }
     } catch (err) {
       setError('Đã có lỗi xảy ra. Vui lòng thử lại.')

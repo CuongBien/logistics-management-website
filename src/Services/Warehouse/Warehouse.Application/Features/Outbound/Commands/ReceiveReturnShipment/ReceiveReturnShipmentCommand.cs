@@ -107,6 +107,19 @@ public sealed class ReceiveReturnShipmentCommandHandler : IRequestHandler<Receiv
                 request.OperatorId,
                 $"RTO Putaway to {request.TargetBinCode} from Shipment {shipment.ShipmentNo}");
             _context.InventoryLedgers.Add(restockLedger);
+
+            var outboundReturn = new OutboundReturn(
+                tenantId,
+                customerId,
+                shipment.WarehouseId,
+                shipment.Id,
+                item.OutboundOrderLine.OutboundOrder.OrderNo,
+                sku,
+                item.Quantity,
+                ReturnCondition.Good, // Default condition
+                $"Returned from Shipment {shipment.ShipmentNo}"
+            );
+            _context.OutboundReturns.Add(outboundReturn);
         }
 
         await _context.SaveChangesAsync(cancellationToken);

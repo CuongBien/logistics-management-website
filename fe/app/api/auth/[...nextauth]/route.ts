@@ -1,11 +1,27 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 
+let tokenRefreshPromise: Promise<any> | null = null;
+
 async function refreshAccessToken(token: any) {
+  if (tokenRefreshPromise) {
+    // If a refresh is already in progress, wait for it
+    const refreshedTokens = await tokenRefreshPromise;
+    if (refreshedTokens.error) {
+      return { ...token, error: "RefreshAccessTokenError" };
+    }
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      expiresAt: Math.floor(Date.now() / 1000 + refreshedTokens.expires_in),
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+    };
+  }
+
   try {
     const url = `${process.env.KEYCLOAK_ISSUER || "http://127.0.0.1:18080/realms/logistics_realm"}/protocol/openid-connect/token`
 
-    const response = await fetch(url, {
+    tokenRefreshPromise = fetch(url, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
@@ -16,13 +32,18 @@ async function refreshAccessToken(token: any) {
         grant_type: "refresh_token",
         refresh_token: token.refreshToken as string,
       }),
-    })
+    }).then(async (response) => {
+      const refreshedTokens = await response.json();
+      if (!response.ok) {
+        throw refreshedTokens;
+      }
+      return refreshedTokens;
+    }).finally(() => {
+      // Clear the promise so next time we can refresh again
+      tokenRefreshPromise = null;
+    });
 
-    const refreshedTokens = await response.json()
-
-    if (!response.ok) {
-      throw refreshedTokens
-    }
+    const refreshedTokens = await tokenRefreshPromise;
 
     return {
       ...token,

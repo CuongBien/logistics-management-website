@@ -105,10 +105,13 @@ public sealed class AutoPlanWavesCommandHandler : IRequestHandler<AutoPlanWavesC
         int sglIndex = 1;
         foreach (var chunk in singleChunks)
         {
-            string waveId = $"WAVE-SGL-{nowTimestamp}-{sglIndex:D2}";
-            if (ProcessChunk(chunk, allReservations, waveId))
+            string waveNo = $"WAVE-SGL-{nowTimestamp}-{sglIndex:D2}";
+            var wave = Wave.Create(waveNo, request.WarehouseId, WaveType.SingleItem, chunk.Length);
+            
+            if (ProcessChunk(chunk, allReservations, waveNo))
             {
-                createdWaves.Add(waveId);
+                _context.Waves.Add(wave);
+                createdWaves.Add(waveNo);
                 totalOrdersPlanned += chunk.Length;
             }
             sglIndex++;
@@ -119,10 +122,13 @@ public sealed class AutoPlanWavesCommandHandler : IRequestHandler<AutoPlanWavesC
         int mulIndex = 1;
         foreach (var chunk in multiChunks)
         {
-            string waveId = $"WAVE-MUL-{nowTimestamp}-{mulIndex:D2}";
-            if (ProcessChunk(chunk, allReservations, waveId))
+            string waveNo = $"WAVE-MUL-{nowTimestamp}-{mulIndex:D2}";
+            var wave = Wave.Create(waveNo, request.WarehouseId, WaveType.MultiItem, chunk.Length);
+            
+            if (ProcessChunk(chunk, allReservations, waveNo))
             {
-                createdWaves.Add(waveId);
+                _context.Waves.Add(wave);
+                createdWaves.Add(waveNo);
                 totalOrdersPlanned += chunk.Length;
             }
             mulIndex++;

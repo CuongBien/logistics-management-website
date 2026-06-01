@@ -1,9 +1,17 @@
 "use client"
 
-import { Bell, Settings, User, Menu } from "lucide-react"
+import { Bell, Settings, User, Menu, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -45,9 +53,23 @@ export function Navbar() {
         <Button variant="ghost" size="sm" className="text-white hover:bg-[#A01830] p-1 h-8 w-8">
           <Settings className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="sm" className="text-white hover:bg-[#A01830] p-1 h-8 w-8">
-          <User className="h-4 w-4" />
-        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-white hover:bg-[#A01830] p-1 h-8 w-8">
+              <User className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => signOut()}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <span className="text-xs text-white/80 ml-2 hidden sm:inline">{userName}</span>
       </div>
     </header>
