@@ -7,10 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { RoleDto, PermissionDto } from '@/types/wms-rbac';
 import { Plus, Edit } from 'lucide-react';
 import { RoleDialog } from './components/RoleDialog';
-import { useToast } from '@/components/ui/use-toast';
+import { toast as sonnerToast } from 'sonner';
 
 export default function RolesPage() {
-  const { toast } = useToast();
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [permissions, setPermissions] = useState<PermissionDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,11 +41,7 @@ export default function RolesPage() {
       }
 
       if (!rolesRes.ok) {
-        toast({
-          title: "Lỗi tải Vai trò (Roles)",
-          description: `Mã lỗi: ${rolesRes.status}. Chi tiết: ${rolesData?.details || rolesData?.error || 'Không thể kết nối đến WMS backend'}`,
-          variant: "destructive"
-        });
+        sonnerToast.error(`Lỗi tải Vai trò (Roles): Mã lỗi ${rolesRes.status}. Chi tiết: ${rolesData?.details || rolesData?.error || 'Không thể kết nối đến WMS backend'}`);
       } else if (rolesData) {
         if (rolesData.isSuccess && Array.isArray(rolesData.value)) {
           setRoles(rolesData.value);
@@ -56,11 +51,7 @@ export default function RolesPage() {
       }
 
       if (!permsRes.ok) {
-        toast({
-          title: "Lỗi tải Quyền hạn (Permissions)",
-          description: `Mã lỗi: ${permsRes.status}. Chi tiết: ${permsData?.details || permsData?.error || 'Không thể kết nối đến WMS backend'}`,
-          variant: "destructive"
-        });
+        sonnerToast.error(`Lỗi tải Quyền hạn (Permissions): Mã lỗi ${permsRes.status}. Chi tiết: ${permsData?.details || permsData?.error || 'Không thể kết nối đến WMS backend'}`);
       } else if (permsData) {
         if (permsData.isSuccess && Array.isArray(permsData.value)) {
           setPermissions(permsData.value);
@@ -70,11 +61,7 @@ export default function RolesPage() {
       }
     } catch (e: any) {
       console.error("Failed to load roles or permissions:", e);
-      toast({
-        title: "Lỗi kết nối",
-        description: `Không thể tải dữ liệu: ${e.message}`,
-        variant: "destructive"
-      });
+      sonnerToast.error(`Lỗi kết nối: Không thể tải dữ liệu: ${e.message}`);
     } finally {
       setLoading(false);
     }
