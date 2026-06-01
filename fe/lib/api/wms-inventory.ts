@@ -1,76 +1,62 @@
 import { InventoryItemDto, InventoryLedgerDto, LedgerTransactionType, ReconcileRequest } from '@/types/wms-inventory';
+import { fetchApi } from '@/lib/api-client';
 
-// Mocked local database for Inventory Items
+// ============================================================================
+// DUAL-MODE API STRATEGY (MOCK VS REAL DATABASE CONNECTION)
+// ============================================================================
+const USE_MOCK = false;
+
+// Mocked local database for Inventory Items (matches WMS database seed items to prevent mismatches)
 let mockInventoryDb: InventoryItemDto[] = [
   {
-    id: 'inv-1',
-    tenantId: 'tenant-shopee',
-    sku: 'IPHONE15-PRO-256',
-    binCode: 'ST-A-01',
+    id: "inv-1",
+    tenantId: "default-tenant",
+    sku: "A0-001",
+    binCode: "ST-A-01",
     quantityOnHand: 150,
-    availableQuantity: 120, // 30 reserved
-    lotNo: 'LOT-2026-A',
-    expiryDate: '2028-12-31T23:59:59Z',
+    availableQuantity: 120,
+    lotNo: "LOT-2026-A",
+    expiryDate: "2028-12-31T23:59:59Z",
   },
   {
-    id: 'inv-2',
-    tenantId: 'tenant-shopee',
-    sku: 'MACBOOK-M3-16GB',
-    binCode: 'ST-A-02',
+    id: "inv-2",
+    tenantId: "default-tenant",
+    sku: "A0-002",
+    binCode: "ST-A-02",
     quantityOnHand: 45,
-    availableQuantity: 45, // 0 reserved
-    lotNo: 'LOT-2026-B',
-    expiryDate: '2029-06-30T23:59:59Z',
+    availableQuantity: 45,
+    lotNo: "LOT-2026-B",
+    expiryDate: "2029-06-30T23:59:59Z",
   },
   {
-    id: 'inv-3',
-    tenantId: 'tenant-lazada',
-    sku: 'SAM-S24-ULTRA',
-    binCode: 'ST-B-01',
+    id: "inv-3",
+    tenantId: "default-tenant",
+    sku: "A0-003",
+    binCode: "ST-B-01",
     quantityOnHand: 80,
-    availableQuantity: 60, // 20 reserved
-    lotNo: 'LOT-2026-C',
-    expiryDate: '2028-09-15T23:59:59Z',
+    availableQuantity: 60,
+    lotNo: "LOT-2026-C",
+    expiryDate: "2028-09-15T23:59:59Z",
   },
   {
-    id: 'inv-4',
-    tenantId: 'tenant-tiktok',
-    sku: 'AIRPODS-PRO-2',
-    binCode: 'ST-B-02',
+    id: "inv-4",
+    tenantId: "default-tenant",
+    sku: "SKU-RED-TSHIRT",
+    binCode: "ST-B-02",
     quantityOnHand: 300,
-    availableQuantity: 300, // 0 reserved
-    lotNo: 'LOT-2026-D',
-    expiryDate: '2027-11-20T23:59:59Z',
+    availableQuantity: 300,
+    lotNo: "LOT-2026-D",
+    expiryDate: "2027-11-20T23:59:59Z",
   },
   {
-    id: 'inv-5',
-    tenantId: 'tenant-shopee',
-    sku: 'SONY-WH1000XM5',
-    binCode: 'IN-A-01',
-    quantityOnHand: 0,
-    availableQuantity: 0, // Out of stock
-    lotNo: 'LOT-2026-E',
-    expiryDate: '2028-01-10T23:59:59Z',
-  },
-  {
-    id: 'inv-6',
-    tenantId: 'tenant-lazada',
-    sku: 'NINTENDO-SWITCH-OLED',
-    binCode: 'IN-A-02',
-    quantityOnHand: 15,
-    availableQuantity: 5, // 10 reserved
-    lotNo: 'LOT-2026-F',
-    expiryDate: '2027-08-05T23:59:59Z',
-  },
-  {
-    id: 'inv-7',
-    tenantId: 'tenant-tiktok',
-    sku: 'LOGITECH-MX-KEYS',
-    binCode: 'CD-B-01',
+    id: "inv-5",
+    tenantId: "default-tenant",
+    sku: "SKU-BLUE-JEANS",
+    binCode: "CD-B-01",
     quantityOnHand: 120,
-    availableQuantity: 120, // 0 reserved
-    lotNo: 'LOT-2026-G',
-    expiryDate: '2029-01-01T23:59:59Z',
+    availableQuantity: 120,
+    lotNo: "LOT-2026-E",
+    expiryDate: "2029-01-01T23:59:59Z",
   }
 ];
 
@@ -96,257 +82,150 @@ let mockLedgersDb: Record<string, InventoryLedgerDto[]> = {
       referenceId: 'PUT-000551',
       occurredAt: '2026-05-11T10:30:00Z',
       operatorId: 'user-operator1'
-    },
-    {
-      id: 'led-103',
-      inventoryItemId: 'inv-1',
-      transactionType: 'Pick',
-      deltaQty: -10,
-      balanceAfter: 140,
-      referenceId: 'ORD-000987',
-      occurredAt: '2026-05-15T14:20:00Z',
-      operatorId: 'user-operator2'
-    },
-    {
-      id: 'led-104',
-      inventoryItemId: 'inv-1',
-      transactionType: 'Adjust',
-      deltaQty: 10,
-      balanceAfter: 150,
-      referenceId: 'ADJ-000003',
-      occurredAt: '2026-05-20T16:00:00Z',
-      operatorId: 'user-admin'
-    }
-  ],
-  'inv-2': [
-    {
-      id: 'led-201',
-      inventoryItemId: 'inv-2',
-      transactionType: 'Receipt',
-      deltaQty: 45,
-      balanceAfter: 45,
-      referenceId: 'RCV-000103',
-      occurredAt: '2026-05-12T09:15:00Z',
-      operatorId: 'user-admin'
-    }
-  ],
-  'inv-3': [
-    {
-      id: 'led-301',
-      inventoryItemId: 'inv-3',
-      transactionType: 'Receipt',
-      deltaQty: 100,
-      balanceAfter: 100,
-      referenceId: 'RCV-000104',
-      occurredAt: '2026-05-13T11:00:00Z',
-      operatorId: 'user-admin'
-    },
-    {
-      id: 'led-302',
-      inventoryItemId: 'inv-3',
-      transactionType: 'Pick',
-      deltaQty: -20,
-      balanceAfter: 80,
-      referenceId: 'ORD-000990',
-      occurredAt: '2026-05-18T15:30:00Z',
-      operatorId: 'user-operator1'
-    }
-  ],
-  'inv-4': [
-    {
-      id: 'led-401',
-      inventoryItemId: 'inv-4',
-      transactionType: 'Receipt',
-      deltaQty: 300,
-      balanceAfter: 300,
-      referenceId: 'RCV-000105',
-      occurredAt: '2026-05-14T14:45:00Z',
-      operatorId: 'user-admin'
     }
   ]
 };
 
 // API Services
 export const getInventoryList = async (): Promise<InventoryItemDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(resolve => setTimeout(resolve, 300));
   return [...mockInventoryDb];
 };
 
 export const getInventoryItem = async (id: string): Promise<InventoryItemDto | undefined> => {
-  await new Promise(resolve => setTimeout(resolve, 400));
+  await new Promise(resolve => setTimeout(resolve, 300));
   return mockInventoryDb.find(item => item.id === id);
 };
 
 export const getItemLedgers = async (id: string): Promise<InventoryLedgerDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  return mockLedgersDb[id] || [];
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    return mockLedgersDb[id] || [];
+  }
+
+  try {
+    const res = await fetchApi<any>("wms", `/inventory/${id}/ledger`);
+    const list = res?.value || res?.items || res || [];
+    return list.map((l: any) => ({
+      id: l.id,
+      inventoryItemId: l.inventoryItemId || id,
+      transactionType: l.transactionType || 'Adjust',
+      deltaQty: l.deltaQty || 0,
+      balanceAfter: l.balanceAfter || 0,
+      referenceId: l.referenceId || '',
+      occurredAt: l.occurredAt || new Date().toISOString(),
+      operatorId: l.operatorId || 'system'
+    }));
+  } catch (err) {
+    console.error("Error fetching ledgers from WMS backend:", err);
+    return [];
+  }
 };
 
 export const transferStock = async (data: { inventoryItemId: string; destBin: string; qty: number }) => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const item = mockInventoryDb.find(i => i.id === data.inventoryItemId);
-  if (!item) throw new Error("Inventory item not found");
-  if (item.availableQuantity < data.qty) throw new Error("Không đủ số lượng khả dụng để điều chuyển");
-
-  // Deduct from current item
-  const originalBin = item.binCode;
-  item.quantityOnHand -= data.qty;
-  item.availableQuantity -= data.qty;
-
-  // Add ledger entry for original item
-  if (!mockLedgersDb[item.id]) mockLedgersDb[item.id] = [];
-  mockLedgersDb[item.id].push({
-    id: `led-${Date.now()}`,
-    inventoryItemId: item.id,
-    transactionType: 'Transfer',
-    deltaQty: -data.qty,
-    balanceAfter: item.quantityOnHand,
-    referenceId: `TRF-${originalBin}→${data.destBin}`,
-    occurredAt: new Date().toISOString(),
-    operatorId: 'user-admin'
-  });
-
-  // Check if a similar item exists in destination bin (same SKU, Lot)
-  let destItem = mockInventoryDb.find(i => i.sku === item.sku && i.binCode === data.destBin && i.lotNo === item.lotNo);
-  
-  if (destItem) {
-    destItem.quantityOnHand += data.qty;
-    destItem.availableQuantity += data.qty;
-  } else {
-    // Create new item in destination bin
-    destItem = {
-      id: `inv-${Date.now()}`,
-      tenantId: item.tenantId,
-      sku: item.sku,
-      binCode: data.destBin,
-      quantityOnHand: data.qty,
-      availableQuantity: data.qty,
-      lotNo: item.lotNo,
-      expiryDate: item.expiryDate
-    };
-    mockInventoryDb.push(destItem);
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const item = mockInventoryDb.find(i => i.id === data.inventoryItemId);
+    if (!item) throw new Error("Inventory item not found");
+    if (item.availableQuantity < data.qty) throw new Error("Không đủ số lượng khả dụng để điều chuyển");
+    item.quantityOnHand -= data.qty;
+    item.availableQuantity -= data.qty;
+    return { success: true };
   }
 
-  // Add ledger entry for destination item
-  if (!mockLedgersDb[destItem.id]) mockLedgersDb[destItem.id] = [];
-  mockLedgersDb[destItem.id].push({
-    id: `led-${Date.now() + 1}`,
-    inventoryItemId: destItem.id,
-    transactionType: 'Transfer',
-    deltaQty: data.qty,
-    balanceAfter: destItem.quantityOnHand,
-    referenceId: `TRF-${originalBin}→${data.destBin}`,
-    occurredAt: new Date().toISOString(),
-    operatorId: 'user-admin'
+  await fetchApi("wms", "/inventory/transfer", {
+    method: "POST",
+    body: {
+      sourceInventoryItemId: data.inventoryItemId,
+      destinationBinCode: data.destBin,
+      quantity: data.qty,
+      tenantId: "default-tenant",
+      customerId: "cust-default"
+    }
   });
-
   return { success: true };
 };
 
 export const reconcileStock = async (data: { inventoryItemId: string; actualQuantity: number; reason: string }) => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const item = mockInventoryDb.find(i => i.id === data.inventoryItemId);
-  if (!item) throw new Error("Inventory item not found");
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const item = mockInventoryDb.find(i => i.id === data.inventoryItemId);
+    if (!item) throw new Error("Inventory item not found");
+    item.quantityOnHand = data.actualQuantity;
+    return { success: true };
+  }
 
-  const diff = data.actualQuantity - item.quantityOnHand;
-  const oldReserved = item.quantityOnHand - item.availableQuantity;
-
-  item.quantityOnHand = data.actualQuantity;
-  item.availableQuantity = Math.max(0, data.actualQuantity - oldReserved);
-
-  // Add ledger entry
-  if (!mockLedgersDb[item.id]) mockLedgersDb[item.id] = [];
-  mockLedgersDb[item.id].push({
-    id: `led-${Date.now()}`,
-    inventoryItemId: item.id,
-    transactionType: 'CycleCount',
-    deltaQty: diff,
-    balanceAfter: item.quantityOnHand,
-    referenceId: `REC-${data.reason}`,
-    occurredAt: new Date().toISOString(),
-    operatorId: 'user-admin'
+  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b"; // Active South ATL-01
+  await fetchApi("wms", "/inventory/reconcile", {
+    method: "POST",
+    body: {
+      warehouseId: defaultWarehouseId
+    }
   });
-
   return { success: true };
 };
 
 export const reserveStock = async (id: string, qty: number) => {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const item = mockInventoryDb.find(i => i.id === id);
+    if (!item) throw new Error("Inventory item not found");
+    item.availableQuantity -= qty;
+    return { success: true };
+  }
+
   const item = mockInventoryDb.find(i => i.id === id);
-  if (!item) throw new Error("Inventory item not found");
-  if (item.availableQuantity < qty) throw new Error("Số lượng khả dụng không đủ để bảo lưu");
-
-  item.availableQuantity -= qty;
-
-  // Add ledger entry for reservation
-  if (!mockLedgersDb[item.id]) mockLedgersDb[item.id] = [];
-  mockLedgersDb[item.id].push({
-    id: `led-${Date.now()}`,
-    inventoryItemId: item.id,
-    transactionType: 'Adjust',
-    deltaQty: 0, // No change in physical stock
-    balanceAfter: item.quantityOnHand,
-    referenceId: `RES-${qty}-giu`,
-    occurredAt: new Date().toISOString(),
-    operatorId: 'user-admin'
+  const sku = item?.sku || "A0-001";
+  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
+  await fetchApi("wms", "/inventory/reserve", {
+    method: "POST",
+    body: {
+      warehouseId: defaultWarehouseId,
+      sku: sku,
+      quantity: qty,
+      referenceId: `RES-${Date.now()}`,
+      referenceType: 1 // Manual
+    }
   });
-
   return { success: true };
 };
 
 export const releaseStock = async (id: string, qty: number) => {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  
-  const item = mockInventoryDb.find(i => i.id === id);
-  if (!item) throw new Error("Inventory item not found");
-  
-  const currentReserved = item.quantityOnHand - item.availableQuantity;
-  if (qty > currentReserved) throw new Error("Số lượng giải phóng lớn hơn số lượng đang bảo lưu");
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const item = mockInventoryDb.find(i => i.id === id);
+    if (!item) throw new Error("Inventory item not found");
+    item.availableQuantity += qty;
+    return { success: true };
+  }
 
-  item.availableQuantity += qty;
-
-  // Add ledger entry for release
-  if (!mockLedgersDb[item.id]) mockLedgersDb[item.id] = [];
-  mockLedgersDb[item.id].push({
-    id: `led-${Date.now()}`,
-    inventoryItemId: item.id,
-    transactionType: 'Adjust',
-    deltaQty: 0,
-    balanceAfter: item.quantityOnHand,
-    referenceId: `REL-${qty}-nha`,
-    occurredAt: new Date().toISOString(),
-    operatorId: 'user-admin'
+  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
+  await fetchApi("wms", "/inventory/release", {
+    method: "POST",
+    body: {
+      warehouseId: defaultWarehouseId,
+      reservationId: id
+    }
   });
-
   return { success: true };
 };
 
 export const consumeStock = async (id: string, qty: number) => {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  
-  const item = mockInventoryDb.find(i => i.id === id);
-  if (!item) throw new Error("Inventory item not found");
-  
-  const currentReserved = item.quantityOnHand - item.availableQuantity;
-  if (qty > currentReserved) throw new Error("Số lượng xuất kho lớn hơn số lượng đang bảo lưu");
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const item = mockInventoryDb.find(i => i.id === id);
+    if (!item) throw new Error("Inventory item not found");
+    item.quantityOnHand -= qty;
+    return { success: true };
+  }
 
-  item.quantityOnHand -= qty;
-
-  // Add ledger entry for consumption
-  if (!mockLedgersDb[item.id]) mockLedgersDb[item.id] = [];
-  mockLedgersDb[item.id].push({
-    id: `led-${Date.now()}`,
-    inventoryItemId: item.id,
-    transactionType: 'Ship',
-    deltaQty: -qty,
-    balanceAfter: item.quantityOnHand,
-    referenceId: `CON-${qty}-xuat`,
-    occurredAt: new Date().toISOString(),
-    operatorId: 'user-admin'
+  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
+  await fetchApi("wms", "/inventory/consume", {
+    method: "POST",
+    body: {
+      warehouseId: defaultWarehouseId,
+      reservationId: id
+    }
   });
-
   return { success: true };
 };

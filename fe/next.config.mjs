@@ -17,12 +17,20 @@ const nextConfig = {
         destination: 'http://localhost:5051/api/:path*',
       },
       {
+        source: '/api/masterdata/:path*',
+        destination: 'http://localhost:5052/api/:path*',
+      },
+      {
         source: '/health/oms',
         destination: 'http://localhost:5000/health',
       },
       {
         source: '/health/wms',
         destination: 'http://localhost:5051/health',
+      },
+      {
+        source: '/health/masterdata',
+        destination: 'http://localhost:5052/health',
       },
     ]
   },

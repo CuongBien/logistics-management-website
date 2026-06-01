@@ -6,10 +6,12 @@ const WMS_BACKEND_URL = process.env.NEXT_PUBLIC_WMS_URL || 'http://localhost:505
 const OMS_PROXY = '/api/oms';
 const WMS_PROXY = '/api/wms';
 
-export type ServiceTarget = 'oms' | 'wms';
+export type ServiceTarget = 'oms' | 'wms' | 'masterdata';
 
 function getBaseUrl(service: ServiceTarget): string {
-  return service === 'oms' ? OMS_PROXY : WMS_PROXY;
+  if (service === 'oms') return OMS_PROXY;
+  if (service === 'wms') return WMS_PROXY;
+  return '/api/masterdata';
 }
 
 function getToken(): string | null {

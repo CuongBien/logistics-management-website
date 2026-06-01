@@ -40,7 +40,7 @@ const navItems: NavItem[] = [
   { label: "Inventory", href: "/wms/inventory", icon: <Boxes className="h-4 w-4" /> },
   { label: "Warehouse Layout", href: "/wms/layout", icon: <Warehouse className="h-4 w-4" /> },
   { label: "Internal Tasks", href: "/wms/tasks/putaway", icon: <ClipboardList className="h-4 w-4" /> },
-  { label: "Master Data", href: "/master-data/items", icon: <Users className="h-4 w-4" /> },
+  { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
   { label: "Reports", href: "/reports", icon: <BarChart3 className="h-4 w-4" /> },
 ]
 
