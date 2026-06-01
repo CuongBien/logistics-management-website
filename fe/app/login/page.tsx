@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import {
   Package,
   ArrowLeft,
@@ -16,8 +16,28 @@ import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { status } = useSession()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/')
+    }
+  }, [status, router])
+
+  if (status === 'loading' || status === 'authenticated') {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="size-10 animate-spin text-[#C41E3A]" />
+          <p className="text-sm text-muted-foreground font-medium animate-pulse">
+            Đang chuyển hướng...
+          </p>
+        </div>
+      </div>
+    )
+  }
   
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

@@ -77,24 +77,30 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "WMS backend operation failed", details: rolesData.error?.message || "Unknown error" }, { status: 400 })
       }
 
-      // 4. Merge Keycloak Users with WMS Role Assignments
-      const result = kcUsers.map((u: any) => {
-        const userRoles = roleAssignments.filter((r: any) => r.operatorSub === u.id).map((r: any) => ({
-          id: r.id,
-          warehouseId: r.warehouseId,
-          warehouseName: r.warehouseName || r.warehouseId.split('-')[0],
-          roleName: r.roleName,
-          roleCode: r.roleCode
-        }))
+      // 4. Merge Keycloak Users with WMS Role Assignments (filtering out customer accounts without role assignments)
+      const result = kcUsers
+        .filter((u: any) => {
+          const hasRoles = roleAssignments.some((r: any) => r.operatorSub === u.id)
+          const isDefaultStaff = u.username === 'admin' || u.username === 'staff1'
+          return hasRoles || isDefaultStaff
+        })
+        .map((u: any) => {
+          const userRoles = roleAssignments.filter((r: any) => r.operatorSub === u.id).map((r: any) => ({
+            id: r.id,
+            warehouseId: r.warehouseId,
+            warehouseName: r.warehouseName || r.warehouseId.split('-')[0],
+            roleName: r.roleName,
+            roleCode: r.roleCode
+          }))
 
-        return {
-          operatorSub: u.id,
-          fullName: `${u.lastName || ''} ${u.firstName || ''}`.trim() || u.username,
-          email: u.email || `${u.username}@example.com`,
-          username: u.username,
-          roles: userRoles
-        }
-      })
+          return {
+            operatorSub: u.id,
+            fullName: `${u.lastName || ''} ${u.firstName || ''}`.trim() || u.username,
+            email: u.email || `${u.username}@example.com`,
+            username: u.username,
+            roles: userRoles
+          }
+        })
 
       return NextResponse.json(result)
     } catch (apiError: any) {

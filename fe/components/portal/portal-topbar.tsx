@@ -39,7 +39,7 @@ export function PortalTopbar({ onMenuClick }: PortalTopbarProps) {
   }
 
   function handleLogout() {
-    signOut({ callbackUrl: '/portal/login' })
+    signOut({ callbackUrl: '/portal/login', basePath: '/api/auth/oms' })
   }
 
   return (

@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { PortalSidebar } from '@/components/portal/portal-sidebar';
 import { PortalTopbar } from '@/components/portal/portal-topbar';
 import { Loader2 } from 'lucide-react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { AuthProvider } from '@/components/auth-provider';
+
+// Pages that do NOT require authentication
+const AUTH_PAGES = ['/portal/login', '/portal/register'];
 
 function PortalContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -14,14 +17,21 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: session, status } = useSession();
 
-  const isAuthPage = pathname === '/portal/login' || pathname === '/portal/register';
+  const isAuthPage = AUTH_PAGES.includes(pathname);
 
-  // If loading, show elegant skeleton/spinner
-  if (status === "loading") {
+  // FIX: Never call router.replace() during render — use useEffect to avoid React setState-in-render error
+  useEffect(() => {
+    if (status === 'unauthenticated' && !isAuthPage) {
+      router.replace('/portal/login');
+    }
+  }, [status, isAuthPage, router]);
+
+  // Show spinner while session is loading
+  if (status === 'loading') {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="size-10 animate-spin text-blue-600" />
+          <Loader2 className="size-10 animate-spin text-indigo-600" />
           <p className="text-sm text-muted-foreground font-medium animate-pulse">
             Đang xác thực thông tin...
           </p>
@@ -30,16 +40,17 @@ function PortalContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (status === "unauthenticated" && !isAuthPage) {
-    signIn("keycloak");
-    return null;
-  }
-
-  // If it's an Auth page, bypass the sidebar layout wrapper entirely
+  // Auth pages (login/register): render without sidebar
   if (isAuthPage) {
     return <>{children}</>;
   }
 
+  // Not yet authenticated: show nothing (useEffect above will redirect)
+  if (status === 'unauthenticated') {
+    return null;
+  }
+
+  // Authenticated: show full layout with sidebar + topbar
   return (
     <div className="flex h-screen bg-background">
       {/* Mobile overlay */}

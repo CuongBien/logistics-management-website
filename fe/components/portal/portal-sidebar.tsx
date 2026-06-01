@@ -9,6 +9,7 @@ import {
   Package,
   PlusCircle,
   Wallet,
+  MapPin,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/portal/dashboard', icon: LayoutDashboard },
   { label: 'Đơn hàng', href: '/portal/orders', icon: Package },
   { label: 'Tạo đơn mới', href: '/portal/orders/create', icon: PlusCircle },
+  { label: 'Theo dõi đơn', href: '/portal/tracking', icon: MapPin },
   { label: 'Đối soát', href: '/portal/reconciliation', icon: Wallet },
 ]
 

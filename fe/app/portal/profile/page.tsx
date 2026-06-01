@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
+import { signOut } from 'next-auth/react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -127,9 +128,8 @@ export default function ProfilePage() {
   }
 
   function handleLogout() {
-    toast.success('Bạn đã đăng xuất tài khoản thành công.')
-    // Redirect logic to use standard signOut if next-auth is added to portal, but for now just push to login
-    router.push('/login')
+    toast.success('Đang đăng xuất...')
+    signOut({ callbackUrl: '/portal/login', basePath: '/api/auth/oms' })
   }
 
   if (!profile) return null
