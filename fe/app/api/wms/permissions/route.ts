@@ -1,38 +1,30 @@
 import { NextResponse } from 'next/server'
 import { getSession } from "@/lib/auth"
-import { getMockPermissions } from "@/lib/mock-rbac-db"
 
 export async function GET(request: Request) {
   try {
     const session = await getSession()
     if (!session?.accessToken) {
-      console.warn("Unauthorized API call to permissions, returning mock permissions for dev/demo!");
-      return NextResponse.json(getMockPermissions())
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const apiUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment/Permissions`
     
-    try {
-      const res = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${session.accessToken}`
-        },
-        signal: AbortSignal.timeout(3000)
-      })
-
-      if (!res.ok) {
-        console.warn("Warehouse API returned error for permissions, falling back to mock!");
-        return NextResponse.json(getMockPermissions())
+    const res = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${session.accessToken}`
       }
+    })
 
-      const data = await res.json()
-      return NextResponse.json(data)
-    } catch (fetchError) {
-      console.error("Failed to connect to Warehouse API for permissions, falling back to mock!", fetchError)
-      return NextResponse.json(getMockPermissions())
+    if (!res.ok) {
+      console.error("Failed to fetch permissions from WMS C# backend:", await res.text())
+      return NextResponse.json({ error: "Failed to fetch permissions" }, { status: res.status })
     }
+
+    const data = await res.json()
+    return NextResponse.json(data)
   } catch (error) {
-    console.error("Get Permissions Global Error:", error)
-    return NextResponse.json(getMockPermissions())
+    console.error("Get Permissions Error:", error)
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }

@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { getMockUsers, assignMockRole } from "@/lib/mock-rbac-db"
 
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session || !session.accessToken) {
-      console.warn("Unauthorized API call to users, returning mock users for dev/demo!");
-      return NextResponse.json(getMockUsers())
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     try {
@@ -28,12 +26,13 @@ export async function GET(req: Request) {
         signal: AbortSignal.timeout(3000)
       })
 
-      const adminData = await adminRes.json()
       if (!adminRes.ok) {
-        console.warn('Failed to get admin token from Keycloak, falling back to mock users.');
-        return NextResponse.json(getMockUsers())
+        const errText = await adminRes.text()
+        console.error('Failed to get admin token from Keycloak:', errText)
+        return NextResponse.json({ error: "Failed to authenticate with Keycloak", details: errText }, { status: adminRes.status })
       }
 
+      const adminData = await adminRes.json()
       const adminToken = adminData.access_token
       const targetRealm = 'logistics_realm'
 
@@ -47,8 +46,9 @@ export async function GET(req: Request) {
       })
 
       if (!kcRes.ok) {
-        console.warn('Failed to fetch users from Keycloak, falling back to mock users.')
-        return NextResponse.json(getMockUsers())
+        const errText = await kcRes.text()
+        console.error('Failed to fetch users from Keycloak:', errText)
+        return NextResponse.json({ error: "Failed to fetch users from Keycloak", details: errText }, { status: kcRes.status })
       }
 
       const kcUsers = await kcRes.json()
@@ -62,17 +62,22 @@ export async function GET(req: Request) {
         signal: AbortSignal.timeout(3000)
       })
 
-      let roleAssignments = []
-      if (rolesRes.ok) {
-        const rolesData = await rolesRes.json()
-        if (rolesData.isSuccess) {
-           roleAssignments = rolesData.value
-        }
-      } else {
-        console.warn("Failed to fetch role assignments from C# WMS backend.")
+      if (!rolesRes.ok) {
+        const errText = await rolesRes.text()
+        console.error("Failed to fetch role assignments from C# WMS backend:", errText)
+        return NextResponse.json({ error: "Failed to fetch role assignments from WMS backend", details: errText }, { status: rolesRes.status })
       }
 
-      // 4. Merge
+      const rolesData = await rolesRes.json()
+      let roleAssignments = []
+      if (rolesData.isSuccess) {
+        roleAssignments = rolesData.value || []
+      } else {
+        console.error("WMS backend returned unsuccessful status for role assignments:", rolesData)
+        return NextResponse.json({ error: "WMS backend operation failed", details: rolesData.error?.message || "Unknown error" }, { status: 400 })
+      }
+
+      // 4. Merge Keycloak Users with WMS Role Assignments
       const result = kcUsers.map((u: any) => {
         const userRoles = roleAssignments.filter((r: any) => r.operatorSub === u.id).map((r: any) => ({
           warehouseId: r.warehouseId,
@@ -90,28 +95,25 @@ export async function GET(req: Request) {
       })
 
       return NextResponse.json(result)
-    } catch (apiError) {
-      console.error("Identity or WMS backend offline during staff fetch, falling back to mock users!", apiError)
-      return NextResponse.json(getMockUsers())
+    } catch (apiError: any) {
+      console.error("Identity or WMS backend offline during staff fetch:", apiError)
+      return NextResponse.json({ error: "Backend services unavailable", details: apiError.message }, { status: 500 })
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get Users Global Error:', error)
-    return NextResponse.json(getMockUsers())
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions)
-    const body = await req.json()
-    const { operatorSub, roleCode, warehouseId } = body
-
     if (!session || !session.accessToken) {
-      console.warn("Unauthorized API call to assign role, assigning in mock storage!");
-      assignMockRole(operatorSub, roleCode, warehouseId)
-      return NextResponse.json({ isSuccess: true })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const body = await req.json()
+    const { operatorSub, roleCode, warehouseId } = body
     const apiUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment`
     
     try {
@@ -130,20 +132,19 @@ export async function POST(req: Request) {
       })
 
       if (!res.ok) {
-        console.warn("Failed to assign role in C# WMS backend, falling back to mock storage!", await res.text())
-        assignMockRole(operatorSub, roleCode, warehouseId)
-        return NextResponse.json({ isSuccess: true })
+        const errorText = await res.text()
+        console.error("Failed to assign role in C# WMS backend:", errorText)
+        return NextResponse.json({ error: "Failed to assign role in WMS backend", details: errorText }, { status: res.status })
       }
 
       const data = await res.json()
       return NextResponse.json(data)
-    } catch (fetchError) {
-      console.error("Failed to connect to Warehouse API for role assignment, falling back to mock storage!", fetchError)
-      assignMockRole(operatorSub, roleCode, warehouseId)
-      return NextResponse.json({ isSuccess: true })
+    } catch (fetchError: any) {
+      console.error("Failed to connect to Warehouse API for role assignment:", fetchError)
+      return NextResponse.json({ error: "WMS backend connection failed", details: fetchError.message }, { status: 500 })
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Assign Role Global Error:', error)
-    return NextResponse.json({ isSuccess: false, error: { message: "Internal Server Error" } }, { status: 500 })
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }

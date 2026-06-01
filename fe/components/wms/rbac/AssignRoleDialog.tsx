@@ -81,31 +81,14 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
               list = res;
             }
           }
-          
-          if (!list || list.length === 0) {
-            console.warn("Warehouse list is empty from WMS, falling back to mock warehouses!");
-            list = [
-              { id: "a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", name: "HCM Mega Hub (WH-SG-002)" },
-              { id: "e5e5e5e5-e5e5-e5e5-e5e5-e5e5-e5e5", name: "Hanoi Mega Hub (WH-HN-006)" },
-              { id: "c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3", name: "Da Nang Sorting Center (WH-DN-004)" },
-              { id: "b61a8f61-5238-4a18-809c-335cc293a025", name: "Can Tho Delivery Hub (WH-CT-001)" }
-            ];
-          }
-          
           setWarehouses(list);
           if (list.length > 0) {
             setWarehouseId(list[0].id);
           }
         } catch (e) {
-          console.error("Failed to load warehouses, using fallback mock!", e);
-          const fallbackList = [
-            { id: "a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", name: "HCM Mega Hub (WH-SG-002)" },
-            { id: "e5e5e5e5-e5e5-e5e5-e5e5-e5e5-e5e5", name: "Hanoi Mega Hub (WH-HN-006)" },
-            { id: "c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3", name: "Da Nang Sorting Center (WH-DN-004)" },
-            { id: "b61a8f61-5238-4a18-809c-335cc293a025", name: "Can Tho Delivery Hub (WH-CT-001)" }
-          ];
-          setWarehouses(fallbackList);
-          setWarehouseId(fallbackList[0].id);
+          console.error("Failed to load warehouses from live API", e);
+          setWarehouses([]);
+          showToast('Lỗi', 'Không thể kết nối đến máy chủ WMS để tải danh sách Kho', 'destructive');
         }
       };
 
@@ -121,12 +104,9 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
             throw new Error("Invalid roles response format");
           }
         } catch (e) {
-          console.error("Failed to load roles, falling back to mock roles!", e);
-          setRoles([
-            { id: "role-1", name: "Quản đốc kho", code: "warehouse_manager", permissions: [] },
-            { id: "role-2", name: "Nhân viên kiểm kho", code: "cycle_counter", permissions: [] },
-            { id: "role-3", name: "Nhân viên lấy hàng (Picker)", code: "picker", permissions: [] }
-          ]);
+          console.error("Failed to load roles from API", e);
+          setRoles([]);
+          showToast('Lỗi', 'Không thể tải danh sách Vai trò từ hệ thống', 'destructive');
         }
       };
 
@@ -143,9 +123,8 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
 
     setLoading(true);
     try {
-      const res = await fetch('/api/wms/users', {
+      const res = await fetchApi('wms', '/RoleAssignment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           operatorSub: operator.operatorSub,
           roleCode: roleCode,
@@ -153,11 +132,10 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
         }),
       });
 
-      const data = await res.json();
-
-      if (res.ok && data && data.isSuccess) {
+      if (res && (res as any).isSuccess) {
         showToast('Thành công', `Đã gán quyền cho ${operator.fullName} thành công.`);
         onSuccess();
+        onOpenChange(false);
       } else {
         showToast('Thất bại', 'Có lỗi xảy ra khi phân quyền.', 'destructive');
       }

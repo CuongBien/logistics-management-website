@@ -22,16 +22,6 @@ export function WarehouseContextSelector() {
           }
         }
         
-        if (!list || list.length === 0) {
-          console.warn("Warehouse list is empty for selector, using fallback mock!");
-          list = [
-            { id: "a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", name: "HCM Mega Hub (WH-SG-002)" },
-            { id: "e5e5e5e5-e5e5-e5e5-e5e5-e5e5-e5e5", name: "Hanoi Mega Hub (WH-HN-006)" },
-            { id: "c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3", name: "Da Nang Sorting Center (WH-DN-004)" },
-            { id: "b61a8f61-5238-4a18-809c-335cc293a025", name: "Can Tho Delivery Hub (WH-CT-001)" }
-          ];
-        }
-        
         setWarehouses(list);
         
         // If no active warehouse is set, set to the first one available
@@ -40,18 +30,8 @@ export function WarehouseContextSelector() {
           setActiveWarehouseId(defaultId);
         }
       } catch (e) {
-        console.error("Failed to load warehouses for selector, using fallback mock!", e);
-        const fallbackList = [
-          { id: "a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", name: "HCM Mega Hub (WH-SG-002)" },
-          { id: "e5e5e5e5-e5e5-e5e5-e5e5-e5e5-e5e5", name: "Hanoi Mega Hub (WH-HN-006)" },
-          { id: "c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3", name: "Da Nang Sorting Center (WH-DN-004)" },
-          { id: "b61a8f61-5238-4a18-809c-335cc293a025", name: "Can Tho Delivery Hub (WH-CT-001)" }
-        ];
-        setWarehouses(fallbackList);
-        if (!activeWarehouseId) {
-          const defaultId = localStorage.getItem('wms_active_warehouse_id') || fallbackList[0].id;
-          setActiveWarehouseId(defaultId);
-        }
+        console.error("Failed to load warehouses for selector from live API", e);
+        setWarehouses([]);
       }
     };
     loadWarehouses();
