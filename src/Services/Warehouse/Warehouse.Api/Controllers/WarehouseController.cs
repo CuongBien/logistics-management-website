@@ -14,9 +14,9 @@ namespace Warehouse.Api.Controllers;
 public class WarehouseController : ApiControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetWarehouses()
+    public async Task<IActionResult> GetWarehouses([FromQuery] bool all = false)
     {
-        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var operatorSub = all ? string.Empty : (CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
         var result = await Mediator.Send(new GetWarehousesQuery(operatorSub));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }

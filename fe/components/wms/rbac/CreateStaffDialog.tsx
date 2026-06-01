@@ -74,7 +74,7 @@ export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaff
 
       const loadWarehouses = async () => {
         try {
-          const res = await fetchApi<any>('wms', '/Warehouse');
+          const res = await fetchApi<any>('wms', '/Warehouse?all=true');
           let list: any[] = [];
           if (res) {
             if (res.isSuccess && Array.isArray(res.value)) {
