@@ -30,6 +30,16 @@ public class RoleAssignmentController : ControllerBase
     }
 
     /// <summary>
+    /// Hủy gán vai trò của nhân viên (Unassign Role)
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> UnassignRole(System.Guid id)
+    {
+        var result = await _mediator.Send(new Warehouse.Application.Features.Identity.Commands.UnassignRole.UnassignRoleCommand(id));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>
     /// Lấy danh sách quyền đã cấp
     /// </summary>
     [HttpGet]

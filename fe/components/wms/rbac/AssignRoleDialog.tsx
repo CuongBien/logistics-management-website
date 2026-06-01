@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import {
-  ShieldPlus, Warehouse, UserCog, Loader2, CheckCircle2, AlertTriangle
+  ShieldPlus, Warehouse, UserCog, Loader2, CheckCircle2, AlertTriangle, Trash2, X
 } from 'lucide-react';
 
 interface AssignRoleDialogProps {
@@ -43,6 +43,7 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
   const [loading, setLoading] = useState(false);
   const [roleCode, setRoleCode] = useState<string>('');
   const [warehouseId, setWarehouseId] = useState<string>('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Try to use shadcn toast, fallback to sonner
   let toastFn: any;
@@ -62,6 +63,30 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
       } else {
         sonnerToast.success(`${title}: ${description}`);
       }
+    }
+  };
+
+  const handleUnassign = async (assignmentId: string, roleName: string) => {
+    if (!assignmentId) return;
+    
+    setDeletingId(assignmentId);
+    try {
+      const res = await fetch(`/api/wms/users?id=${assignmentId}`, {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        showToast('Thành công', `Đã gỡ vai trò ${roleName} khỏi nhân viên.`);
+        onSuccess();
+      } else {
+        const data = await res.json();
+        showToast('Thất bại', data.details || 'Có lỗi xảy ra khi gỡ vai trò.', 'destructive');
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast('Thất bại', 'Lỗi hệ thống khi gỡ vai trò.', 'destructive');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -185,11 +210,30 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
         {/* Current Roles Preview */}
         {operator.roles.length > 0 && (
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Quyền hiện tại:</Label>
+            <Label className="text-xs text-muted-foreground">Quyền hiện tại (Nhấn X để gỡ quyền):</Label>
             <div className="flex flex-wrap gap-1">
               {operator.roles.map((r, i) => (
-                <Badge key={i} variant="secondary" className="text-xs font-medium">
-                  {r.roleName} @ {r.warehouseName || r.warehouseId.split('-')[0]}
+                <Badge 
+                  key={i} 
+                  variant="secondary" 
+                  className="text-xs font-medium pl-2.5 pr-1 py-0.5 flex items-center gap-1 bg-muted/75 text-foreground hover:bg-muted"
+                >
+                  <span>{r.roleName} @ {r.warehouseName || r.warehouseId.split('-')[0]}</span>
+                  {r.id && (
+                    <button
+                      type="button"
+                      onClick={() => handleUnassign(r.id!, r.roleName)}
+                      disabled={deletingId !== null}
+                      className="ml-1 p-0.5 rounded-full hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors focus:outline-none"
+                      title="Gỡ vai trò này"
+                    >
+                      {deletingId === r.id ? (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin text-destructive" />
+                      ) : (
+                        <X className="h-2.5 w-2.5" />
+                      )}
+                    </button>
+                  )}
                 </Badge>
               ))}
             </div>

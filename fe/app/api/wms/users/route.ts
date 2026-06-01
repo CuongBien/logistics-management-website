@@ -80,9 +80,11 @@ export async function GET(req: Request) {
       // 4. Merge Keycloak Users with WMS Role Assignments
       const result = kcUsers.map((u: any) => {
         const userRoles = roleAssignments.filter((r: any) => r.operatorSub === u.id).map((r: any) => ({
+          id: r.id,
           warehouseId: r.warehouseId,
           warehouseName: r.warehouseName || 'Kho chính',
-          roleName: r.roleName
+          roleName: r.roleName,
+          roleCode: r.roleCode
         }))
 
         return {
@@ -271,6 +273,49 @@ export async function POST(req: Request) {
     }
   } catch (error: any) {
     console.error('Assign Role Global Error:', error)
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing assignment ID parameter" }, { status: 400 })
+    }
+
+    const apiUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment/${id}`
+
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`
+        },
+        signal: AbortSignal.timeout(3000)
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error(`Failed to delete role assignment ${id} in C# backend:`, errorText)
+        return NextResponse.json({ error: "Failed to delete role assignment in WMS backend", details: errorText }, { status: res.status })
+      }
+
+      const data = await res.json()
+      return NextResponse.json(data)
+    } catch (fetchError: any) {
+      console.error(`Failed to connect to WMS backend for deleting role assignment ${id}:`, fetchError)
+      return NextResponse.json({ error: "WMS backend connection failed during deletion", details: fetchError.message }, { status: 500 })
+    }
+  } catch (error: any) {
+    console.error('Delete Role Global Error:', error)
     return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }

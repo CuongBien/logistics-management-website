@@ -1,8 +1,10 @@
+using System;
+using System.Collections.Generic;
 using Logistics.Core;
 using MediatR;
 
 namespace Warehouse.Application.Features.Identity.Queries.GetRoleAssignments;
 
-public record RoleAssignmentDto(string OperatorSub, string WarehouseId, string RoleName);
+public record RoleAssignmentDto(Guid Id, string OperatorSub, string WarehouseId, string RoleName, string RoleCode);
 
 public record GetRoleAssignmentsQuery : IRequest<Result<List<RoleAssignmentDto>>>;

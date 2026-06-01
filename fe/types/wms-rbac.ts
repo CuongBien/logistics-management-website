@@ -24,8 +24,10 @@ export interface OperatorDto {
   email: string;
   username: string;
   roles: {
+    id?: string;
     warehouseId: string;
     warehouseName: string;
     roleName: string;
+    roleCode?: string;
   }[];
 }
