@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { StatusTiles } from "@/components/dashboard/status-tiles"
 import { StatCards } from "@/components/dashboard/stat-cards"
 import { ActivityLog } from "@/components/dashboard/activity-log"
@@ -8,19 +9,25 @@ import { WorkerStatus } from "@/components/dashboard/worker-status"
 import { ZoneOverview } from "@/components/dashboard/zone-overview"
 
 export default function DashboardPage() {
-  const currentTime = new Date().toLocaleTimeString("en-US", {
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const currentTime = mounted ? new Date().toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-  })
+  }) : ""
   
-  const currentDate = new Date().toLocaleDateString("en-US", {
+  const currentDate = mounted ? new Date().toLocaleDateString("en-US", {
     weekday: "short",
     year: "numeric",
     month: "short",
     day: "numeric",
-  })
+  }) : ""
 
   return (
     <div className="flex flex-col h-full">

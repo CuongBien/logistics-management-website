@@ -152,7 +152,12 @@ builder.Services.AddAuthentication("Bearer")
             },
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine("JWT ERROR: " + context.Exception);
+                Console.WriteLine("JWT ERROR (Failed): " + context.Exception);
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                Console.WriteLine("JWT ERROR (Challenge): " + context.Error + " / " + context.ErrorDescription + " / " + context.AuthenticateFailure);
                 return Task.CompletedTask;
             },
             OnMessageReceived = context =>
@@ -207,6 +212,12 @@ if (app.Environment.IsDevelopment())
             claims = user.Claims.Select(c => new { c.Type, c.Value }).ToList()
         });
     }).RequireAuthorization();
+
+    app.MapGet("/api/debug/orders", async (Ordering.Application.Common.Interfaces.IApplicationDbContext db) => 
+    {
+        var orders = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(db.Orders);
+        return Results.Ok(orders.Select(o => new { o.Id, o.ConsignorId, o.TenantId }).ToList());
+    });
 }
 
 using (var scope = app.Services.CreateScope())

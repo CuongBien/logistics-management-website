@@ -31,6 +31,9 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<OutboundOrder> OutboundOrders => Set<OutboundOrder>();
     public DbSet<OutboundOrderLine> OutboundOrderLines => Set<OutboundOrderLine>();
     public DbSet<PickTask> PickTasks => Set<PickTask>();
+    public DbSet<Wave> Waves => Set<Wave>();
+    public DbSet<OutboundReturn> OutboundReturns => Set<OutboundReturn>();
+
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<ShipmentItem> ShipmentItems => Set<ShipmentItem>();
     public DbSet<ShipmentOrder> ShipmentOrders => Set<ShipmentOrder>();

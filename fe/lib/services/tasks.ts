@@ -2,7 +2,12 @@ import { fetchApi } from '../api-client';
 import type { PutawayTask, ReplenishmentTask, CycleCountTask } from '../types';
 
 export async function getPutawayTasks(status: string = 'Pending'): Promise<PutawayTask[]> {
-  return fetchApi<PutawayTask[]>('wms', `/inbound/putaway-tasks?status=${status}`);
+  try {
+    return await fetchApi<PutawayTask[]>('wms', `/inbound/putaway-tasks?status=${status}`);
+  } catch (e) {
+    // Backend doesn't have GET endpoint yet, suppress error
+    return [];
+  }
 }
 
 export async function completePutawayTask(taskId: string, scannedDestinationBinCode: string): Promise<unknown> {
@@ -19,7 +24,11 @@ export async function generateReplenishmentTasks(tenantId: string, warehouseId: 
 }
 
 export async function getReplenishmentTasks(status: string = 'Pending'): Promise<ReplenishmentTask[]> {
-  return fetchApi<ReplenishmentTask[]>('wms', `/inventory/tasks/replenish?status=${status}`);
+  try {
+    return await fetchApi<ReplenishmentTask[]>('wms', `/inventory/tasks/replenish?status=${status}`);
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function completeReplenishmentTask(taskId: string): Promise<unknown> {

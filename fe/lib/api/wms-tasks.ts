@@ -112,9 +112,28 @@ export async function getPutawayTasks(): Promise<PutawayTaskDto[]> {
     return [...mockPutawayTasks];
   }
   
-  // Real Database API call via Next.js Proxy to WMS container
-  // Route matches WMS Api: [Route("api/inbound/putaway-tasks")]
   return await fetchApi<PutawayTaskDto[]>("wms", "/inbound/putaway-tasks");
+}
+
+export async function fetchPutawayTasks(): Promise<PutawayTaskDto[]> {
+  return await getPutawayTasks();
+}
+
+export async function completePutawayTask(taskId: string, scannedDestinationBinCode: string): Promise<void> {
+  if (USE_MOCK) {
+    await delay(400);
+    const index = mockPutawayTasks.findIndex(t => t.id === taskId);
+    if (index !== -1) {
+      mockPutawayTasks[index].status = "Completed";
+      mockPutawayTasks[index].completedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  await fetchApi('wms', `/inbound/putaway-tasks/${taskId}/complete`, {
+    method: 'POST',
+    body: { scannedDestinationBinCode }
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -129,6 +148,26 @@ export async function getReplenishmentTasks(): Promise<ReplenishmentTaskDto[]> {
   return await fetchApi<ReplenishmentTaskDto[]>("wms", "/inventory/tasks/replenish");
 }
 
+export async function fetchReplenishmentTasks(): Promise<ReplenishmentTaskDto[]> {
+  return await getReplenishmentTasks();
+}
+
+export async function completeReplenishmentTask(taskId: string): Promise<void> {
+  if (USE_MOCK) {
+    await delay(400);
+    const index = mockReplenishmentTasks.findIndex(t => t.id === taskId);
+    if (index !== -1) {
+      mockReplenishmentTasks[index].status = "Completed";
+      mockReplenishmentTasks[index].completedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  await fetchApi('wms', `/inventory/tasks/replenish/${taskId}/complete`, {
+    method: 'POST'
+  });
+}
+
 // ----------------------------------------------------------------------------
 // 3. GET ALL CYCLE COUNT TASKS
 // ----------------------------------------------------------------------------
@@ -139,6 +178,28 @@ export async function getCycleCountTasks(): Promise<CycleCountTaskDto[]> {
   }
   
   return await fetchApi<CycleCountTaskDto[]>("wms", "/inventory/tasks/cycle-count");
+}
+
+export async function fetchCycleCountTasks(): Promise<CycleCountTaskDto[]> {
+  return await getCycleCountTasks();
+}
+
+export async function submitCycleCount(taskId: string, countedQty: number): Promise<void> {
+  if (USE_MOCK) {
+    await delay(400);
+    const index = mockCycleCountTasks.findIndex(t => t.id === taskId);
+    if (index !== -1) {
+      mockCycleCountTasks[index].status = "Counted";
+      mockCycleCountTasks[index].countedQty = countedQty;
+      mockCycleCountTasks[index].completedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  await fetchApi('wms', `/inventory/tasks/cycle-count/${taskId}/submit`, {
+    method: 'POST',
+    body: { countedQty }
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -173,9 +234,6 @@ export async function generateReplenishment(): Promise<ReplenishmentTaskDto[]> {
     return mockReplenishmentTasks;
   }
   
-  // Real Database Trigger Endpoint
-  // Controller: [Route("api/inventory/tasks")] -> [HttpPost("replenish/generate")]
-  // Defaulting tenantId to 'default-tenant' and warehouseId to active ATL-01 GUID
   const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b"; // Active South ATL-01
   return await fetchApi<ReplenishmentTaskDto[]>("wms", `/inventory/tasks/replenish/generate?tenantId=default-tenant&warehouseId=${defaultWarehouseId}`, {
     method: "POST"
@@ -199,7 +257,6 @@ export async function generateCycleCount(binCode: string, sku: string): Promise<
     return newTask;
   }
   
-  // Real Database Trigger Endpoint: [HttpPost("cycle-count/generate")]
   const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
   return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/generate?tenantId=default-tenant&warehouseId=${defaultWarehouseId}&maxTasks=1`, {
     method: "POST"
@@ -209,7 +266,7 @@ export async function generateCycleCount(binCode: string, sku: string): Promise<
 // ----------------------------------------------------------------------------
 // 6. APPROVE CYCLE COUNT DISCREPANCY
 // ----------------------------------------------------------------------------
-export async function approveCycleCount(id: string, notes: string): Promise<CycleCountTaskDto> {
+export async function approveCycleCount(id: string, notes?: string): Promise<CycleCountTaskDto | void> {
   if (USE_MOCK) {
     await delay(500);
     const index = mockCycleCountTasks.findIndex((task) => task.id === id);
@@ -222,9 +279,9 @@ export async function approveCycleCount(id: string, notes: string): Promise<Cycl
     return mockCycleCountTasks[index];
   }
   
-  // Real Database Approval: [HttpPost("cycle-count/{taskId:guid}/approve")]
-  return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/${id}/approve`, {
-    method: "POST"
+  await fetchApi("wms", `/inventory/tasks/cycle-count/${id}/approve`, {
+    method: "POST",
+    body: { notes: notes || "Phê duyệt" }
   });
 }
 
@@ -244,9 +301,8 @@ export async function rejectCycleCount(id: string, notes: string): Promise<Cycle
     return mockCycleCountTasks[index];
   }
   
-  // Real Database Rejection (WMS backend controller)
   return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/${id}/reject`, {
-    method: "POST"
+    method: "POST",
+    body: { notes }
   });
 }
-

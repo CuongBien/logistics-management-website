@@ -22,6 +22,7 @@ public class CountTask : Entity<Guid>, ISoftDelete
     public int? CountedQty { get; private set; }
     public CountTaskStatus Status { get; private set; }
     public string? AssignedTo { get; private set; }
+    public DateTime CreatedAt { get; private set; }
     
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
@@ -41,6 +42,7 @@ public class CountTask : Entity<Guid>, ISoftDelete
         ExpiryDate = expiryDate;
         ExpectedQty = expectedQty;
         Status = CountTaskStatus.Pending;
+        CreatedAt = DateTime.UtcNow;
         IsDeleted = false;
     }
 

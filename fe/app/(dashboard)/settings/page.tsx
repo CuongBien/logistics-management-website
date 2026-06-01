@@ -7,22 +7,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { setToken, getStoredToken, clearToken, checkHealth, getOmsUrl, getWmsUrl } from "@/lib/api-client"
+import { checkHealth, getOmsUrl, getWmsUrl } from "@/lib/api-client"
 import { fetchApi } from "@/lib/api-client"
+import { useSession } from "next-auth/react"
 
 export default function SettingsPage() {
-  const [token, setTokenState] = useState("")
+  const { data: session } = useSession()
+  const token = (session as any)?.accessToken || ""
   const [omsHealth, setOmsHealth] = useState<boolean|null>(null)
   const [wmsHealth, setWmsHealth] = useState<boolean|null>(null)
   const [checking, setChecking] = useState(false)
   const [roleForm, setRoleForm] = useState({ warehouseId:"", operatorSub:"", roleCode:"manager" })
 
-  useEffect(() => { setTokenState(getStoredToken() || "") }, [])
 
-  const handleSaveToken = () => {
-    if (token.trim()) { setToken(token.trim()); toast.success("Token saved") }
-    else { clearToken(); toast.info("Token cleared") }
-  }
 
   const checkConnections = async () => {
     setChecking(true); setOmsHealth(null); setWmsHealth(null)
@@ -79,18 +76,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Auth Token */}
-          <div className="border border-border bg-white">
-            <div className="bg-muted px-3 py-1.5 border-b border-border flex items-center gap-2"><Key className="h-3.5 w-3.5" /><h3 className="text-xs font-semibold uppercase">Auth Token</h3></div>
-            <div className="p-4 space-y-3">
-              <p className="text-[10px] text-muted-foreground">Paste JWT token từ Keycloak. Token sẽ tự động đính kèm mọi API request.</p>
-              <Textarea className="text-[10px] font-mono" rows={4} placeholder="eyJhbGciOiJSUzI1NiIs..." value={token} onChange={e=>setTokenState(e.target.value)} />
-              <div className="flex gap-2">
-                <Button className="flex-1 h-8 text-xs bg-[#C41E3A] hover:bg-[#A01830] text-white" onClick={handleSaveToken}><Key className="h-3 w-3 mr-1" />Save Token</Button>
-                <Button className="h-8 text-xs" variant="outline" onClick={()=>{setTokenState("");clearToken();toast.info("Cleared")}}>Clear</Button>
-              </div>
-            </div>
-          </div>
 
           {/* Role Assignment */}
           <div className="border border-border bg-white">

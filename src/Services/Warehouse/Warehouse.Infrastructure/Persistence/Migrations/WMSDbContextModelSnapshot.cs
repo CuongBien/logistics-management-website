@@ -362,6 +362,9 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.Property<int?>("CountedQty")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1234,6 +1237,60 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.ToTable("OutboundOrderLines", (string)null);
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.OutboundReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Condition")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Disposition")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OrderNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProcessedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ReturnedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ShipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OutboundReturns");
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1529,6 +1586,9 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LotNo")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1588,6 +1648,9 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("AssignedTo")
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1914,6 +1977,36 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WarehouseRoutes");
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.Wave", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrderCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WaveNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Waves");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.Zone", b =>

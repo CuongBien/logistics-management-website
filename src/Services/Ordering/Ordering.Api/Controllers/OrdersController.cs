@@ -87,8 +87,23 @@ public class OrdersController : ControllerBase
         var userTenantId = CurrentUserClaims.GetTenantId(User);
         var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) ? userTenantId : tenantId;
         
-        var query = new GetOrdersQuery(page, pageSize, effectiveTenantId, consignorId, status, type, fulfillment, searchTerm);
+        var userCustomerId = CurrentUserClaims.GetCustomerId(User);
+        var effectiveConsignorId = string.IsNullOrWhiteSpace(consignorId) ? userCustomerId : consignorId;
+        
+        _logger.LogInformation("GetOrders: page={Page}, pageSize={PageSize}, tenantId={TenantId}, consignorId={ConsignorId}", page, pageSize, effectiveTenantId, effectiveConsignorId);
+
+        var query = new GetOrdersQuery(page, pageSize, effectiveTenantId, effectiveConsignorId, status, type, fulfillment, searchTerm);
         var result = await _mediator.Send(query);
+        
+        if (result.IsSuccess) 
+        {
+            _logger.LogInformation("GetOrders returned {Count} items out of {TotalCount}", result.Value.Items.Count, result.Value.TotalCount);
+        }
+        else 
+        {
+            _logger.LogError("GetOrders failed: {Error}", result.Error);
+        }
+
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 

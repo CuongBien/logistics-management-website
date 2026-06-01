@@ -60,6 +60,13 @@ public sealed class ProcessReturnDispositionCommandHandler : IRequestHandler<Pro
 
         if (returnBin == null)
             return Result<bool>.Failure(Error.NotFound("Bin.NotFound", "BIN-RETURN not found in warehouse."));
+            
+        // Look up OutboundReturn record
+        OutboundReturn? returnRecord = null;
+        if (Guid.TryParse(request.ReferenceId, out var returnId))
+        {
+            returnRecord = await _context.OutboundReturns.FindAsync(new object[] { returnId }, cancellationToken);
+        }
 
         // Fetch Source Item
         var sourceItem = await _context.InventoryItems
@@ -134,6 +141,12 @@ public sealed class ProcessReturnDispositionCommandHandler : IRequestHandler<Pro
             request.Notes);
             
         _context.InventoryLedgers.Add(destLedger);
+
+        if (returnRecord != null)
+        {
+            var disposition = request.Condition == ReturnCondition.Good ? ReturnDisposition.Restocked : ReturnDisposition.Scrapped;
+            returnRecord.Process(disposition, request.OperatorId, request.Notes);
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Successfully processed QC Disposition for {Sku}. Condition: {Condition}. Moved to {Bin}", request.Sku, request.Condition, finalTargetBinCode);

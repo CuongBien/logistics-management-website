@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
@@ -12,6 +13,7 @@ import {
   FileText,
   Weight,
   Banknote,
+  Loader2,
 } from 'lucide-react';
 
 import type { OrderDto, OrderStatusHistoryDto } from '@/types/oms';
@@ -36,57 +38,11 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-
-// ──────────────────────────────────────────────
-// Dummy Data
-// ──────────────────────────────────────────────
-
-const order: OrderDto = {
-  id: '1',
-  orderNo: 'SH240601001',
-  status: 'Delivering',
-  tenantId: 'T001',
-  consignorId: 'C001',
-  consigneeName: 'Trần Thị B',
-  consigneeCity: 'Hồ Chí Minh',
-  totalWeight: 2.5,
-  codAmount: 350000,
-  shippingFee: 27500,
-  notes: 'Giao giờ hành chính, gọi trước khi giao',
-  createdAt: '2024-06-01T10:30:00Z',
-  items: [
-    { id: 'i1', skuCode: 'SKU-001', quantity: 2, price: 120000 },
-    { id: 'i2', skuCode: 'SKU-002', quantity: 1, price: 110000 },
-  ],
-};
-
-const senderInfo = {
-  name: 'Nguyễn Văn A',
-  phone: '0901234567',
-  address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-};
-
-const receiverInfo = {
-  name: order.consigneeName,
-  phone: '0987654321',
-  address: '456 Trần Phú, Phường Hải Châu 1, Quận Hải Châu, TP. Đà Nẵng',
-};
-
-const timelineEvents: OrderStatusHistoryDto[] = [
-  { status: 'New', changedAt: '2024-06-01T08:00:00Z', changedBy: 'Hệ thống' },
-  { status: 'Confirmed', changedAt: '2024-06-01T08:05:00Z', changedBy: 'Hệ thống' },
-  { status: 'AwaitingPickup', changedAt: '2024-06-01T09:00:00Z', changedBy: 'Hệ thống' },
-  { status: 'PickedUp', changedAt: '2024-06-01T14:30:00Z', changedBy: 'Nguyễn Văn Shipper', reason: 'Đã lấy hàng tại 123 Nguyễn Huệ, Q1' },
-  { status: 'Delivering', changedAt: '2024-06-02T09:15:00Z', changedBy: 'Trần Văn Giao', reason: 'Đang giao đến người nhận' },
-];
+import { fetchApi } from '@/lib/api-client';
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
 }
-
-// ──────────────────────────────────────────────
-// Info Row helper
-// ──────────────────────────────────────────────
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
@@ -101,14 +57,90 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ cla
 }
 
 export default function OrderDetailPage() {
+  const { id } = useParams() as { id: string };
+  const [order, setOrder] = useState<OrderDto | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<OrderStatusHistoryDto[]>([]);
+  const [loading, setLoading] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [orderRes, historyRes] = await Promise.all([
+          fetchApi<{ isSuccess: boolean; value: OrderDto }>('oms', `/orders/${id}`),
+          fetchApi<{ isSuccess: boolean; value: OrderStatusHistoryDto[] }>('oms', `/orders/${id}/status-history`)
+        ]);
+
+        if (orderRes.isSuccess && orderRes.value) {
+          setOrder(orderRes.value);
+        }
+        if (historyRes.isSuccess && historyRes.value) {
+          setTimelineEvents(historyRes.value);
+        }
+      } catch (error) {
+        console.error('Failed to load order details', error);
+        toast.error('Không thể tải thông tin đơn hàng');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (id) {
+      loadData();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <h2 className="text-xl font-bold mb-2">Không tìm thấy đơn hàng</h2>
+        <p className="text-muted-foreground mb-6">Đơn hàng bạn yêu cầu không tồn tại hoặc bạn không có quyền xem.</p>
+        <Button asChild>
+          <Link href="/portal/orders">Quay lại danh sách</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const canCancel = order.status === 'New' || order.status === 'AwaitingPickup';
 
-  function handleCancel() {
+  async function handleCancel() {
     setCancelOpen(false);
-    toast.success('Đơn hàng đã được hủy thành công');
+    try {
+      const res = await fetchApi<{isSuccess: boolean}>('oms', `/orders/${id}/cancel`, { method: 'POST' });
+      if (res.isSuccess) {
+        toast.success('Đơn hàng đã được hủy thành công');
+        // Reload page to get new status
+        window.location.reload();
+      } else {
+        toast.error('Không thể hủy đơn hàng');
+      }
+    } catch (error) {
+      toast.error('Lỗi khi hủy đơn hàng');
+    }
   }
+
+  // Fallback info for demo purposes since sender/receiver info might not be fully modeled in basic DTO
+  const senderInfo = {
+    name: 'Khách hàng',
+    phone: 'Đang cập nhật',
+    address: 'Đang cập nhật',
+  };
+
+  const receiverInfo = {
+    name: order.consigneeName || 'Người nhận',
+    phone: 'Đang cập nhật',
+    address: order.consigneeCity || 'Đang cập nhật',
+  };
 
   return (
     <div className="space-y-6">
@@ -187,20 +219,24 @@ export default function OrderDetailPage() {
                 <InfoRow icon={Banknote} label="Phí vận chuyển" value={formatCurrency(order.shippingFee)} />
                 {order.notes && <InfoRow icon={FileText} label="Ghi chú" value={order.notes} />}
               </div>
-              <Separator className="my-4" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Sản phẩm</p>
-                <div className="space-y-2">
-                  {order.items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{item.skuCode}</span>
-                      <span className="text-muted-foreground">
-                        x{item.quantity} · {formatCurrency(item.price)}
-                      </span>
+              {order.items && order.items.length > 0 && (
+                <>
+                  <Separator className="my-4" />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Sản phẩm</p>
+                    <div className="space-y-2">
+                      {order.items.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{item.skuCode}</span>
+                          <span className="text-muted-foreground">
+                            x{item.quantity} · {formatCurrency(item.price)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -212,7 +248,11 @@ export default function OrderDetailPage() {
               <CardTitle className="text-base">Lịch sử trạng thái</CardTitle>
             </CardHeader>
             <CardContent>
-              <OrderTimeline events={timelineEvents} currentStatus={order.status} />
+              {timelineEvents.length > 0 ? (
+                <OrderTimeline events={timelineEvents} currentStatus={order.status} />
+              ) : (
+                <div className="text-sm text-muted-foreground">Chưa có thông tin lịch sử.</div>
+              )}
             </CardContent>
           </Card>
 

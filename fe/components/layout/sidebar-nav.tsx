@@ -42,6 +42,8 @@ const navItems: NavItem[] = [
   { label: "Internal Tasks", href: "/wms/tasks/putaway", icon: <ClipboardList className="h-4 w-4" /> },
   { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
   { label: "Reports", href: "/reports", icon: <BarChart3 className="h-4 w-4" /> },
+  { label: "Staff", href: "/wms/staff", icon: <Users className="h-4 w-4" /> },
+  { label: "Role Management", href: "/wms/roles", icon: <Settings className="h-4 w-4" /> },
 ]
 
 const bottomItems: NavItem[] = [

@@ -111,7 +111,7 @@ export async function createPartner(data: Partial<Partner>): Promise<string> {
 }
 
 export async function updatePartner(id: string, data: Partial<Partner>): Promise<unknown> {
-  return fetchApi('masterdata', `/Partners/${id}`, {
+  const res: any = await fetchApi('masterdata', `/Partners/${id}`, {
     method: 'PUT',
     body: {
       name: data.name,
@@ -122,10 +122,12 @@ export async function updatePartner(id: string, data: Partial<Partner>): Promise
       longitude: data.longitude || 0
     }
   });
+  return res?.value !== undefined ? res.value : res;
 }
 
 export async function deactivatePartner(id: string): Promise<unknown> {
-  return fetchApi('masterdata', `/Partners/${id}`, {
+  const res: any = await fetchApi('masterdata', `/Partners/${id}`, {
     method: 'DELETE'
   });
+  return res?.value !== undefined ? res.value : res;
 }

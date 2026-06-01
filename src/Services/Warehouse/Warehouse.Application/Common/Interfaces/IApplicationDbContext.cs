@@ -28,6 +28,9 @@ public interface IApplicationDbContext
     DbSet<OutboundOrder> OutboundOrders { get; }
     DbSet<OutboundOrderLine> OutboundOrderLines { get; }
     DbSet<PickTask> PickTasks { get; }
+    DbSet<Wave> Waves { get; }
+    DbSet<OutboundReturn> OutboundReturns { get; }
+    
     DbSet<Shipment> Shipments { get; }
     DbSet<ShipmentItem> ShipmentItems { get; }
     DbSet<ShipmentOrder> ShipmentOrders { get; }

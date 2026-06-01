@@ -16,6 +16,29 @@ public class PutawayTasksController : ControllerBase
         _mediator = mediator;
     }
 
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPutawayTasks()
+    {
+        var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        Console.WriteLine($"[PutawayTasksController] GetPutawayTasks called. Sub: '{operatorSub}'");
+        
+        var query = new Warehouse.Application.Features.Inbound.Queries.GetPutawayTasksList.GetPutawayTasksListQuery(operatorSub);
+        var result = await _mediator.Send(query);
+        
+        if (result.IsSuccess)
+        {
+            Console.WriteLine($"[PutawayTasksController] Returning {result.Value?.Count ?? 0} tasks.");
+        }
+        
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { Error = result.Error.Code, Message = result.Error.Message });
+        }
+
+        return Ok(result.Value);
+    }
+
     [HttpPost("{taskId}/complete")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

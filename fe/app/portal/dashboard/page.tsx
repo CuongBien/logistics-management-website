@@ -26,6 +26,8 @@ import {
   Legend,
 } from 'recharts';
 
+import { fetchApi } from '@/lib/api-client';
+
 import type { OrderSummaryDto } from '@/types/oms';
 import { StatCard } from '@/components/portal/stat-card';
 import { StatusBadge } from '@/components/portal/status-badge';
@@ -107,70 +109,88 @@ export default function DashboardPage() {
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
   useEffect(() => {
-    const currentPhone = localStorage.getItem('shiphub_current_phone') || '0901234567';
-    const ordersKey = `shiphub_orders_${currentPhone}`;
-    const saved = localStorage.getItem(ordersKey);
-    const list: OrderSummaryDto[] = saved ? JSON.parse(saved) : [];
-    setOrders(list);
+    async function loadData() {
+      try {
+        const res = await fetchApi<{
+          isSuccess: boolean;
+          value: { items: OrderSummaryDto[]; totalCount: number };
+        }>('oms', `/orders?pageSize=100`);
+        
+        if (res && res.isSuccess && res.value) {
+          const list = res.value.items || [];
+          setOrders(list);
 
-    // Calculate stats
-    const total = list.length;
-    const delivering = list.filter((o) => o.status === 'Delivering').length;
-    
-    // COD is pending for active delivery/order statuses
-    const pendingStatuses = ['New', 'Confirmed', 'AwaitingPickup', 'PickedUp', 'AwaitingInbound', 'InWarehouse', 'Sorting', 'AwaitingDispatch', 'Dispatched', 'Delivering', 'Delivered'];
-    const cod = list
-      .filter((o) => pendingStatuses.includes(o.status))
-      .reduce((sum, o) => sum + (o.codAmount || 0), 0);
+          // Calculate stats
+          const total = list.length;
+          const delivering = list.filter((o) => o.status === 'Delivering').length;
+          
+          // COD is pending for active delivery/order statuses
+          const pendingStatuses = ['New', 'Confirmed', 'AwaitingPickup', 'PickedUp', 'AwaitingInbound', 'InWarehouse', 'Sorting', 'AwaitingDispatch', 'Dispatched', 'Delivering', 'Delivered'];
+          const cod = list
+            .filter((o) => pendingStatuses.includes(o.status))
+            .reduce((sum, o) => sum + (o.codAmount || 0), 0);
 
-    // Calculate simulated fee
-    const fee = list.reduce((sum, o) => sum + ((o.totalWeight || 0) * 5000 + 15000), 0);
+          // Calculate simulated fee
+          const fee = list.reduce((sum, o) => sum + ((o.weight || 0) * 5000 + 15000), 0);
 
-    setStats({ total, delivering, cod, fee });
+          setStats({ total, delivering, cod, fee });
 
-    // Pie chart distribution
-    const deliveredCount = list.filter((o) => o.status === 'Delivered' || o.status === 'Completed').length;
-    const deliveringCount = list.filter((o) => o.status === 'Delivering').length;
-    const cancelledCount = list.filter((o) => o.status === 'Cancelled').length;
-    const otherCount = total - deliveredCount - deliveringCount - cancelledCount;
+          // Pie chart distribution
+          const deliveredCount = list.filter((o) => o.status === 'Delivered' || o.status === 'Completed').length;
+          const deliveringCount = list.filter((o) => o.status === 'Delivering').length;
+          const cancelledCount = list.filter((o) => o.status === 'Cancelled').length;
+          const otherCount = total - deliveredCount - deliveringCount - cancelledCount;
 
-    setPieData([
-      { name: 'Đã giao', value: deliveredCount, color: '#10b981' },
-      { name: 'Đang giao', value: deliveringCount, color: '#3b82f6' },
-      { name: 'Đã hủy', value: cancelledCount, color: '#f43f5e' },
-      { name: 'Khác', value: Math.max(0, otherCount), color: '#9ca3af' },
-    ]);
+          setPieData([
+            { name: 'Đã giao', value: deliveredCount, color: '#10b981' },
+            { name: 'Đang giao', value: deliveringCount, color: '#3b82f6' },
+            { name: 'Đã hủy', value: cancelledCount, color: '#f43f5e' },
+            { name: 'Khác', value: Math.max(0, otherCount), color: '#9ca3af' },
+          ]);
 
-    // Monthly chart data
-    if (total === 0) {
-      setMonthlyData([
-        { month: 'Th01', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th02', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th03', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th04', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th05', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th06', delivered: 0, cancelled: 0, inTransit: 0 },
-      ]);
-    } else if (currentPhone === '0901234567') {
-      // Demo mock data distribution
-      setMonthlyData([
-        { month: 'Th01', delivered: 145, cancelled: 8, inTransit: 12 },
-        { month: 'Th02', delivered: 168, cancelled: 5, inTransit: 15 },
-        { month: 'Th03', delivered: 192, cancelled: 12, inTransit: 18 },
-        { month: 'Th04', delivered: 178, cancelled: 7, inTransit: 22 },
-        { month: 'Th05', delivered: 210, cancelled: 6, inTransit: 14 },
-        { month: 'Th06', delivered: deliveredCount, cancelled: cancelledCount, inTransit: deliveringCount },
-      ]);
-    } else {
-      setMonthlyData([
-        { month: 'Th01', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th02', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th03', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th04', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th05', delivered: 0, cancelled: 0, inTransit: 0 },
-        { month: 'Th06', delivered: deliveredCount, cancelled: cancelledCount, inTransit: deliveringCount },
-      ]);
+          // Calculate monthly data dynamically from actual order dates
+          const months = ['Th01', 'Th02', 'Th03', 'Th04', 'Th05', 'Th06', 'Th07', 'Th08', 'Th09', 'Th10', 'Th11', 'Th12']
+          const currentMonthIdx = new Date().getMonth()
+          // Get last 6 months including current
+          const last6Months = Array.from({length: 6}).map((_, i) => {
+            const date = new Date()
+            date.setMonth(currentMonthIdx - 5 + i)
+            return {
+              month: months[date.getMonth()],
+              monthIdx: date.getMonth(),
+              year: date.getFullYear(),
+              delivered: 0,
+              cancelled: 0,
+              inTransit: 0
+            }
+          })
+
+          list.forEach((order) => {
+            const date = new Date(order.createdAt)
+            const m = last6Months.find(x => x.monthIdx === date.getMonth() && x.year === date.getFullYear())
+            if (m) {
+              if (order.status === 'Delivered' || order.status === 'Completed') {
+                m.delivered++
+              } else if (order.status === 'Cancelled') {
+                m.cancelled++
+              } else if (order.status === 'Delivering') {
+                m.inTransit++
+              }
+            }
+          })
+
+          setMonthlyData(last6Months.map(m => ({
+            month: m.month,
+            delivered: m.delivered,
+            cancelled: m.cancelled,
+            inTransit: m.inTransit
+          })));
+        }
+      } catch (e) {
+        console.error('Failed to load dashboard stats', e);
+      }
     }
+    loadData();
   }, []);
 
   const recentOrders = orders.slice(0, 5);
@@ -189,7 +209,6 @@ export default function DashboardPage() {
           title="Tổng đơn hàng"
           value={stats.total.toLocaleString()}
           icon={Package}
-          trend={stats.total > 0 ? { value: 12.5, isPositive: true } : undefined}
           gradient="from-blue-500 to-blue-600"
         />
         <StatCard
@@ -206,10 +225,9 @@ export default function DashboardPage() {
           gradient="from-emerald-500 to-teal-500"
         />
         <StatCard
-          title="Phí vận chuyển tháng này"
+          title="Phí vận chuyển dự kiến"
           value={formatCurrency(stats.fee)}
           icon={TrendingUp}
-          trend={stats.total > 0 ? { value: 5.2, isPositive: false } : undefined}
           gradient="from-violet-500 to-purple-600"
         />
       </div>
@@ -304,7 +322,7 @@ export default function DashboardPage() {
                 <TableRow>
                   <TableHead>Mã đơn</TableHead>
                   <TableHead>Người nhận</TableHead>
-                  <TableHead className="hidden md:table-cell">Thành phố</TableHead>
+                  <TableHead className="hidden md:table-cell">Số điện thoại</TableHead>
                   <TableHead className="text-right">COD</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="hidden sm:table-cell">Ngày tạo</TableHead>
@@ -314,9 +332,9 @@ export default function DashboardPage() {
               <TableBody>
                 {recentOrders.map((order) => (
                   <TableRow key={order.id}>
-                    <TableCell className="font-mono font-medium">{order.orderNo}</TableCell>
+                    <TableCell className="font-mono font-medium">{order.waybillCode}</TableCell>
                     <TableCell>{order.consigneeName}</TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">{order.consigneeCity}</TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">{order.consigneePhone}</TableCell>
                     <TableCell className="text-right">{order.codAmount > 0 ? formatCurrency(order.codAmount) : '—'}</TableCell>
                     <TableCell>
                       <StatusBadge status={order.status} />

@@ -46,6 +46,15 @@ public class InboundController : ApiControllerBase
         if (receipt == null) return NotFound(new { Message = $"Inbound receipt for OrderId {orderId} not found." });
         return Ok(receipt);
     }
+
+    [HttpGet("receipts")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetReceipts()
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var result = await Mediator.Send(new Warehouse.Application.Features.Inbound.Queries.GetInboundReceiptsList.GetInboundReceiptsListQuery(operatorSub));
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+    }
     /// <summary>
     /// Tạo phiếu nhập kho cho một đơn hàng (Pending)
     /// </summary>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Bell, Menu, Moon, Sun, User, LogOut, Settings } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { signOut, useSession } from 'next-auth/react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,26 +24,10 @@ interface PortalTopbarProps {
 export function PortalTopbar({ onMenuClick }: PortalTopbarProps) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
-  const [profile, setProfile] = useState({ fullName: 'Nguyễn Văn A' })
+  const { data: session } = useSession()
 
-  useEffect(() => {
-    function loadProfile() {
-      const saved = localStorage.getItem('shiphub_profile')
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-          setProfile({ fullName: parsed.fullName || 'Nguyễn Văn A' })
-        } catch (e) {
-          console.error(e)
-        }
-      }
-    }
-    loadProfile()
-    window.addEventListener('storage', loadProfile)
-    return () => window.removeEventListener('storage', loadProfile)
-  }, [])
-
-  const initials = profile.fullName
+  const fullName = session?.user?.name || 'User'
+  const initials = fullName
     .split(' ')
     .map((n) => n[0])
     .slice(-2)
@@ -54,8 +39,7 @@ export function PortalTopbar({ onMenuClick }: PortalTopbarProps) {
   }
 
   function handleLogout() {
-    localStorage.removeItem('shiphub_auth')
-    router.push('/portal/login')
+    signOut({ callbackUrl: '/portal/login' })
   }
 
   return (
@@ -76,7 +60,7 @@ export function PortalTopbar({ onMenuClick }: PortalTopbarProps) {
         {/* Greeting */}
         <p className="text-sm text-muted-foreground">
           Xin chào,{' '}
-          <span className="font-semibold text-foreground">{profile.fullName}</span>{' '}
+          <span className="font-semibold text-foreground">{fullName}</span>{' '}
           <span className="hidden sm:inline">👋</span>
         </p>
       </div>
@@ -118,7 +102,7 @@ export function PortalTopbar({ onMenuClick }: PortalTopbarProps) {
               Tài khoản của tôi
             </DropdownMenuLabel>
             <div className="px-2 pb-2 text-xs text-muted-foreground break-all">
-              {profile.fullName}
+              {fullName}
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="cursor-pointer">

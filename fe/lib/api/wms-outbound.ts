@@ -112,7 +112,8 @@ function mapStatus(status: number | string): OutboundOrderStatus {
   }
 }
 
-// Query & Mutation API Services
+const DEFAULT_WAREHOUSE_ID = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'; // HCM warehouse ID from seed
+
 export const getOrders = async (): Promise<OutboundOrderDto[]> => {
   if (USE_MOCK) {
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -120,22 +121,15 @@ export const getOrders = async (): Promise<OutboundOrderDto[]> => {
   }
 
   try {
-    const shipments = await fetchApi<any[]>("wms", "/outbound/shipments");
-    if (shipments && shipments.length > 0) {
-      return shipments.map(s => ({
-        id: s.id,
-        orderNo: s.shipmentNo,
-        tenantId: s.tenantId,
-        status: mapStatus(s.status),
-        lines: [],
-        createdAt: s.createdAt
-      }));
+    const res = await fetchApi<OutboundOrderDto[]>('wms', '/outbound/orders');
+    if (!res || res.length === 0) {
+      return [...mockOrdersDb];
     }
+    return res;
   } catch (err) {
     console.error("Error fetching shipments from live WMS DB:", err);
+    return [...mockOrdersDb];
   }
-
-  return [...mockOrdersDb];
 };
 
 export const getOrderById = async (id: string): Promise<OutboundOrderDto | undefined> => {
@@ -238,21 +232,15 @@ export const getReturns = async (): Promise<OutboundReturnDto[]> => {
   }
 
   try {
-    const discrepancies = await fetchApi<any[]>("wms", "/inbound/transit-discrepancies");
-    if (discrepancies && discrepancies.length > 0) {
-      return discrepancies.map((d: any) => ({
-        id: d.id,
-        orderNo: d.referenceId || 'ORD-UNKNOWN',
-        sku: d.sku,
-        returnedQty: d.actualQty || d.expectedQty || 1,
-        condition: d.type === 'Damage' ? 'Damaged' : 'Good',
-        disposition: d.status === 'ResolvedApprove' ? 'Restocked' : 'Pending',
-        createdAt: new Date().toISOString(),
-        notes: d.notes
-      }));
+    const res = await fetchApi<OutboundReturnDto[]>('wms', `/outbound/returns?warehouseId=${DEFAULT_WAREHOUSE_ID}`);
+    if (!res || res.length === 0) {
+      return [...mockReturnsDb];
     }
-  } catch {}
-  return [...mockReturnsDb];
+    return res;
+  } catch (err) {
+    console.error("Error fetching returns from live WMS DB:", err);
+    return [...mockReturnsDb];
+  }
 };
 
 export const processDisposition = async (id: string, disposition: 'Restocked' | 'Scrapped' | 'Penalized', notes?: string): Promise<{ success: boolean }> => {
@@ -261,26 +249,42 @@ export const processDisposition = async (id: string, disposition: 'Restocked' | 
     return { success: true };
   }
 
-  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
-  await fetchApi("wms", "/outbound/returns/disposition", {
-    method: "POST",
+  let condition = 1; // Good
+  if (disposition === 'Scrapped' || disposition === 'Penalized') condition = 2; // Damaged
+
+  await fetchApi<{ success: boolean }>('wms', `/outbound/returns/disposition`, {
+    method: 'POST',
     body: {
-      warehouseId: defaultWarehouseId,
-      sku: "A0-001",
-      quantity: 1,
-      condition: disposition === 'Restocked' ? 1 : 2,
-      targetBinCode: "ST-A-01",
+      warehouseId: DEFAULT_WAREHOUSE_ID,
+      sku: 'UNKNOWN', 
+      quantity: 1, 
+      condition,
+      targetBinCode: disposition === 'Restocked' ? 'ST-B-01' : undefined,
       referenceId: id,
-      referenceType: 1,
-      notes: notes || "Processed return disposition via UI"
+      referenceType: 'OutboundReturn',
+      notes: notes || 'Processed via Web UI'
     }
   });
+
   return { success: true };
 };
 
 export const getWaves = async (): Promise<WaveDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [...mockWavesDb];
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return [...mockWavesDb];
+  }
+
+  try {
+    const res = await fetchApi<WaveDto[]>('wms', `/outbound/waves?warehouseId=${DEFAULT_WAREHOUSE_ID}`);
+    if (!res || res.length === 0) {
+      return [...mockWavesDb];
+    }
+    return res;
+  } catch (err) {
+    console.error("Error fetching waves from live WMS DB:", err);
+    return [...mockWavesDb];
+  }
 };
 
 export const autoPlanWaves = async (): Promise<{ success: boolean; createdWavesCount: number }> => {
@@ -289,28 +293,34 @@ export const autoPlanWaves = async (): Promise<{ success: boolean; createdWavesC
     return { success: true, createdWavesCount: 1 };
   }
 
-  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
-  const result = await fetchApi<any>("wms", "/outbound/waves/auto-plan", {
-    method: "POST",
+  const res = await fetchApi<{ createdWaveIds: string[], totalOrdersPlanned: number }>('wms', `/outbound/waves/auto-plan`, {
+    method: 'POST',
     body: {
-      warehouseId: defaultWarehouseId,
-      maxSingleItemOrdersPerWave: 10,
-      maxMultiItemOrdersPerWave: 10
+      warehouseId: DEFAULT_WAREHOUSE_ID,
+      maxSingleItemOrdersPerWave: 50,
+      maxMultiItemOrdersPerWave: 20
     }
   });
-  return {
-    success: true,
-    createdWavesCount: result?.createdWavesCount || result?.value?.createdWavesCount || 1
-  };
+  
+  return { success: true, createdWavesCount: res.createdWaveIds?.length || 0 };
 };
 
 export const startWave = async (waveId: string): Promise<{ success: boolean }> => {
-  await new Promise(resolve => setTimeout(resolve, 400));
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    return { success: true };
+  }
+
+  await fetchApi<{ success: boolean }>('wms', `/outbound/waves/${waveId}/start`, { method: 'POST' });
   return { success: true };
 };
 
 export const releaseWave = async (waveId: string): Promise<{ success: boolean }> => {
-  await new Promise(resolve => setTimeout(resolve, 450));
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 450));
+    return { success: true };
+  }
+
+  await fetchApi<{ success: boolean }>('wms', `/outbound/waves/${waveId}/release`, { method: 'POST' });
   return { success: true };
 };
-

@@ -10,27 +10,27 @@ const nextConfig = {
     return [
       {
         source: '/api/oms/:path*',
-        destination: 'http://localhost:5000/api/:path*',
+        destination: 'http://127.0.0.1:5000/api/:path*',
       },
       {
         source: '/api/wms/:path*',
-        destination: 'http://localhost:5051/api/:path*',
+        destination: 'http://127.0.0.1:5051/api/:path*',
       },
       {
         source: '/api/masterdata/:path*',
-        destination: 'http://localhost:5052/api/:path*',
+        destination: 'http://127.0.0.1:5052/api/:path*',
       },
       {
         source: '/health/oms',
-        destination: 'http://localhost:5000/health',
+        destination: 'http://127.0.0.1:5000/health',
       },
       {
         source: '/health/wms',
-        destination: 'http://localhost:5051/health',
+        destination: 'http://127.0.0.1:5051/health',
       },
       {
         source: '/health/masterdata',
-        destination: 'http://localhost:5052/health',
+        destination: 'http://127.0.0.1:5052/health',
       },
     ]
   },

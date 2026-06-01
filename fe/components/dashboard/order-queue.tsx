@@ -33,20 +33,7 @@ const statusClasses = {
 }
 
 export function OrderQueue() {
-  const orders: OrderEntry[] = [
-    { orderId: "ORD-7845", customer: "Acme Corp", items: 12, zone: "A-3", priority: "urgent", age: "2h 15m", status: "waiting" },
-    { orderId: "ORD-7844", customer: "TechStart Inc", items: 5, zone: "B-1", priority: "urgent", age: "1h 45m", status: "picking" },
-    { orderId: "ORD-7843", customer: "Global Trade", items: 23, zone: "C-2", priority: "high", age: "1h 30m", status: "waiting" },
-    { orderId: "ORD-7842", customer: "Local Shop", items: 3, zone: "A-1", priority: "normal", age: "1h 20m", status: "packing" },
-    { orderId: "ORD-7841", customer: "MegaMart", items: 45, zone: "D-4", priority: "high", age: "1h 10m", status: "qc" },
-    { orderId: "ORD-7840", customer: "Quick Delivery", items: 8, zone: "B-3", priority: "normal", age: "55m", status: "picking" },
-    { orderId: "ORD-7839", customer: "E-Store Pro", items: 15, zone: "A-2", priority: "urgent", age: "45m", status: "waiting" },
-    { orderId: "ORD-7838", customer: "Retail Hub", items: 7, zone: "C-1", priority: "normal", age: "40m", status: "waiting" },
-    { orderId: "ORD-7837", customer: "Supply Chain Co", items: 31, zone: "D-2", priority: "high", age: "35m", status: "waiting" },
-    { orderId: "ORD-7836", customer: "Direct Sales", items: 2, zone: "A-4", priority: "normal", age: "30m", status: "picking" },
-    { orderId: "ORD-7835", customer: "Wholesale Dist", items: 18, zone: "B-2", priority: "normal", age: "25m", status: "waiting" },
-    { orderId: "ORD-7834", customer: "Online Outlet", items: 9, zone: "C-3", priority: "normal", age: "20m", status: "waiting" },
-  ]
+  const orders: OrderEntry[] = []
 
   return (
     <div className="border border-border bg-white">

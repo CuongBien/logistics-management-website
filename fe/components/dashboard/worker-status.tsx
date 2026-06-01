@@ -16,18 +16,7 @@ const statusClasses = {
 }
 
 export function WorkerStatus() {
-  const workers: Worker[] = [
-    { id: "W01", name: "J. Martinez", task: "Picking", orderId: "ORD-7844", efficiency: 112, status: "active" },
-    { id: "W02", name: "S. Kim", task: "QC Check", orderId: "ORD-7841", efficiency: 98, status: "active" },
-    { id: "W03", name: "M. Johnson", task: "Packing", orderId: "ORD-7840", efficiency: 105, status: "active" },
-    { id: "W04", name: "R. Davis", task: "Shipping", orderId: "ORD-7838", efficiency: 115, status: "active" },
-    { id: "W05", name: "T. Brown", task: "Picking", orderId: "ORD-7836", efficiency: 95, status: "active" },
-    { id: "W06", name: "A. Wilson", task: "Labeling", orderId: "ORD-7837", efficiency: 102, status: "active" },
-    { id: "W07", name: "L. Garcia", task: "-", orderId: "-", efficiency: 88, status: "break" },
-    { id: "W08", name: "K. Lee", task: "Receiving", orderId: "RCV-445", efficiency: 110, status: "active" },
-    { id: "W09", name: "P. Chen", task: "-", orderId: "-", efficiency: 92, status: "idle" },
-    { id: "W10", name: "D. Miller", task: "Picking", orderId: "ORD-7839", efficiency: 108, status: "active" },
-  ]
+  const workers: Worker[] = []
 
   return (
     <div className="border border-border bg-white">

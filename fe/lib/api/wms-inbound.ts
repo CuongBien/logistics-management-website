@@ -74,10 +74,10 @@ let mockDiscrepanciesDb: DiscrepancyDto[] = [
   }
 ];
 
-// API Query & Mutation Mock Functions
+import { fetchApi } from '../api-client';
+
 export const getReceipts = async (): Promise<InboundReceiptDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [...mockReceiptsDb];
+  return await fetchApi<InboundReceiptDto[]>('wms', '/inbound/receipts');
 };
 
 export const getReceipt = async (id: string): Promise<InboundReceiptDto | undefined> => {

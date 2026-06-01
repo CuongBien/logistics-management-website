@@ -30,8 +30,13 @@ import {
   DropdownMenuGroup
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { useSession, signOut } from "next-auth/react"
 
 export function Navbar() {
+  const { data: session } = useSession()
+  const userName = session?.user?.name || "Nguyễn Văn Admin"
+  const userEmail = session?.user?.email || "admin@best-inc.com.vn"
+
   // Notification State for premium interactivity
   const [notifications, setNotifications] = useState([
     {
@@ -78,7 +83,6 @@ export function Navbar() {
 
   // Warehouse selection state
   const [activeWarehouse, setActiveWarehouse] = useState("ATL-01")
-
   const unreadCount = notifications.filter(n => n.unread).length
 
   const handleMarkAllAsRead = () => {
@@ -108,6 +112,7 @@ export function Navbar() {
     toast.info("Đang đăng xuất khỏi hệ thống...", {
       description: "Hẹn gặp lại bạn trong phiên làm việc tiếp theo."
     })
+    signOut({ callbackUrl: "/login" })
   }
 
   return (
@@ -125,7 +130,7 @@ export function Navbar() {
           <span className="text-xs md:text-sm text-white/95 font-medium tracking-wide">Control Tower Operations</span>
         </div>
       </div>
-      
+
       {/* Right widgets */}
       <div className="flex items-center gap-1.5">
         
@@ -220,7 +225,7 @@ export function Navbar() {
                 <User className="h-4 w-4" />
               </Button>
               <span className="text-xs text-white/90 font-medium hidden sm:inline-block tracking-wide group-hover:text-white transition-colors">
-                Quản Đốc Kho
+                {userName}
               </span>
             </div>
           </DropdownMenuTrigger>
@@ -230,11 +235,11 @@ export function Navbar() {
             <div className="p-4 bg-gradient-to-br from-[#C41E3A] to-[#A01830] text-white rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 bg-white/20 border border-white/20 flex items-center justify-center text-sm font-bold rounded-full backdrop-blur-md">
-                  AO
+                  {userName.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm leading-tight">Nguyễn Văn Admin</h4>
-                  <p className="text-[10px] text-white/80 mt-0.5 font-mono">admin@best-inc.com.vn</p>
+                  <h4 className="font-semibold text-sm leading-tight">{userName}</h4>
+                  <p className="text-[10px] text-white/80 mt-0.5 font-mono">{userEmail}</p>
                   <span className="inline-block mt-1 text-[9px] bg-yellow-400 text-slate-900 font-bold px-1.5 py-0.5 rounded uppercase">
                     Quản đốc ATL-01
                   </span>
@@ -316,4 +321,3 @@ export function Navbar() {
     </header>
   )
 }
-

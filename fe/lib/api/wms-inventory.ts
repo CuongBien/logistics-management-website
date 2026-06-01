@@ -1,4 +1,4 @@
-import { InventoryItemDto, InventoryLedgerDto, LedgerTransactionType, ReconcileRequest } from '@/types/wms-inventory';
+import { InventoryItemDto, InventoryLedgerDto, LedgerTransactionType } from '@/types/wms-inventory';
 import { fetchApi } from '@/lib/api-client';
 
 // ============================================================================
@@ -88,13 +88,36 @@ let mockLedgersDb: Record<string, InventoryLedgerDto[]> = {
 
 // API Services
 export const getInventoryList = async (): Promise<InventoryItemDto[]> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return [...mockInventoryDb];
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return [...mockInventoryDb];
+  }
+
+  try {
+    const res = await fetchApi<InventoryItemDto[]>('wms', '/inventory');
+    if (!res || res.length === 0) {
+      console.warn("Inventory list is empty in DB, falling back to mock database!");
+      return [...mockInventoryDb];
+    }
+    return res;
+  } catch (err) {
+    console.error("Error fetching inventory from WMS backend:", err);
+    return [...mockInventoryDb];
+  }
 };
 
 export const getInventoryItem = async (id: string): Promise<InventoryItemDto | undefined> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return mockInventoryDb.find(item => item.id === id);
+  if (USE_MOCK) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return mockInventoryDb.find(item => item.id === id);
+  }
+
+  try {
+    return await fetchApi<InventoryItemDto>('wms', `/inventory/${id}`);
+  } catch (err) {
+    console.error(`Error fetching inventory item ${id} from WMS backend:`, err);
+    return mockInventoryDb.find(item => item.id === id);
+  }
 };
 
 export const getItemLedgers = async (id: string): Promise<InventoryLedgerDto[]> => {
@@ -106,6 +129,11 @@ export const getItemLedgers = async (id: string): Promise<InventoryLedgerDto[]> 
   try {
     const res = await fetchApi<any>("wms", `/inventory/${id}/ledger`);
     const list = res?.value || res?.items || res || [];
+    
+    if ((!list || list.length === 0) && mockLedgersDb[id]) {
+      return mockLedgersDb[id];
+    }
+
     return list.map((l: any) => ({
       id: l.id,
       inventoryItemId: l.inventoryItemId || id,
@@ -118,7 +146,7 @@ export const getItemLedgers = async (id: string): Promise<InventoryLedgerDto[]> 
     }));
   } catch (err) {
     console.error("Error fetching ledgers from WMS backend:", err);
-    return [];
+    return mockLedgersDb[id] || [];
   }
 };
 
@@ -133,14 +161,13 @@ export const transferStock = async (data: { inventoryItemId: string; destBin: st
     return { success: true };
   }
 
+  // WMS expects { inventoryItemId, destBin, qty } in latest main branch code
   await fetchApi("wms", "/inventory/transfer", {
     method: "POST",
     body: {
-      sourceInventoryItemId: data.inventoryItemId,
-      destinationBinCode: data.destBin,
-      quantity: data.qty,
-      tenantId: "default-tenant",
-      customerId: "cust-default"
+      inventoryItemId: data.inventoryItemId,
+      destBin: data.destBin,
+      qty: data.qty
     }
   });
   return { success: true };
@@ -155,11 +182,12 @@ export const reconcileStock = async (data: { inventoryItemId: string; actualQuan
     return { success: true };
   }
 
-  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b"; // Active South ATL-01
   await fetchApi("wms", "/inventory/reconcile", {
     method: "POST",
     body: {
-      warehouseId: defaultWarehouseId
+      inventoryItemId: data.inventoryItemId,
+      actualQuantity: data.actualQuantity,
+      reason: data.reason
     }
   });
   return { success: true };
@@ -174,17 +202,11 @@ export const reserveStock = async (id: string, qty: number) => {
     return { success: true };
   }
 
-  const item = mockInventoryDb.find(i => i.id === id);
-  const sku = item?.sku || "A0-001";
-  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
   await fetchApi("wms", "/inventory/reserve", {
     method: "POST",
     body: {
-      warehouseId: defaultWarehouseId,
-      sku: sku,
-      quantity: qty,
-      referenceId: `RES-${Date.now()}`,
-      referenceType: 1 // Manual
+      inventoryItemId: id,
+      quantity: qty
     }
   });
   return { success: true };
@@ -199,12 +221,11 @@ export const releaseStock = async (id: string, qty: number) => {
     return { success: true };
   }
 
-  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
   await fetchApi("wms", "/inventory/release", {
     method: "POST",
     body: {
-      warehouseId: defaultWarehouseId,
-      reservationId: id
+      inventoryItemId: id,
+      quantity: qty
     }
   });
   return { success: true };
@@ -219,12 +240,11 @@ export const consumeStock = async (id: string, qty: number) => {
     return { success: true };
   }
 
-  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b";
   await fetchApi("wms", "/inventory/consume", {
     method: "POST",
     body: {
-      warehouseId: defaultWarehouseId,
-      reservationId: id
+      inventoryItemId: id,
+      quantity: qty
     }
   });
   return { success: true };

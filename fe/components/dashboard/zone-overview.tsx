@@ -10,12 +10,7 @@ interface Zone {
 }
 
 export function ZoneOverview() {
-  const zones: Zone[] = [
-    { id: "A", name: "Zone A - Electronics", ordersActive: 12, workersAssigned: 4, capacity: 85, alerts: 0 },
-    { id: "B", name: "Zone B - Apparel", ordersActive: 8, workersAssigned: 3, capacity: 60, alerts: 1 },
-    { id: "C", name: "Zone C - General", ordersActive: 15, workersAssigned: 5, capacity: 92, alerts: 2 },
-    { id: "D", name: "Zone D - Bulk", ordersActive: 6, workersAssigned: 2, capacity: 45, alerts: 0 },
-  ]
+  const zones: Zone[] = []
 
   return (
     <div className="border border-border bg-white">

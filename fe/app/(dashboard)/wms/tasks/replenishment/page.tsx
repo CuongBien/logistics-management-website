@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getReplenishmentTasks, generateReplenishment } from "@/lib/api/wms-tasks"
+import { getReplenishmentTasks, generateReplenishment, completeReplenishmentTask } from "@/lib/api/wms-tasks"
 import { ReplenishmentTaskDto } from "@/types/wms-tasks"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,6 @@ import {
   RefreshCcw,
   Search,
   ArrowRight,
-  TrendingUp,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -38,6 +37,7 @@ export default function ReplenishmentTasksPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [isTriggering, setIsTriggering] = useState(false)
+  const [completingRow, setCompletingRow] = useState<Record<string, boolean>>({})
 
   const fetchTasks = async () => {
     try {
@@ -60,11 +60,24 @@ export default function ReplenishmentTasksPage() {
       setIsTriggering(true)
       const updatedList = await generateReplenishment()
       setTasks(updatedList)
-      toast.success("Kích hoạt thuật toán bổ sung hàng thành công! Đã tự động sinh 2 tác vụ châm hàng (Pending) mới.")
+      toast.success("Kích hoạt thuật toán bổ sung hàng thành công! Đã tự động sinh tác vụ châm hàng mới.")
     } catch (e: any) {
       toast.error(e.message || "Kích hoạt thuật toán châm hàng thất bại")
     } finally {
       setIsTriggering(false)
+    }
+  }
+
+  const handleComplete = async (taskId: string) => {
+    try {
+      setCompletingRow(prev => ({ ...prev, [taskId]: true }))
+      await completeReplenishmentTask(taskId)
+      toast.success("Đã hoàn tất tác vụ châm hàng!")
+      await fetchTasks()
+    } catch (err: any) {
+      toast.error(err?.message || "Lỗi khi hoàn tất châm hàng")
+    } finally {
+      setCompletingRow(prev => ({ ...prev, [taskId]: false }))
     }
   }
 
@@ -286,20 +299,23 @@ export default function ReplenishmentTasksPage() {
                 <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-40">
                   Mã SKU Sản Phẩm
                 </TableHead>
-                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-28 text-center">
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-24 text-center">
                   Số Lượng
                 </TableHead>
                 <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground text-center">
                   Dòng Di Chuyển Châm Hàng (Bins Flow)
                 </TableHead>
-                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-48 w-44">
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-44">
                   Nhân Viên Phân Bổ
                 </TableHead>
-                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-40 text-center">
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-36 text-center">
                   Thời Gian Tạo
                 </TableHead>
-                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-32 text-center">
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-28 text-center">
                   Trạng Thái
+                </TableHead>
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-36 text-right">
+                  Thao Tác
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -314,11 +330,12 @@ export default function ReplenishmentTasksPage() {
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24 mx-auto" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-7 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : filteredTasks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground text-xs">
+                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground text-xs">
                     <div className="flex flex-col items-center gap-2">
                       <Workflow className="h-8 w-8 text-muted-foreground/60 stroke-[1.5]" />
                       <p className="font-semibold">Không tìm thấy tác vụ châm hàng nào</p>
@@ -329,83 +346,104 @@ export default function ReplenishmentTasksPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTasks.map((task) => (
-                  <TableRow key={task.id} className="hover:bg-muted/10 border-b border-muted transition-colors">
-                    {/* Task ID */}
-                    <TableCell className="text-xs font-bold font-mono text-[#C41E3A] tracking-wider uppercase">
-                      {task.id}
-                    </TableCell>
-                    
-                    {/* SKU Code */}
-                    <TableCell className="text-xs font-bold font-mono text-foreground uppercase">
-                      {task.sku}
-                    </TableCell>
-                    
-                    {/* Qty */}
-                    <TableCell className="text-xs text-center font-black text-[#C41E3A]">
-                      {task.quantity}
-                    </TableCell>
-                    
-                    {/* Bins Flow */}
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center justify-center gap-3">
-                        <span className="font-mono text-[10px] font-bold bg-muted px-2 py-0.5 border border-muted/80 rounded text-muted-foreground">
-                          {task.fromBinCode}
-                        </span>
-                        <ArrowRight className="h-3.5 w-3.5 text-indigo-500 animate-pulse shrink-0" />
-                        <span className="font-mono text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 border border-indigo-500/20 rounded">
-                          {task.toBinCode}
-                        </span>
-                      </div>
-                    </TableCell>
-                    
-                    {/* Operator */}
-                    <TableCell className="text-xs font-semibold text-foreground">
-                      {task.operatorName || (
-                        <span className="text-muted-foreground font-normal italic text-[11px]">Chưa phân bổ</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Created Date */}
-                    <TableCell className="text-xs text-center font-mono text-muted-foreground">
-                      {new Date(task.createdAt).toLocaleString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        day: "2-digit",
-                        month: "2-digit"
-                      })}
-                    </TableCell>
-                    
-                    {/* Status Badge */}
-                    <TableCell className="text-center">
-                      <Badge
-                        variant="secondary"
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          task.status === "Pending"
-                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                            : task.status === "InProgress"
-                            ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
+                filteredTasks.map((task) => {
+                  const fromBin = task.fromBinCode || (task as any).fromBinId || ''
+                  const toBin = task.toBinCode || (task as any).toBinId || ''
+
+                  return (
+                    <TableRow key={task.id} className="hover:bg-muted/10 border-b border-muted transition-colors">
+                      {/* Task ID */}
+                      <TableCell className="text-xs font-bold font-mono text-[#C41E3A] tracking-wider uppercase">
+                        {task.id}
+                      </TableCell>
+                      
+                      {/* SKU Code */}
+                      <TableCell className="text-xs font-bold font-mono text-foreground uppercase">
+                        {task.sku}
+                      </TableCell>
+                      
+                      {/* Qty */}
+                      <TableCell className="text-xs text-center font-black text-[#C41E3A]">
+                        {task.quantity}
+                      </TableCell>
+                      
+                      {/* Bins Flow */}
+                      <TableCell className="text-center">
+                        <div className="inline-flex items-center justify-center gap-3">
+                          <span className="font-mono text-[10px] font-bold bg-muted px-2 py-0.5 border border-muted/80 rounded text-muted-foreground">
+                            {fromBin}
+                          </span>
+                          <ArrowRight className="h-3.5 w-3.5 text-indigo-500 animate-pulse shrink-0" />
+                          <span className="font-mono text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 border border-indigo-500/20 rounded">
+                            {toBin}
+                          </span>
+                        </div>
+                      </TableCell>
+                      
+                      {/* Operator */}
+                      <TableCell className="text-xs font-semibold text-foreground">
+                        {task.operatorName || (
+                          <span className="text-muted-foreground font-normal italic text-[11px]">Chưa phân bổ</span>
+                        )}
+                      </TableCell>
+                      
+                      {/* Created Date */}
+                      <TableCell className="text-xs text-center font-mono text-muted-foreground">
+                        {new Date(task.createdAt).toLocaleString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "2-digit",
+                          month: "2-digit"
+                        })}
+                      </TableCell>
+                      
+                      {/* Status Badge */}
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="secondary"
+                          className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             task.status === "Pending"
-                              ? "bg-amber-500 animate-pulse"
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                               : task.status === "InProgress"
-                              ? "bg-indigo-500"
-                              : "bg-emerald-500"
+                              ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                           }`}
-                        />
-                        {task.status === "Pending"
-                          ? "Chờ châm"
-                          : task.status === "InProgress"
-                          ? "Đang châm hàng"
-                          : "Đã hoàn thành"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              task.status === "Pending"
+                                ? "bg-amber-500 animate-pulse"
+                                : task.status === "InProgress"
+                                ? "bg-indigo-500"
+                                : "bg-emerald-500"
+                            }`}
+                          />
+                          {task.status === "Pending"
+                            ? "Chờ châm"
+                            : task.status === "InProgress"
+                            ? "Đang châm hàng"
+                            : "Đã hoàn thành"}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Actions Column */}
+                      <TableCell className="text-right">
+                        {task.status === "Pending" || task.status === "InProgress" ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleComplete(task.id)}
+                            disabled={completingRow[task.id]}
+                            className="h-7 text-[10px] px-3.5 bg-[#C41E3A] hover:bg-[#A01830] text-white rounded font-bold shadow-sm"
+                          >
+                            {completingRow[task.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : "Hoàn tất"}
+                          </Button>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/60 italic font-medium">Hoàn thành</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

@@ -6,7 +6,7 @@ using Warehouse.Application.Features.Layout.DTOs;
 
 namespace Warehouse.Application.Features.Layout.Queries;
 
-public record GetWarehousesQuery() : IRequest<Result<List<WarehouseDto>>>;
+public record GetWarehousesQuery(string OperatorSub = "") : IRequest<Result<List<WarehouseDto>>>;
 
 public record GetWarehouseHierarchyQuery(Guid WarehouseId) : IRequest<Result<WarehouseHierarchyDto>>;
 
@@ -23,7 +23,34 @@ public class LayoutQueryHandlers :
 
     public async Task<Result<List<WarehouseDto>>> Handle(GetWarehousesQuery request, CancellationToken cancellationToken)
     {
-        var warehouses = await _context.Warehouses
+        IQueryable<Warehouse.Domain.Entities.Warehouse> query = _context.Warehouses;
+
+        if (!string.IsNullOrEmpty(request.OperatorSub))
+        {
+            // Find operator profile
+            var opProfile = await _context.OperatorProfiles
+                .FirstOrDefaultAsync(x => x.OperatorSub == request.OperatorSub, cancellationToken);
+            
+            if (opProfile != null)
+            {
+                // Find all assignments for this operator
+                var assignedWarehouseIds = await _context.OperatorRoleAssignments
+                    .Where(a => a.OperatorProfileId == opProfile.Id)
+                    .Select(a => a.WarehouseId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                
+                var validIds = assignedWarehouseIds;
+                query = query.Where(w => validIds.Contains(w.Id));
+            }
+            else
+            {
+                // User not found in OperatorProfiles yet -> return no warehouses
+                return Result<List<WarehouseDto>>.Success(new List<WarehouseDto>());
+            }
+        }
+
+        var warehouses = await query
             .Select(w => new WarehouseDto(w.Id, w.Name, w.Code, w.LocationText))
             .ToListAsync(cancellationToken);
 

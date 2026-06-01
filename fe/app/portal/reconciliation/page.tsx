@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { fetchApi } from '@/lib/api-client'
+import type { OrderSummaryDto } from '@/types/oms'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Wallet,
   CheckCircle2,
@@ -16,14 +16,10 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Search,
-  Calendar as CalendarIcon,
   Download,
   Eye,
   FileText,
-  TrendingUp,
 } from 'lucide-react'
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
 
 interface ReconciliationSession {
   id: string
@@ -38,91 +34,72 @@ interface ReconciliationSession {
   paymentMethod: string
 }
 
-const dummySessions: ReconciliationSession[] = [
-  {
-    id: 'RC-001',
-    sessionNo: 'RC240605001',
-    createdAt: '2024-06-05T17:00:00Z',
-    period: '01/06/2024 - 05/06/2024',
-    orderCount: 42,
-    totalCod: 18450000,
-    totalFee: 1470000,
-    netAmount: 16980000,
-    status: 'Paid',
-    paymentMethod: 'Chuyển khoản Ngân hàng (VCB)',
-  },
-  {
-    id: 'RC-002',
-    sessionNo: 'RC240531001',
-    createdAt: '2024-05-31T17:00:00Z',
-    period: '26/05/2024 - 31/05/2024',
-    orderCount: 56,
-    totalCod: 24800000,
-    totalFee: 1980000,
-    netAmount: 22820000,
-    status: 'Paid',
-    paymentMethod: 'Chuyển khoản Ngân hàng (VCB)',
-  },
-  {
-    id: 'RC-003',
-    sessionNo: 'RC240525001',
-    createdAt: '2024-05-25T17:00:00Z',
-    period: '21/05/2024 - 25/05/2024',
-    orderCount: 38,
-    totalCod: 15600000,
-    totalFee: 1330000,
-    netAmount: 14270000,
-    status: 'Paid',
-    paymentMethod: 'Chuyển khoản Ngân hàng (VCB)',
-  },
-  {
-    id: 'RC-004',
-    sessionNo: 'RC240520001',
-    createdAt: '2024-05-20T17:00:00Z',
-    period: '16/05/2024 - 20/05/2024',
-    orderCount: 47,
-    totalCod: 21350000,
-    totalFee: 1650000,
-    netAmount: 19700000,
-    status: 'Paid',
-    paymentMethod: 'Chuyển khoản Ngân hàng (VCB)',
-  },
-  {
-    id: 'RC-005',
-    sessionNo: 'RC240610001',
-    createdAt: '2024-06-10T10:00:00Z',
-    period: '06/06/2024 - 10/06/2024',
-    orderCount: 15,
-    totalCod: 5800000,
-    totalFee: 490000,
-    netAmount: 5310000,
-    status: 'Processing',
-    paymentMethod: 'Chuyển khoản Ngân hàng (VCB)',
-  },
-  {
-    id: 'RC-006',
-    sessionNo: 'RC240615001',
-    createdAt: '2024-06-15T08:00:00Z',
-    period: '11/06/2024 - 15/06/2024',
-    orderCount: 22,
-    totalCod: 8920000,
-    totalFee: 780000,
-    netAmount: 8140000,
-    status: 'Pending',
-    paymentMethod: 'Chuyển khoản Ngân hàng (VCB)',
-  },
-]
-
 export default function ReconciliationPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedSession, setSelectedSession] = useState<ReconciliationSession | null>(null)
+  
+  const [sessions, setSessions] = useState<ReconciliationSession[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({ totalCod: 0, paidCod: 0, pendingCod: 0, totalFee: 0 })
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true)
+        const res = await fetchApi<{
+          isSuccess: boolean;
+          value: { items: OrderSummaryDto[]; totalCount: number };
+        }>('oms', `/orders?pageSize=200`)
+        
+        if (res && res.isSuccess && res.value) {
+          const list = res.value.items || []
+          
+          // Compute overall stats
+          const deliveredOrders = list.filter(o => o.status === 'Delivered' || o.status === 'Completed')
+          const pendingOrders = list.filter(o => !['Delivered', 'Completed', 'Cancelled', 'Failed'].includes(o.status))
+          
+          const paidCod = deliveredOrders.reduce((sum, o) => sum + (o.codAmount || 0), 0)
+          const pendingCod = pendingOrders.reduce((sum, o) => sum + (o.codAmount || 0), 0)
+          const totalCod = paidCod + pendingCod
+          
+          const totalFee = list.reduce((sum, o) => sum + ((o.weight || 0) * 5000 + 15000), 0)
+          const paidFee = deliveredOrders.reduce((sum, o) => sum + ((o.weight || 0) * 5000 + 15000), 0)
+          
+          setStats({ totalCod, paidCod, pendingCod, totalFee })
+          
+          // Generate simulated sessions based on real data
+          if (list.length > 0) {
+             const session1: ReconciliationSession = {
+                id: 'RC-REAL-1',
+                sessionNo: `RC${new Date().toISOString().slice(2,10).replace(/-/g, '')}01`,
+                createdAt: new Date().toISOString(),
+                period: 'Tháng này',
+                orderCount: deliveredOrders.length,
+                totalCod: paidCod,
+                totalFee: paidFee,
+                netAmount: paidCod - paidFee,
+                status: paidCod > 0 ? 'Processing' : 'Pending',
+                paymentMethod: 'Chuyển khoản Ngân hàng (VCB)'
+             }
+             setSessions([session1])
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load orders for reconciliation', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadData()
+  }, [])
 
   const formatVND = (value: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
-  const filteredSessions = dummySessions.filter((session) => {
+  const filteredSessions = sessions.filter((session) => {
     const matchesSearch = session.sessionNo.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter
     return matchesSearch && matchesStatus
@@ -151,7 +128,7 @@ export default function ReconciliationPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Tổng tiền COD đã thu</p>
-                <p className="text-2xl font-bold text-blue-600">{formatVND(94920000)}</p>
+                <p className="text-2xl font-bold text-blue-600">{formatVND(stats.totalCod)}</p>
               </div>
               <div className="flex size-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                 <Wallet className="size-6" />
@@ -171,14 +148,14 @@ export default function ReconciliationPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Đã thanh toán (Thực nhận)</p>
-                <p className="text-2xl font-bold text-emerald-600">{formatVND(73770000)}</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatVND(stats.paidCod)}</p>
               </div>
               <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="size-6" />
               </div>
             </div>
             <div className="mt-4 flex items-center text-xs text-muted-foreground">
-              <span className="font-semibold text-emerald-500">4 phiên</span>
+              <span className="font-semibold text-emerald-500">1 phiên</span>
               <span className="ml-1">đã hoàn tất chuyển khoản</span>
             </div>
           </CardContent>
@@ -190,14 +167,14 @@ export default function ReconciliationPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">COD chờ đối soát</p>
-                <p className="text-2xl font-bold text-amber-600">{formatVND(13450000)}</p>
+                <p className="text-2xl font-bold text-amber-600">{formatVND(stats.pendingCod)}</p>
               </div>
               <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
                 <Clock className="size-6" />
               </div>
             </div>
             <div className="mt-4 flex items-center text-xs text-muted-foreground">
-              <span className="font-semibold text-amber-500">2 phiên</span>
+              <span className="font-semibold text-amber-500">0 phiên</span>
               <span className="ml-1">đang chờ đối soát kì mới</span>
             </div>
           </CardContent>
@@ -209,7 +186,7 @@ export default function ReconciliationPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Cước phí vận chuyển</p>
-                <p className="text-2xl font-bold text-violet-600">{formatVND(7700000)}</p>
+                <p className="text-2xl font-bold text-violet-600">{formatVND(stats.totalFee)}</p>
               </div>
               <div className="flex size-12 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                 <ArrowUpRight className="size-6" />

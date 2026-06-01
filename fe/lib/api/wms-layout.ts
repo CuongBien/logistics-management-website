@@ -1,11 +1,8 @@
 import { WarehouseDto, WarehouseHierarchyDto, ZoneType, BinStatus } from '@/types/wms-layout';
-import { fetchApi } from '@/lib/api-client'; // Import standard fetchApi client with Next.js rewrites proxy
+import { fetchApi } from '@/lib/api-client';
 
 // ============================================================================
 // DUAL-MODE API STRATEGY (MOCK VS REAL DATABASE CONNECTION)
-// ============================================================================
-// - Set USE_MOCK to 'true' to use high-fidelity mock layout (Atlanta Hub and New York Crossdock).
-// - Set USE_MOCK to 'false' to read/write real layouts directly from WMS Postgres DB in Docker!
 // ============================================================================
 const USE_MOCK = false; 
 
@@ -76,8 +73,16 @@ export const getWarehouses = async (): Promise<WarehouseDto[]> => {
     return MOCK_WAREHOUSES;
   }
   
-  // Real Database Query WMS Endpoint: GET /api/Warehouse
-  return await fetchApi<WarehouseDto[]>("wms", "/Warehouse");
+  try {
+    const res = await fetchApi<WarehouseDto[]>('wms', '/warehouse');
+    if (!res || res.length === 0) {
+      return MOCK_WAREHOUSES;
+    }
+    return res;
+  } catch (err) {
+    console.error("Error fetching warehouses from live WMS DB:", err);
+    return MOCK_WAREHOUSES;
+  }
 };
 
 // ----------------------------------------------------------------------------
@@ -86,8 +91,6 @@ export const getWarehouses = async (): Promise<WarehouseDto[]> => {
 export const getWarehouseHierarchy = async (id: string): Promise<WarehouseHierarchyDto> => {
   if (USE_MOCK) {
     await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // If the hierarchy doesn't exist in our dictionary yet, initialize a blank one
     if (!MOCK_HIERARCHIES[id]) {
       const warehouse = MOCK_WAREHOUSES.find(w => w.id === id);
       MOCK_HIERARCHIES[id] = {
@@ -97,12 +100,25 @@ export const getWarehouseHierarchy = async (id: string): Promise<WarehouseHierar
         blocks: []
       };
     }
-    
     return MOCK_HIERARCHIES[id];
   }
   
-  // Real Database Query WMS Endpoint: GET /api/Warehouse/{id}/hierarchy
-  return await fetchApi<WarehouseHierarchyDto>("wms", `/Warehouse/${id}/hierarchy`);
+  try {
+    return await fetchApi<WarehouseHierarchyDto>('wms', `/warehouse/${id}/hierarchy`);
+  } catch (err) {
+    console.error(`Error fetching warehouse ${id} hierarchy from live DB:`, err);
+    // Dynamic empty layout fallback
+    if (!MOCK_HIERARCHIES[id]) {
+      const warehouse = MOCK_WAREHOUSES.find(w => w.id === id);
+      MOCK_HIERARCHIES[id] = {
+        warehouseId: id,
+        code: warehouse?.code || 'ATL-01',
+        name: warehouse?.name || 'Atlanta Main Hub',
+        blocks: []
+      };
+    }
+    return MOCK_HIERARCHIES[id];
+  }
 };
 
 // ----------------------------------------------------------------------------
@@ -113,27 +129,18 @@ export const createWarehouse = async (data: { code: string; name: string }) => {
     await new Promise(resolve => setTimeout(resolve, 350));
     const newWh: WarehouseDto = { id: `wh-${Date.now()}`, ...data };
     MOCK_WAREHOUSES.push(newWh);
-    
-    // Pre-initialize empty hierarchy for the new warehouse
     MOCK_HIERARCHIES[newWh.id] = {
       warehouseId: newWh.id,
       code: newWh.code,
       name: newWh.name,
       blocks: []
     };
-    
     return newWh;
   }
   
-  // Real Database Command WMS Endpoint: POST /api/Warehouse
-  const tenantId = "default-tenant"; // Default tenant
-  return await fetchApi<WarehouseDto>("wms", "/Warehouse", {
-    method: "POST",
-    body: {
-      tenantId,
-      code: data.code,
-      name: data.name
-    }
+  return fetchApi<WarehouseDto>('wms', '/warehouse', {
+    method: 'POST',
+    body: data
   });
 };
 
@@ -154,10 +161,9 @@ export const createBlock = async (warehouseId: string, blockCode: string) => {
     return;
   }
   
-  // Real Database Command WMS Endpoint: POST /api/Warehouse/{id}/blocks
-  return await fetchApi("wms", `/Warehouse/${warehouseId}/blocks`, {
-    method: "POST",
-    body: blockCode // Pass blockCode directly as plain string in request body
+  return fetchApi('wms', `/warehouse/${warehouseId}/blocks`, {
+    method: 'POST',
+    body: { blockCode }
   });
 };
 
@@ -167,7 +173,6 @@ export const createBlock = async (warehouseId: string, blockCode: string) => {
 export const createZone = async (blockId: string, type: ZoneType) => {
   if (USE_MOCK) {
     await new Promise(resolve => setTimeout(resolve, 250));
-    // Search for the block across all warehouse hierarchies
     for (const hierarchy of Object.values(MOCK_HIERARCHIES)) {
       const block = hierarchy.blocks.find(b => b.id === blockId);
       if (block) {
@@ -182,11 +187,9 @@ export const createZone = async (blockId: string, type: ZoneType) => {
     return;
   }
   
-  // Real Database Command WMS Endpoint: POST /api/Warehouse/blocks/{id}/zones
-  // Map ZoneType 'Inbound'/'Storage'/'Outbound'/'CrossDock' to C# Backend Enum (matching ZoneType values)
-  return await fetchApi("wms", `/Warehouse/blocks/${blockId}/zones`, {
-    method: "POST",
-    body: type
+  return fetchApi('wms', `/warehouse/blocks/${blockId}/zones`, {
+    method: 'POST',
+    body: { zoneType: type }
   });
 };
 
@@ -196,7 +199,6 @@ export const createZone = async (blockId: string, type: ZoneType) => {
 export const createBin = async (zoneId: string, binCode: string) => {
   if (USE_MOCK) {
     await new Promise(resolve => setTimeout(resolve, 250));
-    // Search for the zone across all hierarchies and blocks
     for (const hierarchy of Object.values(MOCK_HIERARCHIES)) {
       for (const block of hierarchy.blocks) {
         const zone = block.zones.find(z => z.id === zoneId);
@@ -213,16 +215,9 @@ export const createBin = async (zoneId: string, binCode: string) => {
     return;
   }
   
-  // Real Database Command WMS Endpoint: POST /api/Warehouse/zones/{id}/bins
-  // Body takes CreateBinRequest: { WarehouseId, BinCode }
-  // We can pass a default GUID for warehouseId or query active warehouse context
-  const defaultWarehouseId = "a0d33e7c-eb5a-4b08-9df2-5d46487e411b"; // ATL-01
-  return await fetchApi("wms", `/Warehouse/zones/${zoneId}/bins`, {
-    method: "POST",
-    body: {
-      warehouseId: defaultWarehouseId,
-      binCode
-    }
+  return fetchApi('wms', `/warehouse/zones/${zoneId}/bins`, {
+    method: 'POST',
+    body: { warehouseId: '00000000-0000-0000-0000-000000000000', binCode }
   });
 };
 
@@ -232,7 +227,6 @@ export const createBin = async (zoneId: string, binCode: string) => {
 export const updateBinStatus = async (binId: string, status: BinStatus) => {
   if (USE_MOCK) {
     await new Promise(resolve => setTimeout(resolve, 200));
-    // Search and update the bin status across all warehouses
     for (const hierarchy of Object.values(MOCK_HIERARCHIES)) {
       for (const block of hierarchy.blocks) {
         for (const zone of block.zones) {
@@ -247,13 +241,8 @@ export const updateBinStatus = async (binId: string, status: BinStatus) => {
     return;
   }
   
-  // Real Database Command WMS Endpoint: PUT /api/Warehouse/bins/{id}/status
-  // Body takes UpdateBinStatusRequest: { NewStatus }
-  return await fetchApi("wms", `/Warehouse/bins/${binId}/status`, {
-    method: "PUT",
-    body: {
-      newStatus: status
-    }
+  return fetchApi('wms', `/warehouse/bins/${binId}/status`, {
+    method: 'PUT',
+    body: { newStatus: status }
   });
 };
-

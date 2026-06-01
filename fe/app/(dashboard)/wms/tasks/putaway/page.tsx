@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getPutawayTasks } from "@/lib/api/wms-tasks"
+import { getPutawayTasks, completePutawayTask } from "@/lib/api/wms-tasks"
 import { PutawayTaskDto } from "@/types/wms-tasks"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,12 +19,12 @@ import {
   ArchiveRestore,
   Search,
   ArrowRight,
-  TrendingUp,
   Clock,
   CheckCircle2,
   AlertCircle,
   RefreshCcw,
-  ClipboardList
+  ClipboardList,
+  Loader2
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -36,6 +36,10 @@ export default function PutawayTasksPage() {
   const [tasks, setTasks] = useState<PutawayTaskDto[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  
+  // Operator inline inputs state
+  const [scannedBins, setScannedBins] = useState<Record<string, string>>({})
+  const [completingRow, setCompletingRow] = useState<Record<string, boolean>>({})
 
   const fetchTasks = async () => {
     try {
@@ -52,6 +56,30 @@ export default function PutawayTasksPage() {
   useEffect(() => {
     fetchTasks()
   }, [])
+
+  const handleComplete = async (taskId: string, suggestedBin: string) => {
+    const binToUse = scannedBins[taskId] || suggestedBin
+    if (!binToUse || !binToUse.trim()) {
+      toast.error("Vui lòng nhập hoặc quét mã Ô kệ đích!")
+      return
+    }
+
+    try {
+      setCompletingRow(prev => ({ ...prev, [taskId]: true }))
+      await completePutawayTask(taskId, binToUse.toUpperCase().trim())
+      toast.success(`Đã xác nhận cất hàng thành công vào ô kệ ${binToUse.toUpperCase().trim()}!`)
+      setScannedBins(prev => {
+        const next = { ...prev }
+        delete next[taskId]
+        return next
+      })
+      await fetchTasks()
+    } catch (err: any) {
+      toast.error(err?.message || "Lỗi khi hoàn tất cất hàng")
+    } finally {
+      setCompletingRow(prev => ({ ...prev, [taskId]: false }))
+    }
+  }
 
   // Client-side search filtering by SKU or Task ID
   const filteredTasks = tasks.filter(
@@ -236,20 +264,23 @@ export default function PutawayTasksPage() {
                 <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-40">
                   Mã SKU Sản Phẩm
                 </TableHead>
-                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-28 text-center">
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-24 text-center">
                   Số Lượng
                 </TableHead>
                 <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground text-center">
                   Dòng Di Chuyển (Bins Flow)
                 </TableHead>
-                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-48 w-44">
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-44">
                   Nhân Viên Kho
                 </TableHead>
-                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-40 text-center">
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-36 text-center">
                   Thời Gian Tạo
                 </TableHead>
                 <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-32 text-center">
                   Trạng Thái
+                </TableHead>
+                <TableHead className="text-xs uppercase font-extrabold h-10 tracking-wider text-muted-foreground w-48 text-right">
+                  Thao Tác
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -264,11 +295,12 @@ export default function PutawayTasksPage() {
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24 mx-auto" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-7 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : filteredTasks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground text-xs">
+                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground text-xs">
                     <div className="flex flex-col items-center gap-2">
                       <ArchiveRestore className="h-8 w-8 text-muted-foreground/60 stroke-[1.5]" />
                       <p className="font-semibold">Không tìm thấy tác vụ cất hàng nào</p>
@@ -279,83 +311,112 @@ export default function PutawayTasksPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTasks.map((task) => (
-                  <TableRow key={task.id} className="hover:bg-muted/10 border-b border-muted transition-colors">
-                    {/* Task ID */}
-                    <TableCell className="text-xs font-bold font-mono text-[#C41E3A] tracking-wider uppercase">
-                      {task.id}
-                    </TableCell>
-                    
-                    {/* SKU Code */}
-                    <TableCell className="text-xs font-bold font-mono text-foreground uppercase">
-                      {task.sku}
-                    </TableCell>
-                    
-                    {/* Qty */}
-                    <TableCell className="text-xs text-center font-bold">
-                      {task.quantity}
-                    </TableCell>
-                    
-                    {/* Bins Flow */}
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center justify-center gap-3">
-                        <span className="font-mono text-[10px] font-bold bg-muted px-2 py-0.5 border border-muted/80 rounded text-muted-foreground">
-                          {task.sourceBinCode}
-                        </span>
-                        <ArrowRight className="h-3.5 w-3.5 text-indigo-500 animate-pulse shrink-0" />
-                        <span className="font-mono text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 border border-indigo-500/20 rounded">
-                          {task.suggestedBinCode}
-                        </span>
-                      </div>
-                    </TableCell>
-                    
-                    {/* Operator */}
-                    <TableCell className="text-xs font-semibold text-foreground">
-                      {task.operatorName || (
-                        <span className="text-muted-foreground font-normal italic text-[11px]">Chưa phân bổ</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Created Date */}
-                    <TableCell className="text-xs text-center font-mono text-muted-foreground">
-                      {new Date(task.createdAt).toLocaleString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        day: "2-digit",
-                        month: "2-digit"
-                      })}
-                    </TableCell>
-                    
-                    {/* Status Badge */}
-                    <TableCell className="text-center">
-                      <Badge
-                        variant="secondary"
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          task.status === "Pending"
-                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                            : task.status === "InProgress"
-                            ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
+                filteredTasks.map((task) => {
+                  const sourceBin = task.sourceBinCode || (task as any).sourceBinId || ''
+                  const suggestedBin = task.suggestedBinCode || (task as any).suggestedBinId || ''
+
+                  return (
+                    <TableRow key={task.id} className="hover:bg-muted/10 border-b border-muted transition-colors">
+                      {/* Task ID */}
+                      <TableCell className="text-xs font-bold font-mono text-[#C41E3A] tracking-wider uppercase">
+                        {task.id}
+                      </TableCell>
+                      
+                      {/* SKU Code */}
+                      <TableCell className="text-xs font-bold font-mono text-foreground uppercase">
+                        {task.sku}
+                      </TableCell>
+                      
+                      {/* Qty */}
+                      <TableCell className="text-xs text-center font-bold">
+                        {task.quantity}
+                      </TableCell>
+                      
+                      {/* Bins Flow */}
+                      <TableCell className="text-center">
+                        <div className="inline-flex items-center justify-center gap-3">
+                          <span className="font-mono text-[10px] font-bold bg-muted px-2 py-0.5 border border-muted/80 rounded text-muted-foreground">
+                            {sourceBin}
+                          </span>
+                          <ArrowRight className="h-3.5 w-3.5 text-indigo-500 animate-pulse shrink-0" />
+                          <span className="font-mono text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 border border-indigo-500/20 rounded">
+                            {suggestedBin}
+                          </span>
+                        </div>
+                      </TableCell>
+                      
+                      {/* Operator */}
+                      <TableCell className="text-xs font-semibold text-foreground">
+                        {task.operatorName || (
+                          <span className="text-muted-foreground font-normal italic text-[11px]">Chưa phân bổ</span>
+                        )}
+                      </TableCell>
+                      
+                      {/* Created Date */}
+                      <TableCell className="text-xs text-center font-mono text-muted-foreground">
+                        {new Date(task.createdAt).toLocaleString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "2-digit",
+                          month: "2-digit"
+                        })}
+                      </TableCell>
+                      
+                      {/* Status Badge */}
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="secondary"
+                          className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             task.status === "Pending"
-                              ? "bg-amber-500 animate-pulse"
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                               : task.status === "InProgress"
-                              ? "bg-indigo-500"
-                              : "bg-emerald-500"
+                              ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                           }`}
-                        />
-                        {task.status === "Pending"
-                          ? "Chờ xử lý"
-                          : task.status === "InProgress"
-                          ? "Đang thực hiện"
-                          : "Đã cất kệ"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              task.status === "Pending"
+                                ? "bg-amber-500 animate-pulse"
+                                : task.status === "InProgress"
+                                ? "bg-indigo-500"
+                                : "bg-emerald-500"
+                            }`}
+                          />
+                          {task.status === "Pending"
+                            ? "Chờ xử lý"
+                            : task.status === "InProgress"
+                            ? "Đang thực hiện"
+                            : "Đã cất kệ"}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Operator Actions for Scan & Complete */}
+                      <TableCell className="text-right">
+                        {task.status === "Pending" || task.status === "InProgress" ? (
+                          <div className="flex items-center gap-2 justify-end">
+                            <Input
+                              placeholder="Quét mã Bin thực tế..."
+                              className="w-32 h-7 text-[10px] bg-background border-muted px-2 py-1 rounded"
+                              value={scannedBins[task.id] || ""}
+                              onChange={(e) => setScannedBins(prev => ({ ...prev, [task.id]: e.target.value }))}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => handleComplete(task.id, suggestedBin)}
+                              disabled={completingRow[task.id]}
+                              className="h-7 text-[10px] px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold"
+                            >
+                              {completingRow[task.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : "Xong"}
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/60 italic font-medium">Hoàn tất</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

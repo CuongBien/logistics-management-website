@@ -33,6 +33,15 @@ public class OutboundController : ApiControllerBase
         return Ok(order);
     }
 
+    [HttpGet("orders")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetOrders()
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var result = await Mediator.Send(new Warehouse.Application.Features.Outbound.Queries.GetOutboundOrdersList.GetOutboundOrdersListQuery(operatorSub));
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+    }
+
     [HttpGet("shipments")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetShipments()
@@ -221,6 +230,14 @@ public class OutboundController : ApiControllerBase
         return ToActionResult(await Mediator.Send(command));
     }
 
+    [HttpGet("returns")]
+    [ProducesResponseType(typeof(List<Warehouse.Application.Features.Outbound.Queries.GetReturnsList.OutboundReturnDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<Warehouse.Application.Features.Outbound.Queries.GetReturnsList.OutboundReturnDto>>> GetReturns([FromQuery] Guid warehouseId)
+    {
+        var query = new Warehouse.Application.Features.Outbound.Queries.GetReturnsList.GetReturnsListQuery(warehouseId);
+        return ToActionResult(await Mediator.Send(query));
+    }
+
     [HttpPost("returns/disposition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> ProcessReturnDisposition([FromBody] ProcessReturnDispositionRequest request)
@@ -257,6 +274,30 @@ public class OutboundController : ApiControllerBase
             request.MaxSingleItemOrdersPerWave,
             request.MaxMultiItemOrdersPerWave
         );
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpGet("waves")]
+    [ProducesResponseType(typeof(List<Warehouse.Application.Features.Outbound.Queries.GetWavesList.WaveDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<Warehouse.Application.Features.Outbound.Queries.GetWavesList.WaveDto>>> GetWaves([FromQuery] Guid warehouseId)
+    {
+        var query = new Warehouse.Application.Features.Outbound.Queries.GetWavesList.GetWavesListQuery(warehouseId);
+        return ToActionResult(await Mediator.Send(query));
+    }
+
+    [HttpPost("waves/{id:guid}/start")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> StartWave(Guid id)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.StartWave.StartWaveCommand(id);
+        return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("waves/{id:guid}/release")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<bool>> ReleaseWave(Guid id)
+    {
+        var command = new Warehouse.Application.Features.Outbound.Commands.ReleaseWave.ReleaseWaveCommand(id);
         return ToActionResult(await Mediator.Send(command));
     }
 
