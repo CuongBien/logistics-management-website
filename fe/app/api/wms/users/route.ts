@@ -203,7 +203,8 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             operatorSub,
             roleCode,
-            warehouseId
+            warehouseId,
+            displayName: `${lastName} ${firstName}`.trim()
           }),
           signal: AbortSignal.timeout(3000)
         })
@@ -236,7 +237,7 @@ export async function POST(req: Request) {
 
     } else {
       // Existing flow: Assign role to already created staff
-      const { operatorSub, roleCode, warehouseId } = body
+      const { operatorSub, roleCode, warehouseId, displayName } = body
       const apiUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment`
       
       try {
@@ -249,7 +250,8 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             operatorSub,
             roleCode,
-            warehouseId
+            warehouseId,
+            displayName
           }),
           signal: AbortSignal.timeout(3000)
         })

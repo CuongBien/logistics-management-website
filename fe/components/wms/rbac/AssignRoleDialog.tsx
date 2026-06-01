@@ -125,11 +125,12 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
     try {
       const res = await fetchApi('wms', '/RoleAssignment', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           operatorSub: operator.operatorSub,
           roleCode: roleCode,
           warehouseId: warehouseId,
-        }),
+          displayName: operator.fullName,
+        },
       });
 
       if (res && (res as any).isSuccess) {
