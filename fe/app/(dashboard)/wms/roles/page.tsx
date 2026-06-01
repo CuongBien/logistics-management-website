@@ -27,10 +27,25 @@ export default function RolesPage() {
       const rolesData = await rolesRes.json();
       const permsData = await permsRes.json();
 
-      if (rolesData.isSuccess) setRoles(rolesData.value);
-      if (permsData.isSuccess) setPermissions(permsData.value);
+      // Parse Roles
+      if (rolesData) {
+        if (rolesData.isSuccess && Array.isArray(rolesData.value)) {
+          setRoles(rolesData.value);
+        } else if (Array.isArray(rolesData)) {
+          setRoles(rolesData);
+        }
+      }
+
+      // Parse Permissions
+      if (permsData) {
+        if (permsData.isSuccess && Array.isArray(permsData.value)) {
+          setPermissions(permsData.value);
+        } else if (Array.isArray(permsData)) {
+          setPermissions(permsData);
+        }
+      }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to load roles or permissions:", e);
     } finally {
       setLoading(false);
     }
