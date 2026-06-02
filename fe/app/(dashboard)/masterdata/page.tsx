@@ -52,7 +52,7 @@ export default function MasterDataHubPage() {
     address: "",
     city: "",
     isActive: true,
-    tenantId: "T-001"
+    tenantId: "tenant-1"
   })
 
   const loadPartners = async () => {
@@ -107,7 +107,7 @@ export default function MasterDataHubPage() {
     setPartnerFormData(
       p
         ? { ...p }
-        : { name: "", phone: "", address: "", city: "", isActive: true, tenantId: "T-001" }
+        : { name: "", phone: "", address: "", city: "", isActive: true, tenantId: "tenant-1" }
     )
     setIsPartnerDialogOpen(true)
   }
