@@ -19,11 +19,19 @@ export async function createPartner(data: Partial<Partner>): Promise<string> {
   else if (data.type === 'Carrier' || data.type === 3) numericType = 3;
   else if (data.type === 'Warehouse' || data.type === 4) numericType = 4;
 
+  const cleanName = (data.name || '').trim();
+  const words = cleanName.split(/\s+/);
+  const initials = words.length > 1
+    ? words.map(w => w[0]).join('').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4)
+    : cleanName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+  const randNum = Math.floor(100 + Math.random() * 900);
+  const generatedCode = data.code || `PT-${initials || 'PART'}-${randNum}`;
+
   const res = await fetchApi<any>('masterdata', `/Partners`, {
     method: 'POST',
     body: {
-      tenantId: data.tenantId || "default-tenant",
-      code: data.code || `PART-${Date.now()}`,
+      tenantId: data.tenantId || "tenant-1",
+      code: generatedCode,
       name: data.name,
       type: numericType,
       phone: data.phone,

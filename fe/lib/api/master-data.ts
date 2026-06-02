@@ -7,81 +7,61 @@ import { fetchApi } from "@/lib/api-client";
 const USE_MOCK = false;
 
 // Mocked item data aligned with WMS database seeds to prevent inventory mismatches
-let mockItems: ItemDto[] = [
-  {
-    id: "ITEM-A0-001",
-    sku: "A0-001",
-    name: "Ao Thun Nam Basic",
-    weight: 0.22,
-    length: 16.0,
-    width: 7.7,
-    height: 0.8,
-    category: "Thời Trang",
-    isActive: true,
-    createdAt: "2026-05-30T08:00:00Z"
-  },
-  {
-    id: "ITEM-A0-002",
-    sku: "A0-002",
-    name: "Ao Thun Nu Basic",
-    weight: 0.18,
-    length: 15.0,
-    width: 7.5,
-    height: 0.7,
-    category: "Thời Trang",
-    isActive: true,
-    createdAt: "2026-05-30T08:30:00Z"
-  },
-  {
-    id: "ITEM-A0-003",
-    sku: "A0-003",
-    name: "Ao Khoac Nam",
-    weight: 0.65,
-    length: 30.0,
-    width: 25.0,
-    height: 5.0,
-    category: "Thời Trang",
-    isActive: true,
-    createdAt: "2026-05-30T09:00:00Z"
-  },
-  {
-    id: "ITEM-RED-TSHIRT",
-    sku: "SKU-RED-TSHIRT",
-    name: "Red T-Shirt",
-    weight: 0.2,
-    length: 15.0,
-    width: 10.0,
-    height: 1.0,
-    category: "Thời Trang",
-    isActive: true,
-    createdAt: "2026-05-30T09:15:00Z"
-  },
-  {
-    id: "ITEM-BLUE-JEANS",
-    sku: "SKU-BLUE-JEANS",
-    name: "Blue Jeans",
-    weight: 0.5,
-    length: 25.0,
-    width: 18.0,
-    height: 3.0,
-    category: "Thời Trang",
-    isActive: true,
-    createdAt: "2026-05-30T09:30:00Z"
-  }
-];
-
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function getItems(searchTerm?: string): Promise<ItemDto[]> {
-  await delay(300);
-  if (!searchTerm) return [...mockItems];
-  const query = searchTerm.toLowerCase();
-  return mockItems.filter(
-    (item) =>
-      item.sku.toLowerCase().includes(query) ||
-      item.name.toLowerCase().includes(query) ||
-      item.category.toLowerCase().includes(query)
-  );
+  try {
+    const res = await fetchApi<any>('wms', '/inventory/skus');
+    const items = res?.value || res?.items || res || [];
+    
+    const mapped = items.map((item: any) => {
+      let name = item.name || '';
+      let weight = 0.25;
+      let length = 20;
+      let width = 15;
+      let height = 2;
+      let category = "Thời Trang";
+
+      if (name.includes('|')) {
+        const parts = name.split('|');
+        if (parts.length >= 6) {
+          name = parts[0];
+          weight = parseFloat(parts[1]) || 0.25;
+          length = parseFloat(parts[2]) || 20;
+          width = parseFloat(parts[3]) || 15;
+          height = parseFloat(parts[4]) || 2;
+          category = parts[5];
+        }
+      }
+
+      return {
+        id: item.id || `ITEM-${item.skuCode}`,
+        sku: item.skuCode,
+        name: name,
+        weight: weight,
+        length: length,
+        width: width,
+        height: height,
+        category: category,
+        isActive: item.status === 'active' || item.status === 'Active',
+        createdAt: item.createdAt || new Date().toISOString()
+      };
+    });
+
+    if (searchTerm) {
+      const query = searchTerm.toLowerCase();
+      return mapped.filter(
+        (item: any) =>
+          item.sku.toLowerCase().includes(query) ||
+          item.name.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query)
+      );
+    }
+    return mapped;
+  } catch (err) {
+    console.error("Failed to load SKUs from backend:", err);
+    return [];
+  }
 }
 
 export async function getPartners(searchTerm?: string): Promise<PartnerDto[]> {
@@ -90,6 +70,7 @@ export async function getPartners(searchTerm?: string): Promise<PartnerDto[]> {
   
   return items.map((p: any) => ({
     id: p.id,
+    tenantId: p.tenantId || 'tenant-1',
     name: p.name,
     type: p.type === 1 || p.type === 'Supplier' ? 'Supplier' : 'Consignor',
     phone: p.phone || '',
@@ -103,37 +84,87 @@ export async function getPartners(searchTerm?: string): Promise<PartnerDto[]> {
 export async function createItem(
   data: Omit<ItemDto, "id" | "createdAt" | "isActive">
 ): Promise<ItemDto> {
-  await delay(400);
-  const newItem: ItemDto = {
-    id: `ITEM-${Date.now()}`,
-    ...data,
+  const serializedName = `${data.name}|${data.weight}|${data.length}|${data.width}|${data.height}|${data.category}`;
+  
+  const payload = {
+    skuCode: data.sku,
+    name: serializedName,
+    unitOfMeasure: 'PCS',
+    status: 'active'
+  };
+
+  const res = await fetchApi<any>('wms', '/inventory/skus', {
+    method: 'POST',
+    body: payload
+  });
+
+  const skuId = res?.value || res?.id || `ITEM-${Date.now()}`;
+  return {
+    id: skuId,
+    sku: data.sku,
+    name: data.name,
+    weight: data.weight,
+    length: data.length,
+    width: data.width,
+    height: data.height,
+    category: data.category,
     isActive: true,
     createdAt: new Date().toISOString()
   };
-  mockItems = [newItem, ...mockItems];
-  return newItem;
 }
 
 export async function updateItem(
   id: string,
   data: Partial<Omit<ItemDto, "id" | "createdAt">>
 ): Promise<ItemDto> {
-  await delay(400);
-  const index = mockItems.findIndex((item) => item.id === id);
-  if (index === -1) throw new Error("Item not found");
-  mockItems[index] = { ...mockItems[index], ...data };
-  return mockItems[index];
+  const serializedName = `${data.name}|${data.weight}|${data.length}|${data.width}|${data.height}|${data.category}`;
+  
+  const payload = {
+    skuCode: data.sku,
+    name: serializedName,
+    unitOfMeasure: 'PCS',
+    status: 'active'
+  };
+
+  await fetchApi<any>('wms', '/inventory/skus', {
+    method: 'POST',
+    body: payload
+  });
+
+  return {
+    id,
+    sku: data.sku || "SKU-UPDATE",
+    name: data.name || "Product Name",
+    weight: data.weight || 0.25,
+    length: data.length || 20,
+    width: data.width || 15,
+    height: data.height || 2,
+    category: data.category || "Thời Trang",
+    isActive: true,
+    createdAt: new Date().toISOString()
+  };
 }
 
-export async function toggleActiveStatus(id: string): Promise<ItemDto> {
-  await delay(300);
-  const index = mockItems.findIndex((item) => item.id === id);
-  if (index === -1) throw new Error("Item not found");
-  mockItems[index] = {
-    ...mockItems[index],
-    isActive: !mockItems[index].isActive
+export async function toggleActiveStatus(item: ItemDto, newActiveState: boolean): Promise<ItemDto> {
+  const serializedName = `${item.name}|${item.weight}|${item.length}|${item.width}|${item.height}|${item.category}`;
+  const statusVal = newActiveState ? 'active' : 'inactive';
+  
+  const payload = {
+    skuCode: item.sku,
+    name: serializedName,
+    unitOfMeasure: 'PCS',
+    status: statusVal
   };
-  return mockItems[index];
+
+  await fetchApi<any>('wms', '/inventory/skus', {
+    method: 'POST',
+    body: payload
+  });
+
+  return {
+    ...item,
+    isActive: newActiveState
+  };
 }
 
 export async function togglePartnerStatus(id: string): Promise<PartnerDto> {

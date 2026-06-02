@@ -65,21 +65,21 @@ export default function ItemMasterPage() {
     fetchItemData()
   }, [])
 
-  const handleToggleActive = async (id: string, sku: string, currentStatus: boolean) => {
+  const handleToggleActive = async (item: ItemDto) => {
     try {
-      setTogglingRows((prev) => ({ ...prev, [id]: true }))
-      const updated = await toggleActiveStatus(id)
-      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)))
+      setTogglingRows((prev) => ({ ...prev, [item.id]: true }))
+      const updated = await toggleActiveStatus(item, !item.isActive)
+      setItems((prev) => prev.map((i) => (i.id === item.id ? updated : i)))
       
       if (updated.isActive) {
-        toast.success(`Đã kích hoạt hoạt động thành công cho SKU: ${sku}`)
+        toast.success(`Đã kích hoạt hoạt động thành công cho SKU: ${item.sku}`)
       } else {
-        toast.warning(`Đã dừng hoạt động (Khóa) thành công cho SKU: ${sku}`)
+        toast.warning(`Đã dừng hoạt động (Khóa) thành công cho SKU: ${item.sku}`)
       }
     } catch (e: any) {
       toast.error(e.message || "Không thể chuyển đổi trạng thái hoạt động")
     } finally {
-      setTogglingRows((prev) => ({ ...prev, [id]: false }))
+      setTogglingRows((prev) => ({ ...prev, [item.id]: false }))
     }
   }
 
@@ -354,7 +354,7 @@ export default function ItemMasterPage() {
                           variant="ghost"
                           size="icon"
                           disabled={togglingRows[item.id]}
-                          onClick={() => handleToggleActive(item.id, item.sku, item.isActive)}
+                          onClick={() => handleToggleActive(item)}
                           className={`h-7 w-7 rounded-md transition-colors ${
                             item.isActive
                               ? "hover:bg-rose-50 dark:hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600"

@@ -141,20 +141,20 @@ export default function MasterDataHubPage() {
     }
   }, [activeTab])
 
-  const handleToggleItemActive = async (id: string, sku: string, currentStatus: boolean) => {
+  const handleToggleItemActive = async (item: ItemDto) => {
     try {
-      setTogglingRows((prev) => ({ ...prev, [id]: true }))
-      const updated = await toggleActiveStatus(id)
-      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)))
+      setTogglingRows((prev) => ({ ...prev, [item.id]: true }))
+      const updated = await toggleActiveStatus(item, !item.isActive)
+      setItems((prev) => prev.map((i) => (i.id === item.id ? updated : i)))
       if (updated.isActive) {
-        toast.success(`Đã kích hoạt hoạt động thành công cho SKU: ${sku}`)
+        toast.success(`Đã kích hoạt hoạt động thành công cho SKU: ${item.sku}`)
       } else {
-        toast.warning(`Đã dừng hoạt động (Khóa) thành công cho SKU: ${sku}`)
+        toast.warning(`Đã dừng hoạt động (Khóa) thành công cho SKU: ${item.sku}`)
       }
     } catch (e: any) {
       toast.error(e.message || "Không thể chuyển đổi trạng thái hoạt động")
     } finally {
-      setTogglingRows((prev) => ({ ...prev, [id]: false }))
+      setTogglingRows((prev) => ({ ...prev, [item.id]: false }))
     }
   }
 
@@ -310,14 +310,6 @@ export default function MasterDataHubPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] rounded-md bg-muted/30 border-muted">
-                  Cơ sở dữ liệu: Live SQL Database
-                </Badge>
-                <Badge variant="outline" className="text-[10px] rounded-md bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                  Chế độ: Tự động Fallback an toàn
-                </Badge>
-              </div>
             </div>
 
             {/* DataTable Grid */}
@@ -633,7 +625,7 @@ export default function MasterDataHubPage() {
                               variant="ghost"
                               size="icon"
                               disabled={togglingRows[item.id]}
-                              onClick={() => handleToggleItemActive(item.id, item.sku, item.isActive)}
+                              onClick={() => handleToggleItemActive(item)}
                               className={`h-7 w-7 rounded-md transition-colors ${
                                 item.isActive
                                   ? "hover:bg-rose-50 dark:hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600"
@@ -686,35 +678,18 @@ export default function MasterDataHubPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="font-bold text-muted-foreground text-[10px] uppercase tracking-wider">
-                  Số Điện Thoại <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Phone className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="VD: 0901234567"
-                    className="h-9 pl-9 text-xs bg-background border-muted rounded-md"
-                    value={partnerFormData.phone || ""}
-                    onChange={(e) => setPartnerFormData({ ...partnerFormData, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="font-bold text-muted-foreground text-[10px] uppercase tracking-wider">
-                  Mã Định Danh Tenant <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Building className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="VD: T-001"
-                    className="h-9 pl-9 text-xs bg-background border-muted rounded-md font-mono"
-                    value={partnerFormData.tenantId || ""}
-                    onChange={(e) => setPartnerFormData({ ...partnerFormData, tenantId: e.target.value })}
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label className="font-bold text-muted-foreground text-[10px] uppercase tracking-wider">
+                Số Điện Thoại <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Phone className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="VD: 0901234567"
+                  className="h-9 pl-9 text-xs bg-background border-muted rounded-md"
+                  value={partnerFormData.phone || ""}
+                  onChange={(e) => setPartnerFormData({ ...partnerFormData, phone: e.target.value })}
+                />
               </div>
             </div>
 
