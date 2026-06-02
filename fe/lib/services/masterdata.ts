@@ -13,12 +13,19 @@ export async function getPartner(id: string): Promise<Partner> {
 }
 
 export async function createPartner(data: Partial<Partner>): Promise<string> {
+  let numericType = 2; // Default to Consignor (2)
+  if (data.type === 'Consignee' || data.type === 1) numericType = 1;
+  else if (data.type === 'Consignor' || data.type === 2 || data.type === 'Supplier') numericType = 2;
+  else if (data.type === 'Carrier' || data.type === 3) numericType = 3;
+  else if (data.type === 'Warehouse' || data.type === 4) numericType = 4;
+
   const res = await fetchApi<any>('masterdata', `/Partners`, {
     method: 'POST',
     body: {
       tenantId: data.tenantId || "default-tenant",
+      code: data.code || `PART-${Date.now()}`,
       name: data.name,
-      type: data.type || "Supplier",
+      type: numericType,
       phone: data.phone,
       address: data.address,
       city: data.city,
