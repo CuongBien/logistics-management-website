@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import * as inboundService from "@/lib/services/inbound"
 import type { InboundReceipt } from "@/lib/types"
+import { QRCodeDisplay } from "@/components/QRCodeDisplay"
 
 const statusColors: Record<string, string> = {
   Pending: "bg-blue-500 text-white", PartiallyReceived: "bg-amber-500 text-white",
@@ -25,6 +26,7 @@ export default function InboundPage() {
   const [searchError, setSearchError] = useState<string | null>(null)
   const [createForm, setCreateForm] = useState({ orderId: "", warehouseId: "", sourceShipmentNo: "", skuCode: "SKU-RED-TSHIRT", expectedQuantity: "10" })
   const [receiveForm, setReceiveForm] = useState({ receiptId: "", orderId: "", skuCode: "SKU-RED-TSHIRT", binCode: "BIN-C1-01", quantity: "5" })
+  const [qrPackageId, setQrPackageId] = useState("")
 
   const searchReceipt = async () => {
     if (!searchOrderId.trim()) return
@@ -67,6 +69,7 @@ export default function InboundPage() {
             <TabsTrigger value="search" className="text-xs h-7">Tra cứu phiếu nhập</TabsTrigger>
             <TabsTrigger value="create" className="text-xs h-7">Tạo phiếu nhập</TabsTrigger>
             <TabsTrigger value="receive" className="text-xs h-7">Nhận hàng (Scan)</TabsTrigger>
+            <TabsTrigger value="qrcode" className="text-xs h-7">In tem QR Kiện hàng</TabsTrigger>
           </TabsList>
 
           <TabsContent value="search" className="space-y-4">
@@ -83,7 +86,7 @@ export default function InboundPage() {
                     <h3 className="text-xs font-semibold uppercase">Receipt Details</h3>
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] px-2 py-0.5 font-semibold uppercase ${statusColors[receipt.status as string] || "bg-gray-400 text-white"}`}>{receipt.status}</span>
-                      {["PartiallyReceived","Pending"].includes(receipt.status as string) && <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={handleForceClose}><XCircle className="h-3 w-3 mr-1" />Force Close</Button>}
+                      {["PartiallyReceived", "Pending"].includes(receipt.status as string) && <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={handleForceClose}><XCircle className="h-3 w-3 mr-1" />Force Close</Button>}
                     </div>
                   </div>
                   <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
@@ -113,7 +116,7 @@ export default function InboundPage() {
                           <TableCell className="text-xs font-mono py-2">{l.skuCode}</TableCell>
                           <TableCell className="text-xs text-center py-2">{l.expectedQuantity}</TableCell>
                           <TableCell className="text-xs text-center py-2">{l.receivedQuantity}</TableCell>
-                          <TableCell className="py-2"><div className="flex items-center gap-2"><div className="flex-1 h-2 bg-muted overflow-hidden max-w-[120px]"><div className={`h-full ${pct>=100?"bg-green-500":pct>0?"bg-amber-500":"bg-gray-300"}`} style={{width:`${Math.min(pct,100)}%`}}/></div><span className="text-[10px] font-mono">{pct}%</span></div></TableCell>
+                          <TableCell className="py-2"><div className="flex items-center gap-2"><div className="flex-1 h-2 bg-muted overflow-hidden max-w-[120px]"><div className={`h-full ${pct >= 100 ? "bg-green-500" : pct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(pct, 100)}%` }} /></div><span className="text-[10px] font-mono">{pct}%</span></div></TableCell>
                           <TableCell className="py-2 text-[10px]">{l.allocations?.map(a => <span key={a.id} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 mr-1 font-mono">{a.binCode}:{a.quantity}</span>)}</TableCell>
                         </TableRow>)
                       })}
@@ -128,13 +131,13 @@ export default function InboundPage() {
             <div className="border border-border bg-white max-w-lg">
               <div className="bg-muted px-3 py-1.5 border-b border-border"><h3 className="text-xs font-semibold uppercase">Create Inbound Receipt</h3></div>
               <div className="p-4 space-y-3">
-                <div><Label className="text-xs">Order ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={createForm.orderId} onChange={e=>setCreateForm({...createForm,orderId:e.target.value})} /></div>
-                <div><Label className="text-xs">Warehouse ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={createForm.warehouseId} onChange={e=>setCreateForm({...createForm,warehouseId:e.target.value})} /></div>
-                <div><Label className="text-xs">Source Shipment No</Label><Input className="h-8 text-xs mt-1 font-mono" value={createForm.sourceShipmentNo} onChange={e=>setCreateForm({...createForm,sourceShipmentNo:e.target.value})} /></div>
+                <div><Label className="text-xs">Order ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={createForm.orderId} onChange={e => setCreateForm({ ...createForm, orderId: e.target.value })} /></div>
+                <div><Label className="text-xs">Warehouse ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={createForm.warehouseId} onChange={e => setCreateForm({ ...createForm, warehouseId: e.target.value })} /></div>
+                <div><Label className="text-xs">Source Shipment No</Label><Input className="h-8 text-xs mt-1 font-mono" value={createForm.sourceShipmentNo} onChange={e => setCreateForm({ ...createForm, sourceShipmentNo: e.target.value })} /></div>
                 <div className="border-t pt-3"><span className="text-xs font-semibold text-muted-foreground uppercase">Expected Lines</span>
                   <div className="grid grid-cols-2 gap-3 mt-2">
-                    <div><Label className="text-xs">SKU Code</Label><Input className="h-8 text-xs mt-1" value={createForm.skuCode} onChange={e=>setCreateForm({...createForm,skuCode:e.target.value})} /></div>
-                    <div><Label className="text-xs">Expected Qty</Label><Input className="h-8 text-xs mt-1" type="number" value={createForm.expectedQuantity} onChange={e=>setCreateForm({...createForm,expectedQuantity:e.target.value})} /></div>
+                    <div><Label className="text-xs">SKU Code</Label><Input className="h-8 text-xs mt-1" value={createForm.skuCode} onChange={e => setCreateForm({ ...createForm, skuCode: e.target.value })} /></div>
+                    <div><Label className="text-xs">Expected Qty</Label><Input className="h-8 text-xs mt-1" type="number" value={createForm.expectedQuantity} onChange={e => setCreateForm({ ...createForm, expectedQuantity: e.target.value })} /></div>
                   </div>
                 </div>
                 <Button className="w-full h-8 text-xs bg-[#C41E3A] hover:bg-[#A01830] text-white" onClick={handleCreate}><Plus className="h-3 w-3 mr-1" />Create Receipt</Button>
@@ -146,14 +149,41 @@ export default function InboundPage() {
             <div className="border border-border bg-white max-w-lg">
               <div className="bg-muted px-3 py-1.5 border-b border-border"><h3 className="text-xs font-semibold uppercase">Receive Inbound Item (Scan)</h3></div>
               <div className="p-4 space-y-3">
-                <div><Label className="text-xs">Receipt ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={receiveForm.receiptId} onChange={e=>setReceiveForm({...receiveForm,receiptId:e.target.value})} /></div>
-                <div><Label className="text-xs">Order ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={receiveForm.orderId} onChange={e=>setReceiveForm({...receiveForm,orderId:e.target.value})} /></div>
+                <div><Label className="text-xs">Receipt ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={receiveForm.receiptId} onChange={e => setReceiveForm({ ...receiveForm, receiptId: e.target.value })} /></div>
+                <div><Label className="text-xs">Order ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={receiveForm.orderId} onChange={e => setReceiveForm({ ...receiveForm, orderId: e.target.value })} /></div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div><Label className="text-xs">SKU</Label><Input className="h-8 text-xs mt-1" value={receiveForm.skuCode} onChange={e=>setReceiveForm({...receiveForm,skuCode:e.target.value})} /></div>
-                  <div><Label className="text-xs">Bin</Label><Input className="h-8 text-xs mt-1" value={receiveForm.binCode} onChange={e=>setReceiveForm({...receiveForm,binCode:e.target.value})} /></div>
-                  <div><Label className="text-xs">Qty</Label><Input className="h-8 text-xs mt-1" type="number" value={receiveForm.quantity} onChange={e=>setReceiveForm({...receiveForm,quantity:e.target.value})} /></div>
+                  <div><Label className="text-xs">SKU</Label><Input className="h-8 text-xs mt-1" value={receiveForm.skuCode} onChange={e => setReceiveForm({ ...receiveForm, skuCode: e.target.value })} /></div>
+                  <div><Label className="text-xs">Bin</Label><Input className="h-8 text-xs mt-1" value={receiveForm.binCode} onChange={e => setReceiveForm({ ...receiveForm, binCode: e.target.value })} /></div>
+                  <div><Label className="text-xs">Qty</Label><Input className="h-8 text-xs mt-1" type="number" value={receiveForm.quantity} onChange={e => setReceiveForm({ ...receiveForm, quantity: e.target.value })} /></div>
                 </div>
                 <Button className="w-full h-8 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={handleReceive}><CheckCircle className="h-3 w-3 mr-1" />Receive Items</Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="qrcode">
+            <div className="border border-border bg-white max-w-lg">
+              <div className="bg-muted px-3 py-1.5 border-b border-border"><h3 className="text-xs font-semibold uppercase">In tem QR Kiện hàng (Mô phỏng)</h3></div>
+              <div className="p-4 space-y-4 flex flex-col items-center">
+                <div className="w-full">
+                  <Label className="text-xs">Mã kiện hàng / Order ID</Label>
+                  <Input 
+                    className="h-8 text-xs mt-1 font-mono" 
+                    placeholder="Nhập OrderId hoặc SKU để tạo QR..." 
+                    value={qrPackageId} 
+                    onChange={e => setQrPackageId(e.target.value)} 
+                  />
+                </div>
+                {qrPackageId.trim() ? (
+                  <QRCodeDisplay 
+                    value={qrPackageId.trim()} 
+                    title="Kiện hàng (Package)" 
+                    subtitle="Dán lên kiện hàng thực tế" 
+                    size={160} 
+                  />
+                ) : (
+                  <div className="text-xs text-muted-foreground py-10">Vui lòng nhập mã để tạo QR</div>
+                )}
               </div>
             </div>
           </TabsContent>

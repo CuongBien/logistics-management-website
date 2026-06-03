@@ -11,6 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { QRCodeDisplay } from "@/components/QRCodeDisplay"
 
 const formSchema = z.object({
   status: z.string().min(1, "Vui lòng chọn một trạng thái mới"),
@@ -50,54 +52,72 @@ export function EditBinStatusDialog({ bin, open, onOpenChange, onUpdated }: Edit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Cập Nhật Ô Kệ: <span className="font-mono text-primary font-bold">{bin.binCode}</span>
+            Quản Lý Ô Kệ: <span className="font-mono text-primary font-bold">{bin.binCode}</span>
           </DialogTitle>
           <DialogDescription>
-            Thay đổi trạng thái vận hành vật lý của ô kệ này trong kho.
+            Xem mã QR và thay đổi trạng thái vận hành vật lý của ô kệ.
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Trạng thái Ô kệ</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn trạng thái" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Available">Trống (Available)</SelectItem>
-                      <SelectItem value="Occupied">Có hàng (Occupied)</SelectItem>
-                      <SelectItem value="Full">Đầy kệ (Full)</SelectItem>
-                      <SelectItem value="Locked">Đang khóa (Locked)</SelectItem>
-                      <SelectItem value="Disabled">Vô hiệu hóa (Disabled)</SelectItem>
-                      <SelectItem value="Maintenance">Đang bảo trì (Maintenance)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <Tabs defaultValue="qrcode" className="w-full mt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="qrcode">Mã QR</TabsTrigger>
+            <TabsTrigger value="status">Trạng thái</TabsTrigger>
+          </TabsList>
 
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Hủy
-              </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                {form.formState.isSubmitting ? "Đang lưu..." : "Cập nhật"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <TabsContent value="qrcode" className="pt-2 flex justify-center">
+            <QRCodeDisplay 
+              value={bin.binCode} 
+              title={bin.binCode} 
+              subtitle="Sử dụng mã này để xác nhận vị trí" 
+              size={180} 
+            />
+          </TabsContent>
+
+          <TabsContent value="status" className="pt-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Trạng thái Ô kệ</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn trạng thái" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Available">Trống (Available)</SelectItem>
+                          <SelectItem value="Occupied">Có hàng (Occupied)</SelectItem>
+                          <SelectItem value="Full">Đầy kệ (Full)</SelectItem>
+                          <SelectItem value="Locked">Đang khóa (Locked)</SelectItem>
+                          <SelectItem value="Disabled">Vô hiệu hóa (Disabled)</SelectItem>
+                          <SelectItem value="Maintenance">Đang bảo trì (Maintenance)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter className="gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Đóng
+                  </Button>
+                  <Button type="submit" disabled={form.formState.isSubmitting} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                    {form.formState.isSubmitting ? "Đang lưu..." : "Cập nhật"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

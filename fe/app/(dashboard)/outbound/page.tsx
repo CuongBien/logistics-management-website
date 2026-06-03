@@ -10,20 +10,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import * as outboundService from "@/lib/services/outbound"
 import type { Shipment, OutboundOrder } from "@/lib/types"
+import { QRCodeDisplay } from "@/components/QRCodeDisplay"
 
-const shipmentStatusMap: Record<number|string, {label:string, cls:string}> = {
-  0: {label:"Pending",cls:"bg-blue-500 text-white"}, Pending:{label:"Pending",cls:"bg-blue-500 text-white"},
-  1: {label:"Dispatched",cls:"bg-amber-500 text-white"}, Dispatched:{label:"Dispatched",cls:"bg-amber-500 text-white"},
-  2: {label:"Delivered",cls:"bg-green-500 text-white"}, Delivered:{label:"Delivered",cls:"bg-green-500 text-white"},
+const shipmentStatusMap: Record<number | string, { label: string, cls: string }> = {
+  0: { label: "Pending", cls: "bg-blue-500 text-white" }, Pending: { label: "Pending", cls: "bg-blue-500 text-white" },
+  1: { label: "Dispatched", cls: "bg-amber-500 text-white" }, Dispatched: { label: "Dispatched", cls: "bg-amber-500 text-white" },
+  2: { label: "Delivered", cls: "bg-green-500 text-white" }, Delivered: { label: "Delivered", cls: "bg-green-500 text-white" },
 }
 
 export default function OutboundPage() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [shipmentsLoading, setShipmentsLoading] = useState(false)
   const [outboundOrderId, setOutboundOrderId] = useState("")
-  const [outboundOrder, setOutboundOrder] = useState<OutboundOrder|null>(null)
-  const [obError, setObError] = useState<string|null>(null)
-  const [sortForm, setSortForm] = useState({ orderId:"", destinationWarehouseId:"", sourceShipmentNo:"" })
+  const [outboundOrder, setOutboundOrder] = useState<OutboundOrder | null>(null)
+  const [obError, setObError] = useState<string | null>(null)
+  const [sortForm, setSortForm] = useState({ orderId: "", destinationWarehouseId: "", sourceShipmentNo: "" })
+  const [qrOrderId, setQrOrderId] = useState("")
 
   const loadShipments = async () => {
     setShipmentsLoading(true)
@@ -60,6 +62,7 @@ export default function OutboundPage() {
             <TabsTrigger value="shipments" className="text-xs h-7">Shipments</TabsTrigger>
             <TabsTrigger value="outbound" className="text-xs h-7">Outbound Orders</TabsTrigger>
             <TabsTrigger value="sort" className="text-xs h-7">Sort Order</TabsTrigger>
+            <TabsTrigger value="qrcode" className="text-xs h-7">In tem QR Kiện hàng</TabsTrigger>
           </TabsList>
 
           <TabsContent value="shipments" className="space-y-3">
@@ -83,12 +86,12 @@ export default function OutboundPage() {
                   </TableHeader>
                   <TableBody>
                     {shipments.map(s => {
-                      const st = shipmentStatusMap[s.status] || {label:String(s.status),cls:"bg-gray-400 text-white"}
+                      const st = shipmentStatusMap[s.status] || { label: String(s.status), cls: "bg-gray-400 text-white" }
                       return (<TableRow key={s.id}>
                         <TableCell className="text-xs font-mono py-2">{s.shipmentNo}</TableCell>
-                        <TableCell className="text-xs font-mono py-2 text-[10px]">{s.warehouseId?.slice(0,8)}...</TableCell>
+                        <TableCell className="text-xs font-mono py-2 text-[10px]">{s.warehouseId?.slice(0, 8)}...</TableCell>
                         <TableCell className="text-xs py-2">{s.destinationType === 0 || s.destinationType as unknown === "Warehouse" ? "Warehouse" : "Customer"}</TableCell>
-                        <TableCell className="text-xs font-mono py-2 text-[10px]">{s.destinationId?.slice(0,8)}...</TableCell>
+                        <TableCell className="text-xs font-mono py-2 text-[10px]">{s.destinationId?.slice(0, 8)}...</TableCell>
                         <TableCell className="py-2"><span className={`text-[10px] px-2 py-0.5 font-semibold uppercase ${st.cls}`}>{st.label}</span></TableCell>
                         <TableCell className="text-xs py-2">{s.shippedAt ? new Date(s.shippedAt).toLocaleString() : "—"}</TableCell>
                         <TableCell className="text-xs py-2">{new Date(s.createdAt).toLocaleString()}</TableCell>
@@ -103,7 +106,7 @@ export default function OutboundPage() {
 
           <TabsContent value="outbound" className="space-y-4">
             <div className="flex gap-2 max-w-xl">
-              <Input placeholder="Order ID (GUID)" className="h-9 text-sm font-mono" value={outboundOrderId} onChange={e=>setOutboundOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchOutbound()} />
+              <Input placeholder="Order ID (GUID)" className="h-9 text-sm font-mono" value={outboundOrderId} onChange={e => setOutboundOrderId(e.target.value)} onKeyDown={e => e.key === "Enter" && searchOutbound()} />
               <Button onClick={searchOutbound} className="h-9 px-4 bg-[#C41E3A] hover:bg-[#A01830] text-white text-xs"><Search className="h-3.5 w-3.5 mr-1" />Search</Button>
             </div>
             {obError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-xs">{obError}</div>}
@@ -126,10 +129,37 @@ export default function OutboundPage() {
             <div className="border border-border bg-white max-w-lg">
               <div className="bg-muted px-3 py-1.5 border-b border-border"><h3 className="text-xs font-semibold uppercase">Sort Order (Phân loại)</h3></div>
               <div className="p-4 space-y-3">
-                <div><Label className="text-xs">Order ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={sortForm.orderId} onChange={e=>setSortForm({...sortForm,orderId:e.target.value})} /></div>
-                <div><Label className="text-xs">Destination Warehouse ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={sortForm.destinationWarehouseId} onChange={e=>setSortForm({...sortForm,destinationWarehouseId:e.target.value})} /></div>
-                <div><Label className="text-xs">Source Shipment No</Label><Input className="h-8 text-xs mt-1 font-mono" value={sortForm.sourceShipmentNo} onChange={e=>setSortForm({...sortForm,sourceShipmentNo:e.target.value})} /></div>
+                <div><Label className="text-xs">Order ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={sortForm.orderId} onChange={e => setSortForm({ ...sortForm, orderId: e.target.value })} /></div>
+                <div><Label className="text-xs">Destination Warehouse ID *</Label><Input className="h-8 text-xs mt-1 font-mono" value={sortForm.destinationWarehouseId} onChange={e => setSortForm({ ...sortForm, destinationWarehouseId: e.target.value })} /></div>
+                <div><Label className="text-xs">Source Shipment No</Label><Input className="h-8 text-xs mt-1 font-mono" value={sortForm.sourceShipmentNo} onChange={e => setSortForm({ ...sortForm, sourceShipmentNo: e.target.value })} /></div>
                 <Button className="w-full h-8 text-xs bg-[#C41E3A] hover:bg-[#A01830] text-white" onClick={handleSort}><ArrowRightLeft className="h-3 w-3 mr-1" />Sort Order</Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="qrcode">
+            <div className="border border-border bg-white max-w-lg">
+              <div className="bg-muted px-3 py-1.5 border-b border-border"><h3 className="text-xs font-semibold uppercase">In tem QR Kiện hàng (Outbound)</h3></div>
+              <div className="p-4 space-y-4 flex flex-col items-center">
+                <div className="w-full">
+                  <Label className="text-xs">Mã Order ID cần xuất kho</Label>
+                  <Input 
+                    className="h-8 text-xs mt-1 font-mono" 
+                    placeholder="Nhập OrderId để tạo QR..." 
+                    value={qrOrderId} 
+                    onChange={e => setQrOrderId(e.target.value)} 
+                  />
+                </div>
+                {qrOrderId.trim() ? (
+                  <QRCodeDisplay 
+                    value={qrOrderId.trim()} 
+                    title="Lệnh Xuất (Outbound)" 
+                    subtitle="Dùng để quét phân loại xuất kho" 
+                    size={160} 
+                  />
+                ) : (
+                  <div className="text-xs text-muted-foreground py-10">Vui lòng nhập mã để tạo QR</div>
+                )}
               </div>
             </div>
           </TabsContent>

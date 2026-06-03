@@ -2,6 +2,7 @@ import { withAuth } from "next-auth/middleware"
 
 // Protect all internal routes, redirect to /login if not authenticated
 export default withAuth({
+  secret: process.env.NEXTAUTH_SECRET || "a-very-secure-random-secret-for-development",
   pages: {
     signIn: "/login",
   },
