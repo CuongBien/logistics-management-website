@@ -19,6 +19,7 @@ import {
 import type { OrderDto, OrderStatusHistoryDto } from '@/types/oms';
 import { StatusBadge } from '@/components/portal/status-badge';
 import { OrderTimeline } from '@/components/portal/order-timeline';
+import { ShippingLabelDialog } from '@/components/portal/shipping-label-dialog';
 import {
   Card,
   CardContent,
@@ -155,12 +156,14 @@ export default function OrderDetailPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{order.orderNo}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{order.orderNo || order.waybillCode}</h1>
             <StatusBadge status={order.status} />
           </div>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground hidden sm:inline">
             Tạo lúc {format(new Date(order.createdAt), 'HH:mm dd/MM/yyyy')}
           </span>
+          <div className="flex-1" />
+          <ShippingLabelDialog order={order} />
         </div>
       </div>
 
