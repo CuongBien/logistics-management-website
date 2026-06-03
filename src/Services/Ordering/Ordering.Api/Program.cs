@@ -223,6 +223,7 @@ if (app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
     try
     {
         var context = services.GetRequiredService<Ordering.Infrastructure.Persistence.ApplicationDbContext>();
@@ -230,11 +231,11 @@ using (var scope = app.Services.CreateScope())
         {
             context.Database.Migrate();
         }
+        await Ordering.Infrastructure.Persistence.OrderingDbContextSeed.SeedAsync(context, logger);
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "An error occurred while migrating/seeding the database.");
     }
 }
 

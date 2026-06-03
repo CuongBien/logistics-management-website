@@ -26,26 +26,14 @@ public class UpdateRolePermissionsHandler : IRequestHandler<UpdateRolePermission
             return Result<Guid>.Failure(Error.NotFound("Role.NotFound", $"Role with ID {request.RoleId} not found."));
         }
 
-        // Remove existing permissions that are not in the new list
-        var permissionsToRemove = role.RolePermissions
-            .Where(rp => !request.PermissionIds.Contains(rp.PermissionId))
-            .ToList();
-            
-        // We can't remove directly from RolePermissions readonly collection in entity,
-        // so we remove from the DbContext DbSet directly
-        if (permissionsToRemove.Any())
-        {
-            _context.RolePermissions.RemoveRange(permissionsToRemove);
-        }
+        // Clear all existing permissions
+        role.ClearPermissions();
 
-        // Add new permissions
-        var existingPermissionIds = role.RolePermissions.Select(rp => rp.PermissionId).ToList();
-        var newPermissionIds = request.PermissionIds.Except(existingPermissionIds).ToList();
-
-        if (newPermissionIds.Any())
+        // Add the selected permissions
+        if (request.PermissionIds.Any())
         {
             var permissionsToAdd = await _context.Permissions
-                .Where(p => newPermissionIds.Contains(p.Id))
+                .Where(p => request.PermissionIds.Contains(p.Id))
                 .ToListAsync(cancellationToken);
 
             foreach (var permission in permissionsToAdd)

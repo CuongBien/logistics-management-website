@@ -102,6 +102,22 @@ export default function OrdersPage() {
     }
   })
 
+  const [summary, setSummary] = useState({ pending: 0, dispatched: 0, delivered: 0, failed: 0, cancelled: 0, total: 0 })
+
+  // Fetch orders status summary KPIs dynamically
+  const fetchSummary = useCallback(async () => {
+    try {
+      const res = await orderingService.getOrderStatusSummary()
+      if (res.isSuccess && res.value) {
+        const val = res.value
+        const total = val.pending + val.dispatched + val.delivered + val.failed + val.cancelled
+        setSummary({ ...val, total })
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
   // Fetch orders from mock API service
   const fetchOrders = useCallback(async () => {
     setIsLoading(true)
@@ -111,12 +127,13 @@ export default function OrdersPage() {
         setOrders(res.value.orders)
         setTotalCount(res.value.totalCount)
       }
+      await fetchSummary()
     } catch (error) {
       toast.error("Lỗi hệ thống khi tải danh sách đơn hàng")
     } finally {
       setIsLoading(false)
     }
-  }, [searchQuery, statusFilter, page, pageSize])
+  }, [searchQuery, statusFilter, page, pageSize, fetchSummary])
 
   useEffect(() => {
     fetchOrders()
@@ -237,10 +254,10 @@ export default function OrdersPage() {
     }
   }
 
-  // Calculate quick KPI summaries
-  const totalOrdersCount = 6 // Standard baseline
-  const pendingOrdersCount = 2 // New, AwaitingPickup, Delivering
-  const failedOrdersCount = 1 // Failed
+  // Calculate quick KPI summaries dynamically from backend summary
+  const totalOrdersCount = summary.total
+  const pendingOrdersCount = summary.pending
+  const failedOrdersCount = summary.failed
 
   const totalPages = Math.ceil(totalCount / pageSize)
 

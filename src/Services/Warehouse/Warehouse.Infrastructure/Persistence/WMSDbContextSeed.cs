@@ -16,11 +16,22 @@ public static class WMSDbContextSeed
             try
             {
                 logger.LogInformation("Cleaning WMS transactional tables for fresh seed...");
-                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\", \"PutawayTasks\", \"ReplenishmentTasks\", \"CountTasks\" CASCADE;");
+                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\", \"PutawayTasks\", \"ReplenishmentTasks\", \"CountTasks\", \"CrossDockTasks\", \"InboundDiscrepancies\", \"TransitDiscrepancies\" CASCADE;");
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Could not truncate transactional tables.");
+            }
+
+            // Seed standard WMS Roles if not present
+            if (!await context.Roles.AnyAsync(r => r.Code == "WMS_ADMIN"))
+            {
+                logger.LogInformation("Seeding standard WMS Roles...");
+                var adminRole = new Role("WMS_ADMIN", "WMS Administrator");
+                var supervisorRole = new Role("WMS_SUPERVISOR", "WMS Supervisor");
+                var operatorRole = new Role("WMS_OPERATOR", "WMS Operator / Staff");
+                context.Roles.AddRange(adminRole, supervisorRole, operatorRole);
+                await context.SaveChangesAsync();
             }
 
             // 1. Seed Warehouses
@@ -345,6 +356,97 @@ public static class WMSDbContextSeed
                         new CountTask("default-tenant", sgId, countBinRedTshirt.Id, "SKU-RED-TSHIRT", null, null, 500),
                         new CountTask("default-tenant", sgId, countBinRedTshirt.Id, "A0-001", null, null, 150)
                     );
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.CrossDockTasks.AnyAsync())
+            {
+                logger.LogInformation("Seeding Cross-Dock Tasks...");
+                var inboundStagingBin = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-DOCK-01" && b.WarehouseId == sgId);
+                var outboundStagingBin = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-02" && b.WarehouseId == sgId);
+                var receipt = await context.InboundReceipts.FirstOrDefaultAsync();
+                var outboundOrder = await context.OutboundOrders.FirstOrDefaultAsync();
+
+                if (inboundStagingBin != null && outboundStagingBin != null && receipt != null && outboundOrder != null)
+                {
+                    var task1 = new CrossDockTask(
+                        "default-tenant",
+                        sgId,
+                        receipt.Id,
+                        outboundOrder.Id,
+                        "SKU-RED-TSHIRT",
+                        20,
+                        inboundStagingBin.Id,
+                        outboundStagingBin.Id
+                    );
+                    
+                    var task2 = new CrossDockTask(
+                        "default-tenant",
+                        sgId,
+                        receipt.Id,
+                        outboundOrder.Id,
+                        "SKU-BLUE-JEANS",
+                        5,
+                        inboundStagingBin.Id,
+                        outboundStagingBin.Id
+                    );
+
+                    context.CrossDockTasks.AddRange(task1, task2);
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.InboundDiscrepancies.AnyAsync())
+            {
+                logger.LogInformation("Seeding Inbound Discrepancies...");
+                var receipt = await context.InboundReceipts.FirstOrDefaultAsync();
+                if (receipt != null)
+                {
+                    var discrepancy1 = new InboundDiscrepancy(
+                        receipt.Id,
+                        sgId,
+                        "SKU-RED-TSHIRT",
+                        100,
+                        95,
+                        "system",
+                        "Missing 5 items in shipment box"
+                    );
+
+                    var discrepancy2 = new InboundDiscrepancy(
+                        receipt.Id,
+                        sgId,
+                        "SKU-BLUE-JEANS",
+                        50,
+                        48,
+                        "system",
+                        "2 items damaged during unloading"
+                    );
+
+                    context.InboundDiscrepancies.AddRange(discrepancy1, discrepancy2);
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.TransitDiscrepancies.AnyAsync())
+            {
+                logger.LogInformation("Seeding Transit Discrepancies...");
+                var order = await context.OutboundOrders.FirstOrDefaultAsync();
+                if (order != null)
+                {
+                    var discrepancy = new TransitDiscrepancy(
+                        order.Id,
+                        Guid.NewGuid(),
+                        sgId,
+                        "SKU-RED-TSHIRT",
+                        10,
+                        9,
+                        "FastDelivery",
+                        "system",
+                        "1 item lost in transit between hubs"
+                    );
+
+                    context.TransitDiscrepancies.Add(discrepancy);
                     await context.SaveChangesAsync();
                 }
             }

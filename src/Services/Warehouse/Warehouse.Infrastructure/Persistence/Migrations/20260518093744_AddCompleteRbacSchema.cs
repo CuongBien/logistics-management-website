@@ -14,7 +14,6 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Already applied in manual DB changes
-            /*
             migrationBuilder.DropColumn(
                 name: "Hops",
                 table: "WarehouseRoutes");
@@ -25,7 +24,6 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                 type: "uuid",
                 nullable: false,
                 defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
-            */
 
             migrationBuilder.InsertData(
                 table: "Permissions",
@@ -92,7 +90,6 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                 keyColumn: "Id",
                 keyValue: new Guid("00000000-0000-0000-0000-000000000015"));
 
-            /*
             migrationBuilder.DropColumn(
                 name: "NextHopWarehouseId",
                 table: "WarehouseRoutes");
@@ -103,7 +100,6 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                 type: "text",
                 nullable: false,
                 defaultValue: "");
-            */
         }
     }
 }

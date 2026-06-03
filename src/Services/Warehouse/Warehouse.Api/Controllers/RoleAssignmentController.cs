@@ -89,4 +89,14 @@ public class RoleAssignmentController : ControllerBase
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
+
+    /// <summary>
+    /// Xóa một Role ra khỏi hệ thống
+    /// </summary>
+    [HttpDelete("Roles/{id}")]
+    public async Task<IActionResult> DeleteRole(Guid id)
+    {
+        var result = await _mediator.Send(new Warehouse.Application.Features.Identity.Commands.DeleteRole.DeleteRoleCommand(id));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
 }

@@ -12,10 +12,11 @@ interface RoleDialogProps {
   onOpenChange: (open: boolean) => void;
   role?: RoleDto;
   allPermissions: PermissionDto[];
+  existingRoles?: RoleDto[];
   onSuccess: () => void;
 }
 
-export function RoleDialog({ open, onOpenChange, role, allPermissions, onSuccess }: RoleDialogProps) {
+export function RoleDialog({ open, onOpenChange, role, allPermissions, existingRoles, onSuccess }: RoleDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
@@ -32,11 +33,28 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions, onSuccess
         setSelectedPerms(new Set(role.permissions.map(p => p.id)));
       } else {
         setName('');
-        setCode('');
+        
+        // Auto-generate code in WMS_xx format
+        const prefix = 'WMS_';
+        let maxNum = 0;
+        if (existingRoles) {
+          existingRoles.forEach(r => {
+            if (r.code && r.code.toUpperCase().startsWith(prefix)) {
+              const numStr = r.code.slice(prefix.length);
+              const num = parseInt(numStr, 10);
+              if (!isNaN(num) && num > maxNum) {
+                maxNum = num;
+              }
+            }
+          });
+        }
+        const nextNum = maxNum + 1;
+        const nextCode = `${prefix}${String(nextNum).padStart(2, '0')}`;
+        setCode(nextCode);
         setSelectedPerms(new Set());
       }
     }
-  }, [open, role, isEdit]);
+  }, [open, role, isEdit, existingRoles]);
 
   const handleTogglePerm = (permId: string) => {
     const newSet = new Set(selectedPerms);
@@ -67,13 +85,15 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions, onSuccess
             permissionIds: Array.from(selectedPerms)
           })
         });
-        const data = await res.json();
-        if (data.isSuccess) {
+        const responseText = await res.text();
+        const data = responseText ? JSON.parse(responseText) : {};
+        if (data.isSuccess || res.ok) {
           toast({ title: 'Thành công', description: 'Đã tạo Role mới' });
           onSuccess();
           onOpenChange(false);
         } else {
-          toast({ title: 'Lỗi', description: data.error?.message || 'Có lỗi xảy ra', variant: 'destructive' });
+          const errorMsg = typeof data.error === 'object' ? data.error?.message : (data.error || data.details || 'Có lỗi xảy ra');
+          toast({ title: 'Lỗi', description: errorMsg, variant: 'destructive' });
         }
       } else {
         // Edit Permissions
@@ -84,13 +104,15 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions, onSuccess
             permissionIds: Array.from(selectedPerms)
           })
         });
-        const data = await res.json();
-        if (data.isSuccess) {
+        const responseText = await res.text();
+        const data = responseText ? JSON.parse(responseText) : {};
+        if (data.isSuccess || res.ok) {
           toast({ title: 'Thành công', description: 'Đã cập nhật quyền cho Role' });
           onSuccess();
           onOpenChange(false);
         } else {
-          toast({ title: 'Lỗi', description: data.error?.message || 'Có lỗi xảy ra', variant: 'destructive' });
+          const errorMsg = typeof data.error === 'object' ? data.error?.message : (data.error || data.details || 'Có lỗi xảy ra');
+          toast({ title: 'Lỗi', description: errorMsg, variant: 'destructive' });
         }
       }
     } catch (e) {
@@ -125,8 +147,8 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions, onSuccess
               <Input id="name" value={name} onChange={e => setName(e.target.value)} disabled={isEdit} placeholder="Vd: Quản lý Kho" />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="code">Mã Role (Code)</Label>
-              <Input id="code" value={code} onChange={e => setCode(e.target.value)} disabled={isEdit} placeholder="Vd: warehouse_manager" />
+              <Label htmlFor="code">Mã Role (Tự động)</Label>
+              <Input id="code" value={code} disabled={true} className="bg-muted" />
             </div>
           </div>
 

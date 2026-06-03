@@ -86,8 +86,9 @@ public class OrdersController : ControllerBase
         var userTenantId = CurrentUserClaims.GetTenantId(User);
         var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) ? userTenantId : tenantId;
         
+        var isAdmin = User.IsInRole("Admin");
         var userCustomerId = CurrentUserClaims.GetCustomerId(User);
-        var effectiveConsignorId = string.IsNullOrWhiteSpace(consignorId) ? userCustomerId : consignorId;
+        var effectiveConsignorId = isAdmin ? consignorId : (string.IsNullOrWhiteSpace(consignorId) ? userCustomerId : consignorId);
         
         _logger.LogInformation("GetOrders: page={Page}, pageSize={PageSize}, tenantId={TenantId}, consignorId={ConsignorId}", page, pageSize, effectiveTenantId, effectiveConsignorId);
 

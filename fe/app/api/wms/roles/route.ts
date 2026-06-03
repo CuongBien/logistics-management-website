@@ -53,7 +53,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create role" }, { status: res.status })
     }
 
-    const data = await res.json()
+    const responseText = await res.text()
+    const data = responseText ? JSON.parse(responseText) : { isSuccess: true }
     return NextResponse.json(data)
   } catch (error) {
     console.error("Create Role Error:", error)

@@ -30,8 +30,15 @@ public class LayoutQueryHandlers :
             // Find operator profile
             var opProfile = await _context.OperatorProfiles
                 .FirstOrDefaultAsync(x => x.OperatorSub == request.OperatorSub, cancellationToken);
-            
-            if (opProfile != null)
+
+            var isAdmin = request.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e" || 
+                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e"));
+
+            if (isAdmin)
+            {
+                // Admin sees all warehouses
+            }
+            else if (opProfile != null)
             {
                 // Find all assignments for this operator
                 var assignedWarehouseIds = await _context.OperatorRoleAssignments

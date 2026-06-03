@@ -142,6 +142,16 @@ public class InboundController : ApiControllerBase
         return ToActionResult(result);
     }
 
+    [HttpGet("discrepancies")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetInboundDiscrepancies()
+    {
+        var list = await _context.InboundDiscrepancies
+            .AsNoTracking()
+            .ToListAsync();
+        return Ok(list);
+    }
+
     /// <summary>
     /// Truy vấn danh sách chênh lệch/hao hụt hàng hóa trung chuyển
     /// </summary>
@@ -204,6 +214,45 @@ public class InboundController : ApiControllerBase
         var command = new ResolveInboundDiscrepancyCommand(id, request.NewStatus, operatorSub, request.Notes);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
+    }
+
+    [HttpGet("cross-dock-tasks")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetCrossDockTasks([FromQuery] string? status)
+    {
+        var tasksQuery = _context.CrossDockTasks.AsQueryable();
+
+        if (!string.IsNullOrEmpty(status))
+        {
+            if (Enum.TryParse<CrossDockTaskStatus>(status, true, out var statusEnum))
+            {
+                tasksQuery = tasksQuery.Where(t => t.Status == statusEnum);
+            }
+        }
+
+        var tasks = await tasksQuery.AsNoTracking().ToListAsync();
+
+        var receipts = await _context.InboundReceipts.AsNoTracking().ToDictionaryAsync(r => r.Id, r => r.ReceiptNo);
+        var orders = await _context.OutboundOrders.AsNoTracking().ToDictionaryAsync(o => o.Id, o => o.OrderNo);
+        var bins = await _context.Bins.AsNoTracking().ToDictionaryAsync(b => b.Id, b => new { b.BinCode });
+
+        var list = tasks.Select(t => new {
+            Id = t.Id,
+            TenantId = t.TenantId,
+            InboundReceiptId = receipts.TryGetValue(t.ReceiptId, out var rNo) ? rNo : t.ReceiptId.ToString(),
+            OutboundOrderId = orders.TryGetValue(t.OutboundOrderId, out var oNo) ? oNo : t.OutboundOrderId.ToString(),
+            Sku = t.Sku,
+            Quantity = t.ExpectedQty,
+            InboundStagingBinId = t.SourceBinId,
+            InboundStagingBinCode = bins.TryGetValue(t.SourceBinId, out var sBin) ? sBin.BinCode : "UNKNOWN",
+            OutboundStagingBinId = t.DestinationBinId,
+            OutboundStagingBinCode = bins.TryGetValue(t.DestinationBinId, out var dBin) ? dBin.BinCode : "UNKNOWN",
+            Status = t.Status.ToString(),
+            OperatorId = t.AssignedOperatorId,
+            CompletedAt = t.CompletedAt
+        }).ToList();
+
+        return Ok(list);
     }
 
     /// <summary>

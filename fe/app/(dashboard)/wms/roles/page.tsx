@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RoleDto, PermissionDto } from '@/types/wms-rbac';
-import { Plus, Edit } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { RoleDialog } from './components/RoleDialog';
 import { toast as sonnerToast } from 'sonner';
 
@@ -81,6 +81,29 @@ export default function RolesPage() {
     setDialogOpen(true);
   };
 
+  const handleDelete = async (roleId: string, roleName: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa vai trò "${roleName}"? Hành động này sẽ gỡ bỏ vai trò này khỏi tất cả nhân sự đang đảm nhiệm.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/wms/roles/${roleId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        sonnerToast.success(`Đã xóa vai trò "${roleName}" thành công.`);
+        loadData();
+      } else {
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
+        const errorMsg = typeof data.error === 'object' ? data.error?.message : (data.error || data.details || 'Có lỗi xảy ra');
+        sonnerToast.error(`Lỗi xóa vai trò: ${errorMsg}`);
+      }
+    } catch (e: any) {
+      console.error(e);
+      sonnerToast.error(`Lỗi hệ thống khi xóa vai trò: ${e.message}`);
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -107,7 +130,7 @@ export default function RolesPage() {
                 <TableHead>Tên Role</TableHead>
                 <TableHead>Mã (Code)</TableHead>
                 <TableHead>Số lượng Quyền</TableHead>
-                <TableHead className="w-[100px]">Thao tác</TableHead>
+                <TableHead className="w-[120px]">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -125,10 +148,15 @@ export default function RolesPage() {
                     <TableCell className="font-medium">{role.name}</TableCell>
                     <TableCell>{role.code}</TableCell>
                     <TableCell>{role.permissions?.length || 0} quyền</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(role)}>
-                        <Edit className="h-4 w-4" />
+                    <TableCell className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(role)} title="Chỉnh sửa vai trò">
+                        <Edit className="h-4 w-4 text-primary" />
                       </Button>
+                      {role.id && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(role.id!, role.name)} title="Xóa vai trò">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -143,6 +171,7 @@ export default function RolesPage() {
         onOpenChange={setDialogOpen}
         role={selectedRole}
         allPermissions={permissions}
+        existingRoles={roles}
         onSuccess={loadData}
       />
     </div>

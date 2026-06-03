@@ -29,4 +29,10 @@ public class Role : Entity<Guid>, IAggregateRoot
         if (_rolePermissions.Any(rp => rp.PermissionId == permission.Id)) return;
         _rolePermissions.Add(new RolePermission(Id, permission.Id));
     }
+
+    public void ClearPermissions()
+    {
+        _rolePermissions.Clear();
+    }
 }
+

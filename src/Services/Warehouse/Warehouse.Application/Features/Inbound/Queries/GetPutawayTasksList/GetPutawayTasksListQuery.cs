@@ -37,7 +37,14 @@ public class GetPutawayTasksListQueryHandler : IRequestHandler<GetPutawayTasksLi
             .Include(t => t.SuggestedBin)
             .AsQueryable();
 
-        if (opProfile != null)
+        var isAdmin = request.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e" || 
+                      (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e"));
+
+        if (isAdmin)
+        {
+            // Admin sees all tasks
+        }
+        else if (opProfile != null)
         {
             var assignedWarehouseIds = await _context.OperatorRoleAssignments
                 .Where(a => a.OperatorProfileId == opProfile.Id)

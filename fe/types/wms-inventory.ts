@@ -7,6 +7,9 @@ export interface InventoryItemDto {
   availableQuantity: number; 
   lotNo?: string;
   expiryDate?: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
 }
 
 export type LedgerTransactionType = 'Receipt' | 'Putaway' | 'Pick' | 'Pack' | 'Ship' | 'Adjust' | 'Transfer' | 'CycleCount';

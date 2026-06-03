@@ -139,7 +139,7 @@ export async function POST(req: Request) {
           password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
           grant_type: 'password',
         }),
-        signal: AbortSignal.timeout(3000)
+        signal: AbortSignal.timeout(8000)
       })
 
       if (!adminRes.ok) {
@@ -174,29 +174,54 @@ export async function POST(req: Request) {
             }
           ]
         }),
-        signal: AbortSignal.timeout(3000)
+        signal: AbortSignal.timeout(8000)
       })
 
+      let operatorSub: string | undefined;
+
       if (!createUserRes.ok) {
-        const errText = await createUserRes.text()
-        console.error('Failed to create user in Keycloak:', errText)
-        return NextResponse.json({ error: "Failed to create user in Keycloak Identity Provider", details: errText }, { status: createUserRes.status })
+        if (createUserRes.status === 409) {
+          console.log(`User ${username} already exists in Keycloak. Fetching user ID...`)
+          const getUserUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users?username=${username}`
+          const getUserRes = await fetch(getUserUrl, {
+            headers: {
+              'Authorization': `Bearer ${adminToken}`,
+            },
+            signal: AbortSignal.timeout(8000)
+          })
+          if (getUserRes.ok) {
+            const usersList = await getUserRes.json()
+            const existingUser = usersList.find((u: any) => u.username.toLowerCase() === username.toLowerCase())
+            if (existingUser && existingUser.id) {
+              operatorSub = existingUser.id
+              console.log(`Retrieved existing Keycloak user ID ${operatorSub} for user ${username}`)
+            } else {
+              return NextResponse.json({ error: "Conflict: User already exists but profile query returned empty details" }, { status: 409 })
+            }
+          } else {
+            return NextResponse.json({ error: "Conflict: User already exists but request to fetch profile failed" }, { status: 409 })
+          }
+        } else {
+          const errText = await createUserRes.text()
+          console.error('Failed to create user in Keycloak:', errText)
+          return NextResponse.json({ error: "Failed to create user in Keycloak Identity Provider", details: errText }, { status: createUserRes.status })
+        }
+      } else {
+        // Extract operatorSub (UUID of the newly created Keycloak user) from Location header
+        const locationHeader = createUserRes.headers.get('Location')
+        if (!locationHeader) {
+          console.error('Keycloak user created but Location header is missing')
+          return NextResponse.json({ error: "Location header missing from Keycloak response" }, { status: 500 })
+        }
+        
+        operatorSub = locationHeader.split('/').pop()
+        if (!operatorSub) {
+          console.error('Failed to parse operatorSub from Location header:', locationHeader)
+          return NextResponse.json({ error: "Failed to parse User ID from Keycloak" }, { status: 500 })
+        }
       }
 
-      // Extract operatorSub (UUID of the newly created Keycloak user) from Location header
-      const locationHeader = createUserRes.headers.get('Location')
-      if (!locationHeader) {
-        console.error('Keycloak user created but Location header is missing')
-        return NextResponse.json({ error: "Location header missing from Keycloak response" }, { status: 500 })
-      }
-      
-      const operatorSub = locationHeader.split('/').pop()
-      if (!operatorSub) {
-        console.error('Failed to parse operatorSub from Location header:', locationHeader)
-        return NextResponse.json({ error: "Failed to parse User ID from Keycloak" }, { status: 500 })
-      }
-
-      console.log(`Successfully created Keycloak user ${username} with ID ${operatorSub}. Now assigning role ${roleCode} at warehouse ${warehouseId}...`)
+      console.log(`Successfully created/retrieved Keycloak user ${username} with ID ${operatorSub}. Now assigning role ${roleCode} at warehouse ${warehouseId}...`)
 
       // 3. Assign role in C# WMS Backend
       const assignRoleUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment`
@@ -214,7 +239,7 @@ export async function POST(req: Request) {
             warehouseId,
             displayName: `${lastName} ${firstName}`.trim()
           }),
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(8000)
         })
 
         if (!res.ok) {
