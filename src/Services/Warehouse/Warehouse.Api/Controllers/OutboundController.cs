@@ -27,6 +27,7 @@ public class OutboundController : ApiControllerBase
     {
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
         var order = await _context.OutboundOrders
+            .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.OrderId == orderId && x.TenantId == tenantId);
 
         if (order == null) return NotFound(new { Message = $"Outbound order for OrderId {orderId} not found." });
@@ -290,6 +291,24 @@ public class OutboundController : ApiControllerBase
     {
         var query = new Warehouse.Application.Features.Outbound.Queries.GetWavesList.GetWavesListQuery(warehouseId);
         return ToActionResult(await Mediator.Send(query));
+    }
+
+    [HttpGet("waves/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetWave(Guid id)
+    {
+        var wave = await _context.Waves.FirstOrDefaultAsync(w => w.Id == id);
+        if (wave == null) return NotFound(new { Message = $"Wave {id} not found." });
+
+        return Ok(new {
+            Id = wave.Id,
+            WaveNo = wave.WaveNo,
+            Type = wave.Type.ToString(),
+            Status = wave.Status.ToString(),
+            OrderCount = wave.OrderCount,
+            CreatedAt = wave.CreatedAt,
+            WarehouseId = wave.WarehouseId
+        });
     }
 
     [HttpPost("waves/{id:guid}/start")]

@@ -53,7 +53,7 @@ public class WarehouseController : ApiControllerBase
     [HttpPost("zones/{id}/bins")]
     public async Task<IActionResult> CreateBin(Guid id, [FromBody] CreateBinRequest request)
     {
-        var result = await Mediator.Send(new CreateBinCommand(request.WarehouseId, id, request.BinCode));
+        var result = await Mediator.Send(new CreateBinCommand(request.WarehouseId, id, request.BinCode, request.Aisle, request.Rack, request.Shelf, request.PickSequence));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
 
@@ -77,7 +77,7 @@ public class WarehouseController : ApiControllerBase
     }
 }
 
-public record CreateBinRequest(Guid WarehouseId, string BinCode);
+public record CreateBinRequest(Guid WarehouseId, string BinCode, string? Aisle = null, string? Rack = null, string? Shelf = null, int PickSequence = 0);
 public record UpdateBinStatusRequest(BinStatus NewStatus);
 public record CreateBlockRequest(string BlockCode);
 public record CreateZoneRequest(ZoneType ZoneType);

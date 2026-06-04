@@ -16,7 +16,7 @@ public static class WMSDbContextSeed
             try
             {
                 logger.LogInformation("Cleaning WMS transactional tables for fresh seed...");
-                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\", \"PutawayTasks\", \"ReplenishmentTasks\", \"CountTasks\", \"CrossDockTasks\", \"InboundDiscrepancies\", \"TransitDiscrepancies\" CASCADE;");
+                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"Waves\", \"PickTasks\", \"PutawayTasks\", \"ReplenishmentTasks\", \"CountTasks\", \"CrossDockTasks\", \"InboundDiscrepancies\", \"TransitDiscrepancies\" CASCADE;");
             }
             catch (Exception ex)
             {

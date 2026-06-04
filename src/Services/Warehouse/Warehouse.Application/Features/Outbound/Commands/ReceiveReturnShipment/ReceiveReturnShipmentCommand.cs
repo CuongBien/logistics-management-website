@@ -16,15 +16,18 @@ public sealed class ReceiveReturnShipmentCommandHandler : IRequestHandler<Receiv
     private readonly IApplicationDbContext _context;
     private readonly ILogger<ReceiveReturnShipmentCommandHandler> _logger;
     private readonly IOperatorAuthorizationService _authService;
+    private readonly INotificationService _notificationService;
 
     public ReceiveReturnShipmentCommandHandler(
         IApplicationDbContext context, 
         ILogger<ReceiveReturnShipmentCommandHandler> logger,
-        IOperatorAuthorizationService authService)
+        IOperatorAuthorizationService authService,
+        INotificationService notificationService)
     {
         _context = context;
         _logger = logger;
         _authService = authService;
+        _notificationService = notificationService;
     }
 
     public async Task<Result<bool>> Handle(ReceiveReturnShipmentCommand request, CancellationToken cancellationToken)
@@ -124,6 +127,14 @@ public sealed class ReceiveReturnShipmentCommandHandler : IRequestHandler<Receiv
 
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Shipment {ShipmentNo} successfully returned and putaway to {BinCode}", shipment.ShipmentNo, request.TargetBinCode);
+
+        await _notificationService.NotifyAsync(
+            "Hàng Hoàn (RTO) đã nhập kho",
+            $"Chuyến xe {shipment.ShipmentNo} đã hoàn hàng về vị trí {request.TargetBinCode}.",
+            Domain.Entities.NotificationType.Warning,
+            Domain.Entities.NotificationCategory.RtoReceived,
+            shipment.WarehouseId,
+            cancellationToken: cancellationToken);
 
         return Result<bool>.Success(true);
     }

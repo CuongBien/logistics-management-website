@@ -85,7 +85,7 @@ public class LayoutQueryHandlers :
                 b.Zones.Select(z => new ZoneHierarchyDto(
                     z.Id,
                     z.ZoneType,
-                    z.Bins.Select(bn => new BinDto(bn.Id, bn.WarehouseId, bn.ZoneId, bn.BinCode, bn.Status)).ToList()
+                    z.Bins.Select(bn => new BinDto(bn.Id, bn.WarehouseId, bn.ZoneId, bn.BinCode, bn.Status, bn.Aisle, bn.Rack, bn.Shelf, bn.PickSequence)).ToList()
                 )).ToList()
             )).ToList()
         );

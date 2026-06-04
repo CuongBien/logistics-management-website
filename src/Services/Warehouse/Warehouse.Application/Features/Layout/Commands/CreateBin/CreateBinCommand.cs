@@ -7,7 +7,7 @@ using Warehouse.Domain.Enums;
 
 namespace Warehouse.Application.Features.Layout.Commands.CreateBin;
 
-public record CreateBinCommand(Guid WarehouseId, Guid ZoneId, string BinCode) : IRequest<Result<Guid>>;
+public record CreateBinCommand(Guid WarehouseId, Guid ZoneId, string BinCode, string? Aisle = null, string? Rack = null, string? Shelf = null, int PickSequence = 0) : IRequest<Result<Guid>>;
 
 public class CreateBinCommandHandler : IRequestHandler<CreateBinCommand, Result<Guid>>
 {
@@ -32,7 +32,7 @@ public class CreateBinCommandHandler : IRequestHandler<CreateBinCommand, Result<
         if (exists)
             return Result<Guid>.Failure(new Error("Bin.DuplicateCode", $"Bin with code '{request.BinCode}' already exists in this warehouse."));
 
-        var bin = new Bin(request.WarehouseId, request.ZoneId, request.BinCode);
+        var bin = new Bin(request.WarehouseId, request.ZoneId, request.BinCode, BinStatus.Available, request.Aisle, request.Rack, request.Shelf, request.PickSequence);
         _context.Bins.Add(bin);
         
         await _context.SaveChangesAsync(cancellationToken);

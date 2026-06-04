@@ -90,8 +90,8 @@ public class GetOutboundOrdersListQueryHandler : IRequestHandler<GetOutboundOrde
             TenantId = o.TenantId,
             Status = o.Status.ToString(),
             Priority = o.Priority.ToString(),
-            DestinationAddress = o.DestinationAddress,
-            DestinationCity = o.DestinationCity,
+            DestinationAddress = o.DestinationAddress ?? string.Empty,
+            DestinationCity = o.DestinationCity ?? string.Empty,
             PlannedShipAt = o.PlannedShipAt,
             CreatedAt = o.CreatedAt,
             Lines = o.Lines.Select(l => new OutboundOrderLineDto
