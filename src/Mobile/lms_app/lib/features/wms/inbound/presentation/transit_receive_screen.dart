@@ -4,6 +4,11 @@ import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/inbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../qr/providers/qr_providers.dart';
+import '../../qr/domain/qr_models.dart';
+import '../../../../../core/network/offline_queue.dart';
+import '../../../../../core/network/connectivity_service.dart';
+import '../../../../../core/error/app_exception.dart';
 
 class TransitReceiveScreen extends ConsumerStatefulWidget {
   const TransitReceiveScreen({super.key});
@@ -23,12 +28,12 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
   List<dynamic> _receiptLines = [];
   bool _isLoading = false;
   
-  // Lưu số lượng đã quét local
   final Map<String, int> _scannedItems = {};
   
-  // Kho mặc định và bin mặc định cho luân chuyển
   final String _defaultWarehouseId = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'; // Kho HCM
   final String _defaultBinCode = 'BIN-TRANSIT-01';
+
+  TransitReceiveResponse? _lastResponse;
 
   @override
   void initState() {
@@ -40,22 +45,30 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
     if (orderId.isEmpty) return;
     setState(() {
       _isLoading = true;
-      _scannedItems.clear(); // Reset khi quét đơn mới
+      _scannedItems.clear();
+      _lastResponse = null;
     });
 
     try {
+      String targetId = orderId;
+      try {
+        final parsed = await ref.read(qrLookupServiceProvider).parse(rawValue: orderId);
+        if (parsed.type == QrType.order || parsed.type == QrType.receipt || parsed.type == QrType.outboundOrder) {
+          targetId = parsed.entityId ?? parsed.data?['waybillCode'] ?? orderId;
+        }
+      } catch (_) {}
+
       final repo = ref.read(inboundRepositoryProvider);
-      final receipt = await repo.getReceiptByOrderId(orderId);
+      final receipt = await repo.getReceiptByOrderId(targetId);
       
       setState(() {
-        _orderId = orderId;
+        _orderId = targetId;
         _receiptId = receipt['id']?.toString() ?? '';
         _receiptNo = receipt['receiptNo']?.toString() ?? 'N/A';
         _status = receipt['status']?.toString() ?? 'Pending';
         _receiptLines = receipt['lines'] as List<dynamic>? ?? [];
         _isLoading = false;
         
-        // Khởi tạo scannedItems
         for (var line in _receiptLines) {
           final sku = line['skuCode'] ?? line['sku'] ?? 'N/A';
           _scannedItems[sku] = 0;
@@ -77,44 +90,39 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
 
   void _handleScan(String code) async {
     if (_orderId.isEmpty || _receiptId.isEmpty) {
-      if (code.length >= 36) {
-        _orderIdController.text = code;
-        _loadReceipt(code);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('⚠️ Vui lòng quét mã Inbound Order ID trước!'),
-          backgroundColor: AppColors.warning,
-        ));
-      }
+      _orderIdController.text = code;
+      _loadReceipt(code);
       return;
     }
 
-    // Quét SKU
     setState(() {
-      if (_scannedItems.containsKey(code)) {
-        // Kiểm tra xem đã vượt số lượng chưa
+      String cleanSku = code;
+      if (code.startsWith('SKU:')) {
+        cleanSku = code.substring(4);
+      }
+
+      if (_scannedItems.containsKey(cleanSku)) {
         var line = _receiptLines.firstWhere(
-            (l) => (l['skuCode'] ?? l['sku']) == code,
+            (l) => (l['skuCode'] ?? l['sku']) == cleanSku,
             orElse: () => null);
             
         if (line != null) {
             int expected = line['expectedQuantity'] ?? line['expectedQty'] ?? 0;
             int received = line['receivedQuantity'] ?? line['receivedQty'] ?? 0;
-            int currentScanned = _scannedItems[code]!;
+            int currentScanned = _scannedItems[cleanSku]!;
             
             if (received + currentScanned < expected) {
-                _scannedItems[code] = currentScanned + 1;
+                _scannedItems[cleanSku] = currentScanned + 1;
             } else {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('⚠️ SKU $code đã nhận đủ số lượng!'),
+                  content: Text('⚠️ SKU $cleanSku đã nhận đủ số lượng!'),
                   backgroundColor: AppColors.warning,
                 ));
             }
         }
       } else {
-        // Hàng dư / không có trong phiếu
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ SKU $code không có trong phiếu luân chuyển này!'),
+          content: Text('❌ SKU $cleanSku không có trong phiếu luân chuyển này!'),
           backgroundColor: AppColors.error,
         ));
       }
@@ -122,7 +130,6 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
   }
 
   Future<void> _confirmTransitReceive() async {
-    // Chỉ gửi những item có số lượng quét > 0
     final itemsToReceive = Map<String, int>.from(_scannedItems)..removeWhere((k, v) => v == 0);
     
     if (itemsToReceive.isEmpty) {
@@ -134,27 +141,105 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
     }
 
     setState(() => _isLoading = true);
+
+    final isOffline = ref.read(isOnlineProvider).value == false;
+
+    if (isOffline) {
+      final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+      final body = {
+        'scannedOrder': _orderId,
+        'warehouseId': _defaultWarehouseId,
+        'scannedBin': _defaultBinCode,
+        'receivedItems': itemsToReceive,
+      };
+
+      try {
+        final queue = ref.read(offlineQueueProvider);
+        await queue.enqueue(OfflineAction(
+          id: actionId,
+          actionType: 'transit-receive',
+          endpoint: '/qrcode/actions/transit-receive',
+          method: 'POST',
+          body: body,
+          createdAt: DateTime.now(),
+        ));
+        
+        ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+        setState(() {
+          _isLoading = false;
+          _scannedItems.clear();
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('📥 Đã lưu yêu cầu nhận luân chuyển ngoại tuyến (sẽ đồng bộ khi có mạng)'),
+          backgroundColor: AppColors.warning,
+        ));
+        
+        await _loadReceipt(_orderId);
+      } catch (e) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+      return;
+    }
     
     try {
-      final repo = ref.read(inboundRepositoryProvider);
-      await repo.receiveTransitShipment(
-        orderId: _orderId,
+      final qrActionService = ref.read(qrActionServiceProvider);
+      final response = await qrActionService.transitReceive(
+        scannedOrder: _orderId,
         warehouseId: _defaultWarehouseId,
-        binCode: _defaultBinCode,
+        scannedBin: _defaultBinCode,
         receivedItems: itemsToReceive,
       );
+
+      setState(() {
+        _lastResponse = response;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('✅ Nhận hàng luân chuyển thành công!'),
         backgroundColor: AppColors.success,
       ));
       
-      // Tải lại phiếu
       await _loadReceipt(_orderId);
+
+      if (response.discrepancy != null && response.discrepancy!.hasDiscrepancy) {
+        final disc = response.discrepancy!;
+        String discMsg = 'Đã phát hiện lệch hàng khi nhận chuyển kho:\n';
+        for (var item in disc.items) {
+          discMsg += '• SKU ${item.sku}: Gửi ${item.shipped} - Nhận ${item.received} (Thiếu ${item.shortage})\n';
+        }
+        
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                  SizedBox(width: 8),
+                  Text('Chênh Lệch Hàng Hóa'),
+                ],
+              ),
+              content: Text(discMsg),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Đã hiểu'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi nhận hàng: ${e.toString().replaceAll('Exception: ', '')}'),
+        content: Text('❌ Lỗi nhận hàng: ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
         backgroundColor: AppColors.error,
       ));
     }
@@ -297,6 +382,42 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              if (_lastResponse != null) ...[
+                Card(
+                  color: AppColors.info.withOpacity(0.15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: AppColors.info, width: 2),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.directions, color: AppColors.info, size: 28),
+                            SizedBox(width: 8),
+                            Text(
+                              'ĐIỀU HƯỚNG TIẾP THEO',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.info),
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Hành động đề xuất: ${_lastResponse!.nextAction}\n'
+                          'Đích cuối: ${_lastResponse!.isFinalDestination ? "Đây là kho nhận cuối cùng" : "Kho trung chuyển"}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               Expanded(
                 child: _isLoading

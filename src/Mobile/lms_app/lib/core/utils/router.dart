@@ -127,7 +127,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/wms/crossdock',
-        builder: (context, state) => const CrossDockScreen(),
+        builder: (context, state) {
+          final taskId = state.uri.queryParameters['taskId'] ?? 'N/A';
+          final targetBin = state.uri.queryParameters['targetBin'] ?? 'N/A';
+          return CrossDockScreen(taskId: taskId, targetBin: targetBin);
+        },
       ),
       GoRoute(
         path: '/wms/transit-receive',
