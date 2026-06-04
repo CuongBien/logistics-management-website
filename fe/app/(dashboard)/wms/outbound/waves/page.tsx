@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, Layers, RefreshCw, Play, Trash2, Cpu, AlertTriangle, CheckCircle2, Hourglass } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
+import { WarehouseContextSelector } from "@/components/wms/rbac/WarehouseContextSelector"
 
 export default function WavePlanningPage() {
   const [waves, setWaves] = useState<WaveDto[]>([])
@@ -22,11 +24,13 @@ export default function WavePlanningPage() {
   const [selectedWave, setSelectedWave] = useState<WaveDto | null>(null)
   const [actionType, setActionType] = useState<"start" | "release" | null>(null)
 
+  const { activeWarehouseId } = useWarehouseContext()
+
   // Fetch Waves List
   const fetchWaves = async () => {
     setIsLoading(true)
     try {
-      const data = await getWaves()
+      const data = await getWaves(activeWarehouseId || undefined)
       setWaves(data)
     } catch (error) {
       toast.error("Lỗi khi tải danh sách đợt sóng (Waves)")
@@ -37,13 +41,13 @@ export default function WavePlanningPage() {
 
   useEffect(() => {
     fetchWaves()
-  }, [])
+  }, [activeWarehouseId])
 
   // Trigger Wave Planning Algorithm
   const handleAutoPlan = async () => {
     setIsPlanning(true)
     try {
-      const res = await autoPlanWaves()
+      const res = await autoPlanWaves(activeWarehouseId || undefined)
       if (res.success) {
         if (res.createdWavesCount > 0) {
           toast.success(`Thuật toán chạy thành công! Đã tạo ${res.createdWavesCount} đợt sóng mới.`)
@@ -131,6 +135,7 @@ export default function WavePlanningPage() {
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          <WarehouseContextSelector />
           <Button
             variant="outline"
             size="sm"

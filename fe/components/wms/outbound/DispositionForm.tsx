@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { OutboundReturnDto } from "@/types/wms-outbound"
 import { processDisposition } from "@/lib/api/wms-outbound"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -36,6 +37,7 @@ interface DispositionFormProps {
 }
 
 export function DispositionForm({ isOpen, onClose, selectedReturn, onSuccess }: DispositionFormProps) {
+  const { activeWarehouseId } = useWarehouseContext()
   const form = useForm<DispositionFormValues>({
     resolver: zodResolver(dispositionFormSchema),
     defaultValues: {
@@ -71,7 +73,7 @@ export function DispositionForm({ isOpen, onClose, selectedReturn, onSuccess }: 
     try {
       // In a real database, we would also update the physical condition if changed.
       // Here we invoke our mock API service
-      const res = await processDisposition(selectedReturn.id, values.disposition, values.notes)
+      const res = await processDisposition(selectedReturn.id, values.disposition, activeWarehouseId || "", values.notes)
       if (res.success) {
         let actionLabel = ""
         switch (values.disposition) {

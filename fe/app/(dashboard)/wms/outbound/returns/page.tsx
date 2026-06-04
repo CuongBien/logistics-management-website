@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCw, ClipboardCheck, AlertTriangle, ShieldCheck, Trash2, Heart, HeartCrack, Gavel } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
+import { WarehouseContextSelector } from "@/components/wms/rbac/WarehouseContextSelector"
 
 export default function ReturnsDispositionPage() {
   const [returnsList, setReturnsList] = useState<OutboundReturnDto[]>([])
@@ -20,11 +22,13 @@ export default function ReturnsDispositionPage() {
   const [dispositionOpen, setDispositionOpen] = useState(false)
   const [selectedReturn, setSelectedReturn] = useState<OutboundReturnDto | null>(null)
 
+  const { activeWarehouseId } = useWarehouseContext()
+
   // Fetch Returns
   const fetchReturns = async () => {
     setIsLoading(true)
     try {
-      const data = await getReturns()
+      const data = await getReturns(activeWarehouseId || undefined)
       setReturnsList(data)
     } catch (error) {
       toast.error("Lỗi khi tải danh sách hàng hoàn trả (RTO)")
@@ -35,7 +39,7 @@ export default function ReturnsDispositionPage() {
 
   useEffect(() => {
     fetchReturns()
-  }, [])
+  }, [activeWarehouseId])
 
   // Open Disposition Dialog
   const openDispositionDialog = (ret: OutboundReturnDto) => {
@@ -85,6 +89,7 @@ export default function ReturnsDispositionPage() {
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          <WarehouseContextSelector />
           <Button
             variant="outline"
             size="sm"
