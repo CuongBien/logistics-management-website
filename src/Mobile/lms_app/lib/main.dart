@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/router.dart';
 import 'core/network/connectivity_service.dart';
+import 'core/network/api_client.dart';
+import 'core/constants/app_config.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +21,10 @@ class LMSApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Cấu hình ApiClient baseUrl động theo AppConfig
+    final config = ref.watch(appConfigProvider);
+    apiClient.dio.options.baseUrl = config.apiBaseUrl;
+
     // Theo dõi trạng thái mạng, mặc định coi là online (chỉ báo lỗi khi chắc chắn false)
     final isOffline = ref.watch(isOnlineProvider).value == false;
     final router = ref.watch(routerProvider);

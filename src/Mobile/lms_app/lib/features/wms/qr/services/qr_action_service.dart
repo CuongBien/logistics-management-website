@@ -125,6 +125,7 @@ class QrActionService {
     required String pickTaskId,
     required String scannedBin,
     required String scannedSku,
+    int? quantity,
   }) async {
     try {
       final response = await _apiClient.dio.post(
@@ -133,6 +134,7 @@ class QrActionService {
           'pickTaskId': pickTaskId,
           'scannedBin': scannedBin,
           'scannedSku': scannedSku,
+          if (quantity != null) 'quantity': quantity,
         },
       );
       return response.data as Map<String, dynamic>;
