@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { OperatorDto } from '@/types/wms-rbac';
 import { OperatorDataTable } from '@/components/wms/rbac/OperatorDataTable';
-import { WarehouseProvider } from '@/components/wms/rbac/WarehouseContext';
 import { WarehouseContextSelector } from '@/components/wms/rbac/WarehouseContextSelector';
 import { CreateStaffDialog } from '@/components/wms/rbac/CreateStaffDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -90,8 +89,7 @@ export default function StaffPage() {
   }
 
   return (
-    <WarehouseProvider>
-      <div className="flex flex-col h-full p-6 space-y-6">
+    <div className="flex flex-col h-full p-6 space-y-6">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-muted pb-5">
           <div>
@@ -258,6 +256,5 @@ export default function StaffPage() {
           onSuccess={loadOperators}
         />
       </div>
-    </WarehouseProvider>
   );
 }
