@@ -29,7 +29,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(56), // Chiều cao tối thiểu 56px
+          minimumSize: const Size(0, 56), // Thay vì double.infinity để tránh lỗi layout
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),

@@ -19,14 +19,14 @@ class AppConfig {
     this.enableOfflineMode = false,
   });
 
-  /// Cấu hình cho Android emulator (10.0.2.2 trỏ về localhost của máy host)
+  /// Cấu hình cho Android emulator và điện thoại thật qua mạng LAN
   factory AppConfig.dev() {
     return const AppConfig(
-      apiBaseUrl: 'http://10.0.2.2:5051/api',
-      keycloakBaseUrl: 'http://10.0.2.2:8080',
+      apiBaseUrl: 'http://192.168.88.214:5051/api',
+      keycloakBaseUrl: 'http://192.168.88.214:18080',
       keycloakRealm: 'logistics_realm',
       keycloakClientId: 'oms-client',
-      signalRUrl: 'http://10.0.2.2:5051/hubs',
+      signalRUrl: 'http://192.168.88.214:5051/hubs',
       enableOfflineMode: false,
     );
   }
