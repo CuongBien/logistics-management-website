@@ -5,6 +5,7 @@ export interface WarehouseDto {
   id: string;
   code: string;
   name: string;
+  locationText?: string;
 }
 
 export interface BinDto {

@@ -30,6 +30,8 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useSession } from "next-auth/react"
 import { usePermissions } from "@/components/wms/rbac/usePermissions"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
+import { useRouter } from "next/navigation"
 
 interface NavSubItem {
   label: string
@@ -106,19 +108,42 @@ const bottomItems: NavSubItem[] = [
 
 export function SidebarNav() {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
+  // User wants navbar to be more compact, so we make it collapsed by default or always act like it
+  // Actually, let's keep the option to expand but use hover menus always?
+  // User said: "tôi thấy navbar giờ bị dài quá rồi, tôi muốn gọn lại, ví dụ chia theo nhóm, di vào thì hiện ra thêm để chọn"
+  // This means they want the menu to ONLY expand on hover. We'll enforce a thin sidebar.
+  const [collapsed, setCollapsed] = useState(true)
   const { data: session } = useSession()
-  const { hasPermissionInAnyWarehouse } = usePermissions()
+  const { hasPermissionInAnyWarehouse, hasWmsAccess } = usePermissions()
+  const { activeWarehouseId } = useWarehouseContext()
+  const router = useRouter()
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/"
+    if (pathname === href) return true
+    
+    const allHrefs = [
+      ...navGroups.flatMap(g => g.items.map(i => i.href)),
+      ...bottomItems.map(i => i.href)
+    ]
+    
+    if (pathname?.startsWith(href)) {
+      const hasBetterMatch = allHrefs.some(otherHref => 
+        otherHref !== href && 
+        otherHref.length > href.length && 
+        pathname.startsWith(otherHref)
+      )
+      return !hasBetterMatch
+    }
+    return false
+  }
 
   // Track accordion states for each group
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initialStates: Record<string, boolean> = {}
     navGroups.forEach(group => {
       // Open group by default if it contains the active item
-      const hasActiveChild = group.items.some(item => {
-        if (item.href === "/") return pathname === "/"
-        return pathname?.startsWith(item.href)
-      })
+      const hasActiveChild = group.items.some(item => isActive(item.href))
       initialStates[group.groupLabel] = hasActiveChild
     })
     
@@ -133,10 +158,7 @@ export function SidebarNav() {
   // Sync open states when route changes
   useEffect(() => {
     navGroups.forEach(group => {
-      const hasActiveChild = group.items.some(item => {
-        if (item.href === "/") return pathname === "/"
-        return pathname?.startsWith(item.href)
-      })
+      const hasActiveChild = group.items.some(item => isActive(item.href))
       if (hasActiveChild) {
         setOpenGroups(prev => ({
           ...prev,
@@ -158,17 +180,12 @@ export function SidebarNav() {
     })
   }
 
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/"
-    return pathname?.startsWith(href)
-  }
-
   return (
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
           "flex flex-col sticky top-0 h-screen bg-[#1a1a2e] border-r border-[#16213e] transition-all duration-300 ease-in-out select-none z-40",
-          collapsed ? "w-14" : "w-56"
+          collapsed ? "w-[4.5rem]" : "w-56"
         )}
       >
         {/* Logo area */}
@@ -192,6 +209,9 @@ export function SidebarNav() {
         {/* Main nav groups */}
         <nav className="flex-1 py-3 px-2 space-y-3 overflow-y-auto custom-scrollbar">
           {navGroups.map((group) => {
+            // Hide WMS groups if user has no WMS access
+            if (!hasWmsAccess && group.groupLabel !== "Tổng Quan") return null;
+
             // Filter out items based on user role manage permissions
             const visibleItems = group.items.filter(item => {
               if (item.href === "/wms/staff" || item.href === "/wms/roles") {
@@ -202,7 +222,9 @@ export function SidebarNav() {
 
             if (visibleItems.length === 0) return null
 
-            // Collapsed Mode: Render Hover Flyout Menu
+            // We apply the Hover Flyout Menu style for ALL modes to keep it compact,
+            // or just rely on the collapsed state. Since we set collapsed=true by default,
+            // the user gets exactly what they asked for: "di vào thì hiện ra thêm"
             if (collapsed) {
               const hasActiveChild = visibleItems.some(item => isActive(item.href))
               return (
@@ -335,16 +357,26 @@ export function SidebarNav() {
 
           {/* User Profile widget */}
           {!collapsed && session?.user && (
-            <div className="mt-2 px-2 py-2 border-t border-white/5">
+            <div className="mt-2 px-2 py-2 border-t border-white/5 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-[#C41E3A]/20 border border-[#C41E3A]/30 flex items-center justify-center text-[10px] font-bold text-[#C41E3A] shrink-0">
                   {session.user.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
-                <div className="flex flex-col overflow-hidden">
+                <div className="flex flex-col overflow-hidden flex-1">
                   <span className="text-[10px] text-white/80 font-bold truncate leading-tight">{session.user.name || 'User'}</span>
                   <span className="text-[8px] text-white/40 truncate leading-none mt-0.5">{session.user.email || ''}</span>
                 </div>
               </div>
+              {hasWmsAccess && activeWarehouseId && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full h-6 text-[10px] bg-white/5 border-white/10 hover:bg-white/10 hover:text-white"
+                  onClick={() => router.push("/select-warehouse")}
+                >
+                  Đổi kho làm việc
+                </Button>
+              )}
             </div>
           )}
         </div>

@@ -11,6 +11,7 @@ import { AddZoneDialog } from "./AddZoneDialog"
 import { AddBinDialog } from "./AddBinDialog"
 import { BinStatusBadge } from "./BinStatusBadge"
 import { EditBinStatusDialog } from "./EditBinStatusDialog"
+import { usePermissions } from "@/components/wms/rbac/usePermissions"
 
 export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHierarchyDto, onRefresh: () => void }) {
   const [addBlockOpen, setAddBlockOpen] = useState(false)
@@ -21,6 +22,9 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
   const [selectedBlockId, setSelectedBlockId] = useState("")
   const [selectedZoneId, setSelectedZoneId] = useState("")
   const [selectedBin, setSelectedBin] = useState<BinDto | null>(null)
+
+  const { hasRole } = usePermissions()
+  const isWmsAdmin = hasRole("WMS_ADMIN", hierarchy.warehouseId)
 
   const openAddZone = (e: React.MouseEvent, blockId: string) => {
     e.stopPropagation()
@@ -52,13 +56,18 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
               Sơ Đồ Phân Cấp Kho: {hierarchy.name}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Click vào Block/Zone để xem chi tiết, và click vào ô Bin để thay đổi trạng thái kệ.
+              {isWmsAdmin 
+                ? "Click vào Block/Zone để xem chi tiết, và click vào ô Bin để thay đổi trạng thái kệ." 
+                : "Chế độ xem thông tin cấu trúc dãy Block, khu vực Zone và các ô kệ Bin."
+              }
             </p>
           </div>
         </div>
-        <Button size="sm" onClick={() => setAddBlockOpen(true)} className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white font-medium shadow-sm transition-all duration-300">
-          <Plus className="mr-2 h-4 w-4" /> Thêm Block
-        </Button>
+        {isWmsAdmin && (
+          <Button size="sm" onClick={() => setAddBlockOpen(true)} className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white font-medium shadow-sm transition-all duration-300">
+            <Plus className="mr-2 h-4 w-4" /> Thêm Block
+          </Button>
+        )}
       </div>
 
       {/* Hierarchy Tree Accordion */}
@@ -75,10 +84,12 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
                   </Badge>
                 </div>
               </AccordionTrigger>
-              <Button size="sm" variant="ghost" onClick={(e) => openAddZone(e, block.id)} className="h-8 px-2 hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-1">
-                <Plus className="h-4 w-4" />
-                <span className="text-xs font-semibold hidden sm:inline">Khu vực</span>
-              </Button>
+              {isWmsAdmin && (
+                <Button size="sm" variant="ghost" onClick={(e) => openAddZone(e, block.id)} className="h-8 px-2 hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-1">
+                  <Plus className="h-4 w-4" />
+                  <span className="text-xs font-semibold hidden sm:inline">Khu vực</span>
+                </Button>
+              )}
             </div>
 
             <AccordionContent className="pl-6 pt-2 pb-5 space-y-4 border-l-2 border-primary/20 ml-2">
@@ -93,9 +104,11 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
                         {zone.bins.length} Ô kệ (Bin)
                       </Badge>
                     </div>
-                    <Button size="sm" variant="outline" onClick={(e) => openAddBin(e, zone.id)} className="h-8 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300">
-                      <Plus className="mr-1 h-3.5 w-3.5" /> Thêm Ô Kệ
-                    </Button>
+                    {isWmsAdmin && (
+                      <Button size="sm" variant="outline" onClick={(e) => openAddBin(e, zone.id)} className="h-8 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300">
+                        <Plus className="mr-1 h-3.5 w-3.5" /> Thêm Ô Kệ
+                      </Button>
+                    )}
                   </div>
                   
                   {/* Bins Grid */}
@@ -103,12 +116,18 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
                     {zone.bins.map((bin) => (
                       <div
                         key={bin.id}
-                        onClick={() => openEditBin(bin)}
-                        className="flex flex-col p-3 border border-muted/60 rounded-xl bg-background hover:border-primary hover:shadow-sm cursor-pointer transition-all duration-300 text-center group relative overflow-hidden"
+                        onClick={() => isWmsAdmin && openEditBin(bin)}
+                        className={`flex flex-col p-3 border border-muted/60 rounded-xl bg-background text-center group relative overflow-hidden transition-all duration-300 ${
+                          isWmsAdmin ? "hover:border-primary hover:shadow-sm cursor-pointer" : "cursor-default"
+                        }`}
                       >
                         {/* Hover accent line */}
-                        <div className="absolute top-0 left-0 w-full h-[2px] bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-                        <span className="text-xs font-semibold font-mono mb-2 group-hover:text-primary transition-colors">
+                        {isWmsAdmin && (
+                          <div className="absolute top-0 left-0 w-full h-[2px] bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+                        )}
+                        <span className={`text-xs font-semibold font-mono mb-2 ${
+                          isWmsAdmin ? "group-hover:text-primary" : ""
+                        } transition-colors`}>
                           {bin.binCode}
                         </span>
                         <BinStatusBadge status={bin.status} />
@@ -138,18 +157,24 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
           <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center bg-muted/10">
             <Box className="h-10 w-10 text-muted-foreground/45 mb-2" />
             <p className="font-medium text-sm">Sơ đồ kho chưa được định cấu trúc vật lý.</p>
-            <Button size="sm" onClick={() => setAddBlockOpen(true)} className="mt-4">
-              Khởi tạo Block Đầu Tiên
-            </Button>
+            {isWmsAdmin && (
+              <Button size="sm" onClick={() => setAddBlockOpen(true)} className="mt-4">
+                Khởi tạo Block Đầu Tiên
+              </Button>
+            )}
           </div>
         )}
       </Accordion>
 
       {/* Action Dialogs */}
-      <AddBlockDialog warehouseId={hierarchy.warehouseId} open={addBlockOpen} onOpenChange={setAddBlockOpen} onCreated={onRefresh} />
-      <AddZoneDialog blockId={selectedBlockId} open={addZoneOpen} onOpenChange={setAddZoneOpen} onCreated={onRefresh} />
-      <AddBinDialog zoneId={selectedZoneId} open={addBinOpen} onOpenChange={setAddBinOpen} onCreated={onRefresh} />
-      <EditBinStatusDialog bin={selectedBin} open={editBinOpen} onOpenChange={setEditBinOpen} onUpdated={onRefresh} />
+      {isWmsAdmin && (
+        <>
+          <AddBlockDialog warehouseId={hierarchy.warehouseId} open={addBlockOpen} onOpenChange={setAddBlockOpen} onCreated={onRefresh} />
+          <AddZoneDialog blockId={selectedBlockId} open={addZoneOpen} onOpenChange={setAddZoneOpen} onCreated={onRefresh} />
+          <AddBinDialog zoneId={selectedZoneId} warehouseId={hierarchy.warehouseId} open={addBinOpen} onOpenChange={setAddBinOpen} onCreated={onRefresh} />
+          <EditBinStatusDialog bin={selectedBin} open={editBinOpen} onOpenChange={setEditBinOpen} onUpdated={onRefresh} />
+        </>
+      )}
     </div>
   )
 }

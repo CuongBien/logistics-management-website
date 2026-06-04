@@ -14,7 +14,7 @@ const formSchema = z.object({
   binCode: z.string().min(2, "Bin Code must be at least 2 characters"),
 })
 
-export function AddBinDialog({ zoneId, open, onOpenChange, onCreated }: { zoneId: string, open: boolean, onOpenChange: (open: boolean) => void, onCreated: () => void }) {
+export function AddBinDialog({ zoneId, warehouseId, open, onOpenChange, onCreated }: { zoneId: string, warehouseId: string, open: boolean, onOpenChange: (open: boolean) => void, onCreated: () => void }) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { binCode: "" },
@@ -22,7 +22,7 @@ export function AddBinDialog({ zoneId, open, onOpenChange, onCreated }: { zoneId
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await createBin(zoneId, values.binCode)
+      await createBin(zoneId, values.binCode, warehouseId)
       toast.success("Bin created successfully")
       onOpenChange(false)
       form.reset()
