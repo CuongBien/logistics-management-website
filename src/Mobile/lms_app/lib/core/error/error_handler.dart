@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/app_colors.dart';
+import '../../features/auth/providers/auth_provider.dart';
 import 'app_exception.dart';
 
 /// Lớp xử lý lỗi tập trung cho toàn bộ ứng dụng.
@@ -27,12 +29,20 @@ class ErrorHandler {
       case AuthException():
         backgroundColor = AppColors.error;
         icon = Icons.lock_outline_rounded;
-        // Cung cấp nút chuyển đến màn hình đăng nhập
         actionLabel = 'Đăng nhập';
         action = () {
-          // Sử dụng Navigator thay vì GoRouter để tránh dependency trực tiếp
-          Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+          try {
+            ProviderScope.containerOf(context).read(authProvider.notifier).logout();
+          } catch (_) {
+            Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+          }
         };
+        // Tự động gọi logout để chuyển hướng về màn hình đăng nhập thông qua GoRouter
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            ProviderScope.containerOf(context).read(authProvider.notifier).logout();
+          } catch (_) {}
+        });
         break;
       case QrException():
         backgroundColor = AppColors.error;

@@ -26,7 +26,7 @@ class AppConfig {
       keycloakBaseUrl: 'http://192.168.1.6:18080',
       keycloakRealm: 'logistics_realm',
       keycloakClientId: 'oms-client',
-      signalRUrl: 'http://192.168.88.214:5051/hubs',
+      signalRUrl: 'http://192.168.1.6:5051/hubs',
       enableOfflineMode: false,
     );
   }
