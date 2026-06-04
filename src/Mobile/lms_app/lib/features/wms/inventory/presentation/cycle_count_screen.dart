@@ -4,6 +4,7 @@ import '../../../../../core/constants/app_colors.dart';
 import '../providers/inventory_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
 import '../../../../../core/utils/scanner_helper.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class CycleCountScreen extends ConsumerStatefulWidget {
   const CycleCountScreen({super.key});
@@ -128,10 +129,9 @@ class _CycleCountScreenState extends ConsumerState<CycleCountScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi kiểm kê: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 

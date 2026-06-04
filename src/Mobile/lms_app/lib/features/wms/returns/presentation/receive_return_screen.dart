@@ -4,6 +4,7 @@ import '../../../../../core/constants/app_colors.dart';
 import '../providers/returns_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
 import '../../../../../core/utils/scanner_helper.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class ReceiveReturnScreen extends ConsumerStatefulWidget {
   const ReceiveReturnScreen({super.key});
@@ -158,10 +159,9 @@ class _ReceiveReturnScreenState extends ConsumerState<ReceiveReturnScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi nhận hàng trả: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 

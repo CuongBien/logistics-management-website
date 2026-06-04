@@ -19,7 +19,6 @@ class _InventorySearchScreenState extends ConsumerState<InventorySearchScreen> {
   late final ScannerHelper _scannerHelper;
   final TextEditingController _searchController = TextEditingController();
 
-  String _searchedValue = '';
   QrType? _resultType;
   Map<String, dynamic>? _lookupData;
   bool _isLoading = false;
@@ -35,7 +34,6 @@ class _InventorySearchScreenState extends ConsumerState<InventorySearchScreen> {
     if (_isLoading || code.isEmpty) return;
     
     setState(() {
-      _searchedValue = code;
       _isLoading = true;
       _errorMessage = '';
       _resultType = null;
