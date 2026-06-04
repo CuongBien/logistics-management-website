@@ -12,6 +12,7 @@ import '../../../../../shared/widgets/progress_card.dart';
 import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
 import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class DispatchLoadScreen extends ConsumerStatefulWidget {
   const DispatchLoadScreen({super.key});
@@ -145,10 +146,9 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
         ));
       } catch (e) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
       return;
     }
@@ -174,10 +174,9 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi: ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -221,10 +220,9 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
         }
       } catch (e) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
       return;
     }
@@ -264,10 +262,9 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi xuất bến: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 

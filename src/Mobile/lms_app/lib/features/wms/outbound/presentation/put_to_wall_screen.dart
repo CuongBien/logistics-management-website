@@ -5,6 +5,7 @@ import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class PutToWallScreen extends ConsumerStatefulWidget {
   const PutToWallScreen({super.key});
@@ -89,10 +90,9 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
           _isLoading = false;
           _lastScannedSku = '';
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi chia chọn: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
     } else {
       String cleanCode = code;

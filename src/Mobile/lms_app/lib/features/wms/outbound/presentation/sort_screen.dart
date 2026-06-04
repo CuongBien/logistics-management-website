@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
-import '../providers/outbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
 import '../../qr/providers/qr_providers.dart';
 import '../../qr/domain/qr_models.dart';
 import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
-import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class SortScreen extends ConsumerStatefulWidget {
   const SortScreen({super.key});
@@ -71,10 +70,9 @@ class _SortScreenState extends ConsumerState<SortScreen> {
         ));
       } catch (e) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
       return;
     }
@@ -95,20 +93,9 @@ class _SortScreenState extends ConsumerState<SortScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Lỗi chia chọn', style: TextStyle(color: AppColors.error)),
-          content: Text(e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Đóng'),
-            )
-          ],
-        ),
-      );
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 

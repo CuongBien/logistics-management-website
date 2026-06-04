@@ -10,6 +10,7 @@ import '../../qr/domain/qr_models.dart';
 import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
 import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class PackOrderScreen extends ConsumerStatefulWidget {
   const PackOrderScreen({super.key});
@@ -75,10 +76,9 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi tải đơn hàng: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -146,10 +146,9 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
           ));
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
       return;
     }
@@ -182,10 +181,9 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi: ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -254,10 +252,9 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi đóng gói: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
