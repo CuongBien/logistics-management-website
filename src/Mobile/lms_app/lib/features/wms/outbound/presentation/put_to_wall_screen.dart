@@ -60,15 +60,20 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
     }
 
     if (!_isItemScanned) {
+      String cleanCode = code;
+      if (code.startsWith('SKU:')) {
+        cleanCode = code.substring(4);
+      }
+
       // Quét SKU -> Hệ thống gọi API chọc lấy ô đích
       setState(() {
         _isLoading = true;
-        _lastScannedSku = code;
+        _lastScannedSku = cleanCode;
       });
 
       try {
         final repo = ref.read(outboundRepositoryProvider);
-        final result = await repo.putToWall(_waveId, code);
+        final result = await repo.putToWall(_waveId, cleanCode);
         
         setState(() {
           _isItemScanned = true;
@@ -90,8 +95,13 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
         ));
       }
     } else {
+      String cleanCode = code;
+      if (code.startsWith('BIN:')) {
+        cleanCode = code.substring(4);
+      }
+
       // Đang chờ quét mã ô kệ đích để xác nhận cất thành công
-      if (code == _targetSlot) {
+      if (cleanCode == _targetSlot) {
         setState(() {
           _isItemScanned = false;
           _targetSlot = '';

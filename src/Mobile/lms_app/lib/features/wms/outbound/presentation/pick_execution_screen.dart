@@ -5,6 +5,10 @@ import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../qr/providers/qr_providers.dart';
+import '../../../../../core/network/offline_queue.dart';
+import '../../../../../core/network/connectivity_service.dart';
+import '../../../../../core/error/app_exception.dart';
 
 class PickExecutionScreen extends ConsumerStatefulWidget {
   final String waveId;
@@ -18,6 +22,7 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
   late final ScannerHelper _scannerHelper;
   int _currentTaskIndex = 0;
   bool _isBinScanned = false;
+  String _scannedBinCode = '';
   
   List<dynamic> _tasks = [];
   bool _isFetching = true;
@@ -59,30 +64,103 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
     final taskId = currentTask['taskId']?.toString() ?? '';
 
     if (!_isBinScanned) {
-      if (code == targetBin) {
+      String cleanBin = code;
+      if (code.startsWith('BIN:')) {
+        cleanBin = code.substring(4);
+      }
+      
+      if (cleanBin == targetBin) {
         setState(() {
           _isBinScanned = true;
+          _scannedBinCode = code; // Lưu mã thô đã quét
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Đã đến đúng Kệ! Quét mã Sản phẩm ngay.'), backgroundColor: AppColors.success));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('✅ Đã đến đúng Kệ! Quét mã Sản phẩm ngay.'),
+          backgroundColor: AppColors.success,
+        ));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Sai vị trí kệ. Vui lòng đến $targetBin'), backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Sai vị trí kệ. Vui lòng đến $targetBin'),
+          backgroundColor: AppColors.error,
+        ));
       }
     } else {
-      if (code == targetSku) {
+      String cleanSku = code;
+      if (code.startsWith('SKU:')) {
+        cleanSku = code.substring(4);
+      }
+
+      if (cleanSku == targetSku) {
+        final isOffline = ref.read(isOnlineProvider).value == false;
+
+        if (isOffline) {
+          final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+          final body = {
+            'pickTaskId': taskId,
+            'scannedBin': _scannedBinCode,
+            'scannedSku': code,
+          };
+
+          try {
+            final queue = ref.read(offlineQueueProvider);
+            await queue.enqueue(OfflineAction(
+              id: actionId,
+              actionType: 'confirm-pick',
+              endpoint: '/qrcode/actions/confirm-pick',
+              method: 'POST',
+              body: body,
+              createdAt: DateTime.now(),
+            ));
+
+            ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+            setState(() {
+              _currentTaskIndex++;
+              _isBinScanned = false;
+              _scannedBinCode = '';
+            });
+            
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('📥 Đã lưu yêu cầu lấy hàng ngoại tuyến (sẽ đồng bộ khi có mạng)'),
+              backgroundColor: AppColors.warning,
+            ));
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
+              backgroundColor: AppColors.error,
+            ));
+          }
+          return;
+        }
+
         try {
-          final repo = ref.read(outboundRepositoryProvider);
-          await repo.confirmPickTask(taskId);
+          final qrActionService = ref.read(qrActionServiceProvider);
+          await qrActionService.confirmPick(
+            pickTaskId: taskId,
+            scannedBin: _scannedBinCode,
+            scannedSku: code,
+          );
           
           setState(() {
             _currentTaskIndex++;
             _isBinScanned = false;
+            _scannedBinCode = '';
           });
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Lấy hàng thành công! Chuyển sang món tiếp theo.'), backgroundColor: AppColors.success));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('✅ Lấy hàng thành công! Chuyển sang món tiếp theo.'),
+            backgroundColor: AppColors.success,
+          ));
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Lỗi API: $e'), backgroundColor: AppColors.error));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('❌ Lỗi: ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.error,
+          ));
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Lấy sai sản phẩm! Yêu cầu: $targetSku'), backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Lấy sai sản phẩm! Yêu cầu: $targetSku'),
+          backgroundColor: AppColors.error,
+        ));
       }
     }
   }

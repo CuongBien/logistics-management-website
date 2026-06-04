@@ -5,6 +5,11 @@ import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../qr/providers/qr_providers.dart';
+import '../../qr/domain/qr_models.dart';
+import '../../../../../core/network/offline_queue.dart';
+import '../../../../../core/network/connectivity_service.dart';
+import '../../../../../core/error/app_exception.dart';
 
 class PackOrderScreen extends ConsumerStatefulWidget {
   const PackOrderScreen({super.key});
@@ -21,7 +26,7 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
   String _orderNo = '';
   String _address = '';
   List<dynamic> _orderLines = [];
-  Map<String, int> _packedQuantities = {}; // SKU -> local packed quantity
+  final Map<String, int> _packedQuantities = {};
   bool _isLoading = false;
   String _lastScannedSku = 'Chưa quét SKU nào';
 
@@ -39,17 +44,24 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
     });
 
     try {
+      String targetId = orderId;
+      try {
+        final parsed = await ref.read(qrLookupServiceProvider).parse(rawValue: orderId);
+        if (parsed.type == QrType.order || parsed.type == QrType.outboundOrder) {
+          targetId = parsed.entityId ?? parsed.data?['waybillCode'] ?? orderId;
+        }
+      } catch (_) {}
+
       final repo = ref.read(outboundRepositoryProvider);
-      final order = await repo.getOutboundOrder(orderId);
+      final order = await repo.getOutboundOrder(targetId);
 
       setState(() {
-        _orderId = orderId;
-        _orderIdController.text = orderId;
+        _orderId = targetId;
+        _orderIdController.text = targetId;
         _orderNo = order['orderNo']?.toString() ?? 'N/A';
         _address = order['destinationAddress']?.toString() ?? 'N/A';
         _orderLines = order['lines'] as List<dynamic>? ?? [];
         
-        // Initialize packed quantities with 0 or the current packedQty from DB if any
         for (var line in _orderLines) {
           final sku = line['sku']?.toString() ?? '';
           _packedQuantities[sku] = line['packedQty'] ?? 0;
@@ -74,49 +86,104 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
     if (_isLoading) return;
 
     if (_orderId.isEmpty) {
-      // Nếu chưa có Order ID, thử nhận dạng Order ID
-      if (code.length >= 36) {
-        _loadOrder(code);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('⚠️ Vui lòng quét hoặc nhập mã Order ID trước!'),
-          backgroundColor: AppColors.warning,
+      _loadOrder(code);
+      return;
+    }
+
+    final isOffline = ref.read(isOnlineProvider).value == false;
+
+    if (isOffline) {
+      final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+      final body = {
+        'outboundOrderId': _orderId,
+        'scannedSku': code,
+        'quantity': 1,
+      };
+
+      try {
+        final queue = ref.read(offlineQueueProvider);
+        await queue.enqueue(OfflineAction(
+          id: actionId,
+          actionType: 'verify-pack',
+          endpoint: '/qrcode/actions/verify-pack',
+          method: 'POST',
+          body: body,
+          createdAt: DateTime.now(),
+        ));
+
+        ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+        bool foundSku = false;
+        String cleanSku = code;
+        if (code.startsWith('SKU:')) {
+          cleanSku = code.substring(4);
+        }
+
+        setState(() {
+          for (var line in _orderLines) {
+            final sku = line['sku']?.toString() ?? '';
+            if (sku == cleanSku) {
+              foundSku = true;
+              final targetQty = line['quantity'] ?? 0;
+              final currentPacked = _packedQuantities[sku] ?? 0;
+              if (currentPacked < targetQty) {
+                _packedQuantities[sku] = currentPacked + 1;
+                _lastScannedSku = code;
+              }
+            }
+          }
+        });
+
+        if (foundSku) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('📥 Đã lưu yêu cầu đóng gói ngoại tuyến SKU: $code'),
+            backgroundColor: AppColors.warning,
+          ));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('❌ SKU $code không thuộc về đơn hàng này!'),
+            backgroundColor: AppColors.error,
+          ));
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
+          backgroundColor: AppColors.error,
         ));
       }
       return;
     }
 
-    // Nếu đã có Order ID, quét mã SKU để đóng gói
-    bool foundSku = false;
-    for (var line in _orderLines) {
-      final sku = line['sku']?.toString() ?? '';
-      if (sku == code) {
-        foundSku = true;
-        final targetQty = line['quantity'] ?? 0;
-        final currentPacked = _packedQuantities[sku] ?? 0;
+    setState(() => _isLoading = true);
 
-        if (currentPacked < targetQty) {
-          setState(() {
-            _packedQuantities[sku] = currentPacked + 1;
-            _lastScannedSku = code;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('✅ Đã quét đóng gói SKU: $code (${_packedQuantities[sku]}/$targetQty)'),
-            backgroundColor: AppColors.success,
-          ));
+    try {
+      final qrActionService = ref.read(qrActionServiceProvider);
+      final result = await qrActionService.verifyPack(
+        outboundOrderId: _orderId,
+        scannedSku: code,
+        quantity: 1,
+      );
+
+      setState(() {
+        _isLoading = false;
+        _lastScannedSku = code;
+        for (var item in result.verifiedItems) {
+          _packedQuantities[item.sku] = item.scanned;
+        }
+        
+        if (result.allItemsVerified) {
+          _submitPack();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('⚠️ SKU $code đã đóng gói đủ số lượng!'),
-            backgroundColor: AppColors.warning,
+            content: Text('✅ Đã quét đóng gói SKU: $code'),
+            backgroundColor: AppColors.success,
           ));
         }
-        break;
-      }
-    }
-
-    if (!foundSku) {
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ SKU $code không thuộc về đơn hàng $_orderNo!'),
+        content: Text('❌ Lỗi: ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
         backgroundColor: AppColors.error,
       ));
     }
@@ -125,7 +192,6 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
   Future<void> _submitPack() async {
     if (_orderId.isEmpty) return;
 
-    // Kiểm tra đã đóng đủ hàng chưa
     bool isFullyPacked = true;
     for (var line in _orderLines) {
       final sku = line['sku']?.toString() ?? '';
@@ -157,36 +223,35 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
     try {
       final repo = ref.read(outboundRepositoryProvider);
       
-      // Step 1: Pack Order
       await repo.packOrder(_orderId);
-
-      // Step 2: Auto Ship Order (Gán Shipment tự động)
       await repo.shipOrder(_orderId);
 
       setState(() => _isLoading = false);
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: AppColors.success, size: 28),
-              SizedBox(width: 8),
-              Text('Đóng gói & Auto Ship OK'),
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: AppColors.success, size: 28),
+                SizedBox(width: 8),
+                Text('Đóng gói & Auto Ship OK'),
+              ],
+            ),
+            content: Text('Đơn hàng $_orderNo đã được Đóng gói thành công!\nHệ thống tự động liên kết và phân phối Shipment để chuyển qua khâu Xuất bến (Dispatch).'),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                child: const Text('HOÀN TẤT & IN TEM'),
+              )
             ],
           ),
-          content: Text('Đơn hàng $_orderNo đã được Đóng gói thành công!\nHệ thống tự động liên kết và phân phối Shipment để chuyển qua khâu Xuất bến (Dispatch).'),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Go back to home
-              },
-              child: const Text('HOÀN TẤT & IN TEM'),
-            )
-          ],
-        ),
-      );
+        );
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -263,7 +328,6 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Card Quét Order ID
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -333,15 +397,14 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Danh sách đóng gói
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _orderLines.isEmpty
-                        ? Center(
+                        ? const Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.qr_code_scanner, size: 64, color: AppColors.textSecondary),
                                 SizedBox(height: 8),
                                 Text(
@@ -413,7 +476,6 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
                           ),
               ),
 
-              // Bàn quét SKU
               if (_orderId.isNotEmpty) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
