@@ -72,6 +72,8 @@ export const config = {
     "/tasks/:path*",
     "/warehouse/:path*",
     "/wms/:path*",
+    "/portal/login",
+    "/portal/register",
     "/portal/dashboard/:path*",
     "/portal/orders/:path*",
     "/portal/tracking/:path*",

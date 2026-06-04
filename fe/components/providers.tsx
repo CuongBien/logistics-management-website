@@ -2,15 +2,21 @@
 
 import { SessionProvider, useSession, signOut } from "next-auth/react"
 import { useEffect } from "react"
+import { usePathname } from "next/navigation"
 
 function SessionErrorWrapper({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
+  const pathname = usePathname()
 
   useEffect(() => {
     if (session?.error === "RefreshAccessTokenError") {
-      signOut({ callbackUrl: '/login' })
+      if (pathname && pathname.startsWith('/portal')) {
+        signOut({ callbackUrl: '/portal/login' })
+      } else {
+        signOut({ callbackUrl: '/login' })
+      }
     }
-  }, [session])
+  }, [session, pathname])
 
   return <>{children}</>
 }
