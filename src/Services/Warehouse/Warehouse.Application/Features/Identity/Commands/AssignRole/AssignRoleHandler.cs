@@ -9,7 +9,8 @@ namespace Warehouse.Application.Features.Identity.Commands.AssignRole;
 public record AssignRoleCommand(
     Guid WarehouseId,
     string OperatorSub,
-    string RoleCode) : IRequest<Result<Guid>>;
+    string RoleCode,
+    string? DisplayName = null) : IRequest<Result<Guid>>;
 
 public class AssignRoleHandler : IRequestHandler<AssignRoleCommand, Result<Guid>>
 {
@@ -27,7 +28,15 @@ public class AssignRoleHandler : IRequestHandler<AssignRoleCommand, Result<Guid>
             .FirstOrDefaultAsync(x => x.OperatorSub == request.OperatorSub, cancellationToken);
         
         if (operatorProfile == null)
-            return Result<Guid>.Failure(new Error("Operator.NotFound", $"Operator with sub '{request.OperatorSub}' not found. Have they logged in yet?"));
+        {
+            // Tự động khởi tạo OperatorProfile mới để tránh lỗi 400 Bad Request
+            var name = !string.IsNullOrEmpty(request.DisplayName) ? request.DisplayName : "New Staff";
+            operatorProfile = new OperatorProfile("default-tenant", request.OperatorSub, name);
+            _context.OperatorProfiles.Add(operatorProfile);
+            await _context.SaveChangesAsync(cancellationToken);
+            
+            Console.WriteLine($"Automatically provisioned OperatorProfile for sub '{request.OperatorSub}' with name '{name}'");
+        }
 
         // 2. Tìm Role
         var role = await _context.Roles

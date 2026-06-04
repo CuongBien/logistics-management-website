@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { format } from 'date-fns';
@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { fetchApi } from '@/lib/api-client';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 import {
   UserCircle,
   MapPin,
@@ -244,6 +245,10 @@ interface AddressFieldsProps {
   prefix: 'sender' | 'receiver';
   districtList: { code: string; name: string }[];
   wardList: { code: string; name: string }[];
+  savedAddresses?: any[];
+  onSelectAddress?: (addr: any) => void;
+  saveToContacts?: boolean;
+  onSaveToContactsChange?: (checked: boolean) => void;
 }
 
 function AddressFields({
@@ -251,6 +256,10 @@ function AddressFields({
   prefix,
   districtList,
   wardList,
+  savedAddresses,
+  onSelectAddress,
+  saveToContacts,
+  onSaveToContactsChange,
 }: AddressFieldsProps) {
   const nameField = `${prefix}Name` as keyof FormValues;
   const phoneField = `${prefix}Phone` as keyof FormValues;
@@ -261,6 +270,38 @@ function AddressFields({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Saved Address Book Dropdown Selector (Shopee-style) */}
+      {prefix === 'receiver' && savedAddresses && savedAddresses.length > 0 && (
+        <div className="md:col-span-2 p-4 bg-indigo-50/60 rounded-2xl border border-indigo-100/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 shadow-sm animate-in fade-in duration-300">
+          <div className="space-y-0.5">
+            <h4 className="text-sm font-bold text-indigo-900 flex items-center gap-1.5">
+              <MapPin className="size-4 text-indigo-600 animate-pulse" />
+              Địa chỉ người nhận đã lưu
+            </h4>
+            <p className="text-xs text-indigo-700/80">Chọn nhanh thông tin người nhận từ danh bạ để tiết kiệm thời gian.</p>
+          </div>
+          <Select
+            onValueChange={(val) => {
+              const addr = savedAddresses.find(a => a.id === val);
+              if (addr && onSelectAddress) onSelectAddress(addr);
+            }}
+          >
+            <FormControl>
+              <SelectTrigger className="w-full sm:w-[280px] bg-background border-indigo-200 focus:ring-indigo-500 font-medium">
+                <SelectValue placeholder="Chọn địa chỉ từ danh bạ" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {savedAddresses.map((addr) => (
+                <SelectItem key={addr.id} value={addr.id} className="cursor-pointer">
+                  {addr.name} ({addr.phone})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <FormField
         control={form.control}
         name={nameField}
@@ -390,6 +431,22 @@ function AddressFields({
           </FormItem>
         )}
       />
+
+      {/* Save to contacts checkbox */}
+      {prefix === 'receiver' && onSaveToContactsChange && (
+        <div className="md:col-span-2 flex items-center space-x-2 pt-2 border-t border-muted/50 mt-2">
+          <input
+            type="checkbox"
+            id="saveAddress"
+            className="size-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+            checked={saveToContacts || false}
+            onChange={(e) => onSaveToContactsChange(e.target.checked)}
+          />
+          <label htmlFor="saveAddress" className="text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer select-none">
+            Lưu thông tin người nhận này vào danh bạ địa chỉ để dùng lại lần sau
+          </label>
+        </div>
+      )}
     </div>
   );
 }
@@ -495,7 +552,7 @@ function ReviewStep({
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Tiền thu hộ (COD)</span>
-              <span className="font-medium">{formatCurrency(v.codAmount || 0)}</span>
+              <span className="font-medium">{formatCurrency(Number(v.codAmount) || 0)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Phí vận chuyển (ước tính)</span>
@@ -504,7 +561,7 @@ function ReviewStep({
             <Separator />
             <div className="flex justify-between text-sm font-semibold">
               <span>Tổng tiền thu người nhận</span>
-              <span className="text-lg">{formatCurrency((v.codAmount || 0) + estimatedFee)}</span>
+              <span className="text-lg">{formatCurrency((Number(v.codAmount) || 0) + estimatedFee)}</span>
             </div>
           </div>
         </CardContent>
@@ -521,6 +578,11 @@ export default function CreateOrderPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: session } = useSession();
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [saveToContacts, setSaveToContacts] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -556,6 +618,59 @@ export default function CreateOrderPage() {
 
   const estimatedFee = (watchedValues.weight || 0) * 5000 + 15000;
 
+  useEffect(() => {
+    async function loadAddresses() {
+      if (!session?.user?.id) return;
+      try {
+        setLoadingAddresses(true);
+        const res = await fetchApi<any>('masterdata', `/Partners?tenantId=${session.user.id}&pageSize=100`);
+        const items = res?.value?.items || res?.items || res || [];
+        const consignees = items.filter((p: any) => p.type === 1 || p.type === 'Consignee');
+        setSavedAddresses(consignees);
+      } catch (err) {
+        console.error("Failed to load saved addresses:", err);
+      } finally {
+        setLoadingAddresses(false);
+      }
+    }
+    loadAddresses();
+  }, [session]);
+
+  function handleSelectAddress(addr: any) {
+    if (!addr) return;
+    
+    let street = addr.address || '';
+    let districtCode = '';
+    let wardCode = '';
+    let provinceCode = addr.city || '';
+    
+    if (street.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(street);
+        street = parsed.street || '';
+        districtCode = parsed.district || '';
+        wardCode = parsed.ward || '';
+        provinceCode = parsed.province || provinceCode;
+      } catch (e) {
+        console.error("Failed to parse saved address JSON:", e);
+      }
+    }
+    
+    form.setValue('receiverName', addr.name || '');
+    form.setValue('receiverPhone', addr.phone || '');
+    form.setValue('receiverProvince', provinceCode);
+    
+    setTimeout(() => {
+      form.setValue('receiverDistrict', districtCode);
+      setTimeout(() => {
+        form.setValue('receiverWard', wardCode);
+      }, 50);
+    }, 50);
+    
+    form.setValue('receiverAddress', street);
+    toast.success(`Đã tự động điền địa chỉ của ${addr.name}!`);
+  }
+
   async function handleNext() {
     const fields = stepFields[currentStep];
     if (fields.length > 0) {
@@ -571,10 +686,7 @@ export default function CreateOrderPage() {
 
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((res) => setTimeout(res, 1500));
-    setIsSubmitting(false);
-
+    
     const payload = {
       skuCodes: ["UNKNOWN-SKU"],
       consignee: {
@@ -611,6 +723,35 @@ export default function CreateOrderPage() {
       const res = await fetchApi<{isSuccess: boolean}>('oms', '/orders', { method: 'POST', body: payload });
       if (res && res.isSuccess) {
         toast.success('Đơn hàng đã được tạo thành công!');
+
+        // Save new receiver to Master Data address book if enabled
+        if (saveToContacts && session?.user?.id) {
+          try {
+            const addressJson = JSON.stringify({
+              street: data.receiverAddress,
+              district: data.receiverDistrict,
+              ward: data.receiverWard,
+              province: data.receiverProvince
+            });
+            
+            await fetchApi('masterdata', '/Partners', {
+              method: 'POST',
+              body: {
+                tenantId: session.user.id,
+                code: `ADDR-${Date.now()}`,
+                name: data.receiverName,
+                type: 1, // Consignee
+                phone: data.receiverPhone,
+                address: addressJson,
+                city: data.receiverProvince
+              }
+            });
+            toast.success('Đã lưu thông tin người nhận vào danh bạ địa chỉ!');
+          } catch (contactErr) {
+            console.error("Failed to save address to contacts:", contactErr);
+          }
+        }
+
         form.reset();
         setCurrentStep(0);
         router.push('/portal/orders');
@@ -619,6 +760,8 @@ export default function CreateOrderPage() {
       }
     } catch (e) {
       toast.error('Có lỗi xảy ra khi tạo đơn hàng');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -644,6 +787,10 @@ export default function CreateOrderPage() {
             prefix="receiver"
             districtList={receiverDistrictList}
             wardList={receiverWardList}
+            savedAddresses={savedAddresses}
+            onSelectAddress={handleSelectAddress}
+            saveToContacts={saveToContacts}
+            onSaveToContactsChange={setSaveToContacts}
           />
         );
       case 2:

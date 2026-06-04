@@ -6,6 +6,7 @@ using Warehouse.Application.Features.Layout.Commands.CreateWarehouse;
 using Warehouse.Application.Features.Layout.Commands.CreateZone;
 using Warehouse.Application.Features.Layout.Commands.UpdateBinStatus;
 using Warehouse.Application.Features.Layout.Queries;
+using Warehouse.Application.Features.Layout.Queries.ScanBinDetail;
 using Warehouse.Domain.Enums;
 
 namespace Warehouse.Api.Controllers;
@@ -14,9 +15,9 @@ namespace Warehouse.Api.Controllers;
 public class WarehouseController : ApiControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetWarehouses()
+    public async Task<IActionResult> GetWarehouses([FromQuery] bool all = false)
     {
-        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var operatorSub = all ? string.Empty : (CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
         var result = await Mediator.Send(new GetWarehousesQuery(operatorSub));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
@@ -62,6 +63,17 @@ public class WarehouseController : ApiControllerBase
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         var result = await Mediator.Send(new UpdateBinStatusCommand(id, request.NewStatus, operatorSub));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+    }
+
+    /// <summary>
+    /// Tra cứu thông tin chi tiết ô kệ qua mã QR - nhân viên quét mã QR ô kệ
+    /// </summary>
+    [HttpGet("{warehouseId}/bins/scan")]
+    public async Task<IActionResult> ScanBinDetail(Guid warehouseId, [FromQuery] string binCode)
+    {
+        var query = new ScanBinDetailQuery(binCode, warehouseId);
+        var result = await Mediator.Send(query);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { Error = result.Error.Code, Message = result.Error.Message });
     }
 }
 

@@ -97,9 +97,30 @@ export const authOptions: NextAuthOptions = {
             throw new Error(tokens.error_description || "Login failed")
           }
 
-          // Return a user object that NextAuth will pass to the jwt callback
+          // CRITICAL: Decode access_token to get real Keycloak user sub immediately.
+          // Do NOT hardcode id="user" — that causes all accounts to share the same session!
+          let realSub = credentials.username // fallback
+          let realName = credentials.username
+          let realEmail = `${credentials.username}@shiphub.vn`
+
+          try {
+            const base64Url = tokens.access_token.split('.')[1]
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+            // Use Buffer (Node.js) instead of atob (browser-only)
+            const jsonPayload = Buffer.from(base64, 'base64').toString('utf8')
+            const decoded = JSON.parse(jsonPayload)
+            realSub = decoded.sub || credentials.username
+            realName = decoded.name || decoded.preferred_username || credentials.username
+            realEmail = decoded.email || `${decoded.preferred_username || credentials.username}@shiphub.vn`
+          } catch (decodeErr) {
+            console.error("Failed to decode access token in authorize()", decodeErr)
+          }
+
           return {
-            id: "user", // NextAuth requires an id field, we'll extract real id from token later
+            id: realSub,                // ← REAL unique user ID, not "user"
+            sub: realSub,
+            name: realName,
+            email: realEmail,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
             id_token: tokens.id_token,
@@ -123,19 +144,23 @@ export const authOptions: NextAuthOptions = {
         token.provider = (user as any).provider
         token.expiresAt = (user as any).expires_at
         
-        // Decode the access token to get the user's details
+        // user.name, user.email, user.sub are already decoded in authorize() using Buffer
+        // But also decode here as safety fallback (using Buffer, not atob which is browser-only)
         try {
           const base64Url = (user as any).access_token.split('.')[1]
           const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-          const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-          }).join(''))
+          // Use Buffer (Node.js) — atob is browser-only and throws in server context
+          const jsonPayload = Buffer.from(base64, 'base64').toString('utf8')
           const decoded = JSON.parse(jsonPayload)
           token.sub = decoded.sub
-          token.name = decoded.name || decoded.preferred_username || "User"
-          token.email = decoded.email || `${decoded.preferred_username || "user"}@shiphub.vn`
+          token.name = decoded.name || decoded.preferred_username || (user as any).name || "User"
+          token.email = decoded.email || (user as any).email || `${decoded.preferred_username || "user"}@shiphub.vn`
         } catch(e) {
-          console.error("Failed to decode token", e)
+          // Fallback to values already set in authorize()
+          token.sub = (user as any).sub || (user as any).id
+          token.name = (user as any).name
+          token.email = (user as any).email
+          console.error("Failed to decode token in jwt callback", e)
         }
         
         return token
@@ -166,6 +191,17 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+  },
+  cookies: {
+    sessionToken: {
+      name: "wms-session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   },
   pages: {
     signIn: '/login',

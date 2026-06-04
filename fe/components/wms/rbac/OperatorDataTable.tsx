@@ -177,7 +177,7 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
                               <TooltipContent side="top" className="text-xs">
                                 <div className="flex items-center gap-1.5">
                                   <Warehouse className="h-3 w-3" />
-                                  <span>Kho: {r.warehouseName || r.warehouseId.split('-')[0]}</span>
+                                  <span>Kho: {r.warehouseName}</span>
                                 </div>
                               </TooltipContent>
                             </Tooltip>

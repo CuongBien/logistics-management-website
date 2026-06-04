@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import {
-  ShieldPlus, Warehouse, UserCog, Loader2, CheckCircle2, AlertTriangle
+  ShieldPlus, Warehouse, UserCog, Loader2, CheckCircle2, AlertTriangle, Trash2, X
 } from 'lucide-react';
 
 interface AssignRoleDialogProps {
@@ -43,6 +43,7 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
   const [loading, setLoading] = useState(false);
   const [roleCode, setRoleCode] = useState<string>('');
   const [warehouseId, setWarehouseId] = useState<string>('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Try to use shadcn toast, fallback to sonner
   let toastFn: any;
@@ -65,6 +66,30 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
     }
   };
 
+  const handleUnassign = async (assignmentId: string, roleName: string) => {
+    if (!assignmentId) return;
+    
+    setDeletingId(assignmentId);
+    try {
+      const res = await fetch(`/api/wms/users?id=${assignmentId}`, {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        showToast('Thành công', `Đã gỡ vai trò ${roleName} khỏi nhân viên.`);
+        onSuccess();
+      } else {
+        const data = await res.json();
+        showToast('Thất bại', data.details || 'Có lỗi xảy ra khi gỡ vai trò.', 'destructive');
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast('Thất bại', 'Lỗi hệ thống khi gỡ vai trò.', 'destructive');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   useEffect(() => {
     if (open) {
       setRoleCode('');
@@ -72,15 +97,23 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
 
       const loadWarehouses = async () => {
         try {
-          const res = await fetchApi<{ isSuccess: boolean; value: any[] }>('wms', '/Warehouse');
-          if (res && res.isSuccess) {
-            setWarehouses(res.value);
-            if (res.value.length > 0) {
-              setWarehouseId(res.value[0].id);
+          const res = await fetchApi<any>('wms', '/Warehouse?all=true');
+          let list: any[] = [];
+          if (res) {
+            if (res.isSuccess && Array.isArray(res.value)) {
+              list = res.value;
+            } else if (Array.isArray(res)) {
+              list = res;
             }
           }
+          setWarehouses(list);
+          if (list.length > 0) {
+            setWarehouseId(list[0].id);
+          }
         } catch (e) {
-          console.error("Failed to load warehouses", e);
+          console.error("Failed to load warehouses from live API", e);
+          setWarehouses([]);
+          showToast('Lỗi', 'Không thể kết nối đến máy chủ WMS để tải danh sách Kho', 'destructive');
         }
       };
 
@@ -88,11 +121,17 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
         try {
           const res = await fetch('/api/wms/roles');
           const data = await res.json();
-          if (data && data.isSuccess) {
+          if (data && data.isSuccess && Array.isArray(data.value)) {
             setRoles(data.value);
+          } else if (data && Array.isArray(data)) {
+            setRoles(data);
+          } else {
+            throw new Error("Invalid roles response format");
           }
         } catch (e) {
-          console.error("Failed to load roles", e);
+          console.error("Failed to load roles from API", e);
+          setRoles([]);
+          showToast('Lỗi', 'Không thể tải danh sách Vai trò từ hệ thống', 'destructive');
         }
       };
 
@@ -111,16 +150,18 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
     try {
       const res = await fetchApi('wms', '/RoleAssignment', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           operatorSub: operator.operatorSub,
           roleCode: roleCode,
           warehouseId: warehouseId,
-        }),
+          displayName: operator.fullName,
+        },
       });
 
       if (res && (res as any).isSuccess) {
         showToast('Thành công', `Đã gán quyền cho ${operator.fullName} thành công.`);
         onSuccess();
+        onOpenChange(false);
       } else {
         showToast('Thất bại', 'Có lỗi xảy ra khi phân quyền.', 'destructive');
       }
@@ -168,13 +209,46 @@ export function AssignRoleDialog({ operator, open, onOpenChange, onSuccess }: As
 
         {/* Current Roles Preview */}
         {operator.roles.length > 0 && (
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Quyền hiện tại:</Label>
-            <div className="flex flex-wrap gap-1">
+          <div className="space-y-2 pb-1">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Các vai trò đang đảm nhiệm:
+            </Label>
+            <div className="grid gap-2 max-h-[165px] overflow-y-auto pr-1">
               {operator.roles.map((r, i) => (
-                <Badge key={i} variant="secondary" className="text-xs font-medium">
-                  {r.roleName} @ {r.warehouseName || r.warehouseId.split('-')[0]}
-                </Badge>
+                <div 
+                  key={i}
+                  className="flex items-center justify-between p-2 rounded-lg border border-muted bg-card hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0">
+                    <Badge variant="outline" className="w-fit font-bold text-xs bg-primary/5 text-primary border-primary/20 shrink-0">
+                      {r.roleName}
+                    </Badge>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                      <Warehouse className="h-3.5 w-3.5 shrink-0 text-muted-foreground/75" />
+                      <span className="truncate font-medium text-foreground/80" title={r.warehouseName || r.warehouseId}>
+                        {r.warehouseName || r.warehouseId}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {r.id && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleUnassign(r.id!, r.roleName)}
+                      disabled={deletingId !== null}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-md"
+                      title="Gỡ vai trò này"
+                    >
+                      {deletingId === r.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-destructive" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
           </div>

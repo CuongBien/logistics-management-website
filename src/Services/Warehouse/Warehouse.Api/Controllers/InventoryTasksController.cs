@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Warehouse.Application.Features.Inventory.Commands.CycleCount;
 using Warehouse.Application.Features.Inventory.Commands.Replenishment;
+using Warehouse.Application.Features.Inventory.Commands.VerifyCycleCount;
 using Logistics.Core;
 
 namespace Warehouse.Api.Controllers;
@@ -99,9 +100,29 @@ public class InventoryTasksController : ControllerBase
 
         return Ok();
     }
+
+    /// <summary>
+    /// Xác thực kiểm kê ô kệ bằng QR - nhân viên quét mã từng sản phẩm trong kệ
+    /// </summary>
+    [HttpPost("cycle-counts/verify")]
+    public async Task<IActionResult> VerifyCycleCount([FromBody] VerifyCycleCountRequest request)
+    {
+        var operatorId = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? "sys";
+        var command = new VerifyCycleCountCommand(request.BinCode, request.WarehouseId, request.ScannedItems, operatorId);
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { Error = result.Error.Code, Message = result.Error.Message });
+    }
 }
 
 public class SubmitCountRequest
 {
     public int CountedQty { get; set; }
 }
+
+public class VerifyCycleCountRequest
+{
+    public string BinCode { get; set; } = default!;
+    public Guid WarehouseId { get; set; }
+    public List<ScannedItemDto> ScannedItems { get; set; } = new();
+}
+

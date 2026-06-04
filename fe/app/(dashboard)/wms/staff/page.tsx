@@ -5,6 +5,7 @@ import { OperatorDto } from '@/types/wms-rbac';
 import { OperatorDataTable } from '@/components/wms/rbac/OperatorDataTable';
 import { WarehouseProvider } from '@/components/wms/rbac/WarehouseContext';
 import { WarehouseContextSelector } from '@/components/wms/rbac/WarehouseContextSelector';
+import { CreateStaffDialog } from '@/components/wms/rbac/CreateStaffDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,12 +14,16 @@ import { Badge } from '@/components/ui/badge';
 import {
   Users, Shield, ShieldAlert, RefreshCw, Search, Loader2, UserPlus
 } from 'lucide-react';
+import { usePermissions } from '@/components/wms/rbac/usePermissions';
+import { AccessDeniedMessage } from '@/components/wms/rbac/AccessDeniedMessage';
 
 export default function StaffPage() {
+  const { hasPermissionInAnyWarehouse, loading: authLoading } = usePermissions();
   const [operators, setOperators] = useState<OperatorDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const loadOperators = async () => {
     setLoading(true);
@@ -71,6 +76,19 @@ export default function StaffPage() {
     return result;
   }, [operators, searchQuery, filterStatus]);
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C41E3A]" />
+        <span className="ml-2 text-sm text-muted-foreground">Đang xác thực quyền truy cập...</span>
+      </div>
+    );
+  }
+
+  if (!hasPermissionInAnyWarehouse("role:manage")) {
+    return <AccessDeniedMessage />;
+  }
+
   return (
     <WarehouseProvider>
       <div className="flex flex-col h-full p-6 space-y-6">
@@ -95,6 +113,13 @@ export default function StaffPage() {
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               Làm mới
+            </Button>
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="font-medium flex items-center gap-1.5 h-9 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <UserPlus className="h-4 w-4" />
+              Thêm Nhân viên
             </Button>
           </div>
         </div>
@@ -225,6 +250,13 @@ export default function StaffPage() {
         ) : (
           <OperatorDataTable data={filteredOperators} onRoleAssigned={loadOperators} />
         )}
+
+        {/* Create Staff Dialog */}
+        <CreateStaffDialog
+          open={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+          onSuccess={loadOperators}
+        />
       </div>
     </WarehouseProvider>
   );

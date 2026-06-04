@@ -44,6 +44,7 @@ public interface IApplicationDbContext
     DbSet<ReplenishmentTask> ReplenishmentTasks { get; }
     DbSet<CrossDockTask> CrossDockTasks { get; }
     DbSet<PutawayTask> PutawayTasks { get; }
+    DbSet<PackVerification> PackVerifications { get; }
     
     Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

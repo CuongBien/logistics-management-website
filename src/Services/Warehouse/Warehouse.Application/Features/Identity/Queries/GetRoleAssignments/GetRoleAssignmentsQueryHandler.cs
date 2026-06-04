@@ -16,14 +16,24 @@ public class GetRoleAssignmentsQueryHandler : IRequestHandler<GetRoleAssignments
 
     public async Task<Result<List<RoleAssignmentDto>>> Handle(GetRoleAssignmentsQuery request, CancellationToken cancellationToken)
     {
-        var assignments = await _context.OperatorRoleAssignments
+        var now = DateTime.UtcNow;
+        // Note: The controller already verifies the user has role:manage in at least one warehouse.
+        // If they pass that check, they can see all staff across all warehouses for management purposes.
+
+        var query = _context.OperatorRoleAssignments
             .Include(a => a.OperatorProfile)
             .Include(a => a.Role)
-            .Where(a => a.Status == Domain.Entities.AssignmentStatus.Active)
+            .Include(a => a.Warehouse)
+            .Where(a => a.Status == Domain.Entities.AssignmentStatus.Active);
+
+        var assignments = await query
             .Select(a => new RoleAssignmentDto(
+                a.Id,
                 a.OperatorProfile.OperatorSub,
                 a.WarehouseId.ToString(),
-                a.Role.Name
+                a.Warehouse.Name,
+                a.Role.Name,
+                a.Role.Code
             ))
             .ToListAsync(cancellationToken);
 

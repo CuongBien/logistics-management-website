@@ -12,17 +12,26 @@ export function WarehouseContextSelector() {
   useEffect(() => {
     const loadWarehouses = async () => {
       try {
-        const res = await fetchApi<{ isSuccess: boolean; value: any[] }>('wms', '/Warehouse');
-        if (res && res.isSuccess) {
-          setWarehouses(res.value);
-          // If no active warehouse is set, set to the first one available
-          if (!activeWarehouseId && res.value.length > 0) {
-            const defaultId = localStorage.getItem('wms_active_warehouse_id') || res.value[0].id;
-            setActiveWarehouseId(defaultId);
+        const res = await fetchApi<any>('wms', '/Warehouse?all=true');
+        let list: any[] = [];
+        if (res) {
+          if (res.isSuccess && Array.isArray(res.value)) {
+            list = res.value;
+          } else if (Array.isArray(res)) {
+            list = res;
           }
         }
+        
+        setWarehouses(list);
+        
+        // If no active warehouse is set, set to the first one available
+        if (!activeWarehouseId && list.length > 0) {
+          const defaultId = localStorage.getItem('wms_active_warehouse_id') || list[0].id;
+          setActiveWarehouseId(defaultId);
+        }
       } catch (e) {
-        console.error("Failed to load warehouses for selector", e);
+        console.error("Failed to load warehouses for selector from live API", e);
+        setWarehouses([]);
       }
     };
     loadWarehouses();

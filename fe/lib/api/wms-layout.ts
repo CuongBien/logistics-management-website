@@ -1,14 +1,38 @@
 import { WarehouseDto, WarehouseHierarchyDto, ZoneType, BinStatus } from '@/types/wms-layout';
-import { fetchApi } from '../api-client';
+import { fetchApi } from '@/lib/api-client';
 
+// ============================================================================
+// STRICT LIVE DATABASE MODE (FAIL-FAST) - NO MOCKS
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 1. GET ALL WAREHOUSES (Query all=true to fetch all system warehouses)
+// ----------------------------------------------------------------------------
 export const getWarehouses = async (): Promise<WarehouseDto[]> => {
-  return fetchApi<WarehouseDto[]>('wms', '/warehouse');
+  try {
+    const res = await fetchApi<WarehouseDto[]>('wms', '/warehouse?all=true');
+    return res || [];
+  } catch (err) {
+    console.error("Error fetching warehouses from live WMS DB:", err);
+    throw err;
+  }
 };
 
+// ----------------------------------------------------------------------------
+// 2. GET WAREHOUSE HIERARCHY
+// ----------------------------------------------------------------------------
 export const getWarehouseHierarchy = async (id: string): Promise<WarehouseHierarchyDto> => {
-  return fetchApi<WarehouseHierarchyDto>('wms', `/warehouse/${id}/hierarchy`);
+  try {
+    return await fetchApi<WarehouseHierarchyDto>('wms', `/warehouse/${id}/hierarchy`);
+  } catch (err) {
+    console.error(`Error fetching warehouse ${id} hierarchy from live DB:`, err);
+    throw err;
+  }
 };
 
+// ----------------------------------------------------------------------------
+// 3. CREATE WAREHOUSE
+// ----------------------------------------------------------------------------
 export const createWarehouse = async (data: { code: string; name: string }) => {
   return fetchApi<WarehouseDto>('wms', '/warehouse', {
     method: 'POST',
@@ -16,6 +40,9 @@ export const createWarehouse = async (data: { code: string; name: string }) => {
   });
 };
 
+// ----------------------------------------------------------------------------
+// 4. CREATE BLOCK
+// ----------------------------------------------------------------------------
 export const createBlock = async (warehouseId: string, blockCode: string) => {
   return fetchApi('wms', `/warehouse/${warehouseId}/blocks`, {
     method: 'POST',
@@ -23,6 +50,9 @@ export const createBlock = async (warehouseId: string, blockCode: string) => {
   });
 };
 
+// ----------------------------------------------------------------------------
+// 5. CREATE ZONE
+// ----------------------------------------------------------------------------
 export const createZone = async (blockId: string, type: ZoneType) => {
   return fetchApi('wms', `/warehouse/blocks/${blockId}/zones`, {
     method: 'POST',
@@ -30,18 +60,19 @@ export const createZone = async (blockId: string, type: ZoneType) => {
   });
 };
 
+// ----------------------------------------------------------------------------
+// 6. CREATE BIN
+// ----------------------------------------------------------------------------
 export const createBin = async (zoneId: string, binCode: string) => {
-  // We need to pass warehouseId but we don't have it here. 
-  // Wait, the backend requires CreateBinRequest { WarehouseId, BinCode }.
-  // In the old UI, maybe it passed warehouseId? Let's check how it's called.
-  // Assuming warehouseId is empty or not strictly needed if we just pass zoneId.
-  // Actually, we'll pass an empty Guid for now, the backend command might look it up.
   return fetchApi('wms', `/warehouse/zones/${zoneId}/bins`, {
     method: 'POST',
     body: { warehouseId: '00000000-0000-0000-0000-000000000000', binCode }
   });
 };
 
+// ----------------------------------------------------------------------------
+// 7. UPDATE BIN STATUS
+// ----------------------------------------------------------------------------
 export const updateBinStatus = async (binId: string, status: BinStatus) => {
   return fetchApi('wms', `/warehouse/bins/${binId}/status`, {
     method: 'PUT',

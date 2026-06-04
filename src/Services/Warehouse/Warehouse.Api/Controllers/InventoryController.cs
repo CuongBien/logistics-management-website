@@ -72,6 +72,26 @@ public class InventoryController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("skus")]
+    public async Task<IActionResult> GetSkus()
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User);
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetSkus.GetSkusQuery(tenantId));
+        return Ok(result);
+    }
+
+    [HttpPost("skus")]
+    public async Task<IActionResult> CreateSku([FromBody] Warehouse.Application.Features.Inventory.Commands.CreateSku.CreateSkuCommand command)
+    {
+        var tokenTenant = CurrentUserClaims.GetTenantId(User);
+        if (!string.IsNullOrEmpty(tokenTenant))
+        {
+            command.TenantId = tokenTenant;
+        }
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
     [HttpGet("by-sku/{sku}")]
     public async Task<IActionResult> GetBySku(string sku)
     {

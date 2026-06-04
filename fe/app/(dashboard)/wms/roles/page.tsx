@@ -5,13 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RoleDto, PermissionDto } from '@/types/wms-rbac';
-import { Plus, Edit } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { RoleDialog } from './components/RoleDialog';
+import { toast as sonnerToast } from 'sonner';
+import { usePermissions } from '@/components/wms/rbac/usePermissions';
+import { AccessDeniedMessage } from '@/components/wms/rbac/AccessDeniedMessage';
 
 export default function RolesPage() {
+  const { hasPermissionInAnyWarehouse, loading: authLoading } = usePermissions();
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [permissions, setPermissions] = useState<PermissionDto[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ... (useEffects and other definitions will follow, let's inject checks at the return statement or directly at the top)
+
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleDto | undefined>();
@@ -24,13 +31,43 @@ export default function RolesPage() {
         fetch('/api/wms/permissions')
       ]);
 
-      const rolesData = await rolesRes.json();
-      const permsData = await permsRes.json();
+      let rolesData = null;
+      let permsData = null;
 
-      if (rolesData.isSuccess) setRoles(rolesData.value);
-      if (permsData.isSuccess) setPermissions(permsData.value);
-    } catch (e) {
-      console.error(e);
+      try {
+        rolesData = await rolesRes.json();
+      } catch (e) {
+        console.error("Failed to parse roles JSON", e);
+      }
+
+      try {
+        permsData = await permsRes.json();
+      } catch (e) {
+        console.error("Failed to parse permissions JSON", e);
+      }
+
+      if (!rolesRes.ok) {
+        sonnerToast.error(`Lỗi tải Vai trò (Roles): Mã lỗi ${rolesRes.status}. Chi tiết: ${rolesData?.details || rolesData?.error || 'Không thể kết nối đến WMS backend'}`);
+      } else if (rolesData) {
+        if (rolesData.isSuccess && Array.isArray(rolesData.value)) {
+          setRoles(rolesData.value);
+        } else if (Array.isArray(rolesData)) {
+          setRoles(rolesData);
+        }
+      }
+
+      if (!permsRes.ok) {
+        sonnerToast.error(`Lỗi tải Quyền hạn (Permissions): Mã lỗi ${permsRes.status}. Chi tiết: ${permsData?.details || permsData?.error || 'Không thể kết nối đến WMS backend'}`);
+      } else if (permsData) {
+        if (permsData.isSuccess && Array.isArray(permsData.value)) {
+          setPermissions(permsData.value);
+        } else if (Array.isArray(permsData)) {
+          setPermissions(permsData);
+        }
+      }
+    } catch (e: any) {
+      console.error("Failed to load roles or permissions:", e);
+      sonnerToast.error(`Lỗi kết nối: Không thể tải dữ liệu: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -49,6 +86,42 @@ export default function RolesPage() {
     setSelectedRole(role);
     setDialogOpen(true);
   };
+
+  const handleDelete = async (roleId: string, roleName: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa vai trò "${roleName}"? Hành động này sẽ gỡ bỏ vai trò này khỏi tất cả nhân sự đang đảm nhiệm.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/wms/roles/${roleId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        sonnerToast.success(`Đã xóa vai trò "${roleName}" thành công.`);
+        loadData();
+      } else {
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
+        const errorMsg = typeof data.error === 'object' ? data.error?.message : (data.error || data.details || 'Có lỗi xảy ra');
+        sonnerToast.error(`Lỗi xóa vai trò: ${errorMsg}`);
+      }
+    } catch (e: any) {
+      console.error(e);
+      sonnerToast.error(`Lỗi hệ thống khi xóa vai trò: ${e.message}`);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C41E3A]" />
+        <span className="ml-2 text-sm text-muted-foreground">Đang xác thực quyền truy cập...</span>
+      </div>
+    );
+  }
+
+  if (!hasPermissionInAnyWarehouse("role:manage")) {
+    return <AccessDeniedMessage />;
+  }
 
   return (
     <div className="p-6">
@@ -76,7 +149,7 @@ export default function RolesPage() {
                 <TableHead>Tên Role</TableHead>
                 <TableHead>Mã (Code)</TableHead>
                 <TableHead>Số lượng Quyền</TableHead>
-                <TableHead className="w-[100px]">Thao tác</TableHead>
+                <TableHead className="w-[120px]">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -94,10 +167,15 @@ export default function RolesPage() {
                     <TableCell className="font-medium">{role.name}</TableCell>
                     <TableCell>{role.code}</TableCell>
                     <TableCell>{role.permissions?.length || 0} quyền</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(role)}>
-                        <Edit className="h-4 w-4" />
+                    <TableCell className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(role)} title="Chỉnh sửa vai trò">
+                        <Edit className="h-4 w-4 text-primary" />
                       </Button>
+                      {role.id && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(role.id!, role.name)} title="Xóa vai trò">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -112,6 +190,7 @@ export default function RolesPage() {
         onOpenChange={setDialogOpen}
         role={selectedRole}
         allPermissions={permissions}
+        existingRoles={roles}
         onSuccess={loadData}
       />
     </div>

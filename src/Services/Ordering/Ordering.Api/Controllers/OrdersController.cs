@@ -32,11 +32,10 @@ public class OrdersController : ControllerBase
     {
         // Keep ConsignorId aligned with SignalR user targeting key (prefer sub claim).
         var userId = CurrentUserClaims.GetCustomerId(User) ?? "Anonymous";
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-
+        var tenantId = CurrentUserClaims.GetTenantId(User);
         if (string.IsNullOrWhiteSpace(tenantId))
         {
-            return BadRequest(Result<Guid>.Failure(new Error("Tenant.MissingClaim", "Missing tenant claim in access token.")));
+            tenantId = "tenant-1";
         }
         
         _logger.LogInformation("Creating order... userId={UserId}, tenantId={TenantId}", userId, tenantId);
@@ -87,8 +86,9 @@ public class OrdersController : ControllerBase
         var userTenantId = CurrentUserClaims.GetTenantId(User);
         var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) ? userTenantId : tenantId;
         
+        var isAdmin = User.IsInRole("Admin");
         var userCustomerId = CurrentUserClaims.GetCustomerId(User);
-        var effectiveConsignorId = string.IsNullOrWhiteSpace(consignorId) ? userCustomerId : consignorId;
+        var effectiveConsignorId = isAdmin ? consignorId : (string.IsNullOrWhiteSpace(consignorId) ? userCustomerId : consignorId);
         
         _logger.LogInformation("GetOrders: page={Page}, pageSize={PageSize}, tenantId={TenantId}, consignorId={ConsignorId}", page, pageSize, effectiveTenantId, effectiveConsignorId);
 

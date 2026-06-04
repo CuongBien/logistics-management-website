@@ -47,6 +47,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<ReplenishmentTask> ReplenishmentTasks { get; set; } = default!;
     public DbSet<CrossDockTask> CrossDockTasks { get; set; } = default!;
     public DbSet<PutawayTask> PutawayTasks { get; set; } = default!;
+    public DbSet<PackVerification> PackVerifications => Set<PackVerification>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

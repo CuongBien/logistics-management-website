@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     })
 
     if (!res.ok) {
-      console.error("Failed to fetch permissions", await res.text())
+      console.error("Failed to fetch permissions from WMS C# backend:", await res.text())
       return NextResponse.json({ error: "Failed to fetch permissions" }, { status: res.status })
     }
 

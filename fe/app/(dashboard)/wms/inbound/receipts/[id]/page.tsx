@@ -9,7 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Loader2, ArrowLeft, ClipboardList, CheckCircle2, AlertTriangle, Ban, Lock } from "lucide-react"
+import { Loader2, ArrowLeft, ClipboardList, CheckCircle2, AlertTriangle, Ban, Lock, QrCode, ExternalLink } from "lucide-react"
+import { toast } from "sonner"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { getQrImageUrl } from "@/lib/services/qrcode"
 
 export default function ReceiptDetailPage() {
   const params = useParams()
@@ -19,6 +22,47 @@ export default function ReceiptDetailPage() {
   const [receipt, setReceipt] = useState<InboundReceiptDto | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [forceCloseOpen, setForceCloseOpen] = useState(false)
+
+  // QR print dialog states
+  const [printQrUrl, setPrintQrUrl] = useState<string | null>(null)
+  const [printQrTitle, setPrintQrTitle] = useState("")
+
+  const loadPrintQr = async () => {
+    if (!receipt) return
+    try {
+      const url = await getQrImageUrl('receipt', receipt.id)
+      setPrintQrUrl(url)
+      setPrintQrTitle(`Phiếu nhập WMS: ${receipt.receiptNo}`)
+    } catch (e) {
+      toast.error("Không thể sinh ảnh QR Code cho phiếu nhập này.")
+    }
+  }
+
+  const handlePrint = () => {
+    if (!printQrUrl) return
+    const win = window.open("", "_blank")
+    if (win) {
+      win.document.write(`
+        <html>
+          <head>
+            <title>In nhãn QR - ${printQrTitle}</title>
+            <style>
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: monospace; }
+              img { width: 300px; height: 300px; }
+              .title { font-size: 24px; font-weight: bold; margin-top: 15px; }
+              .footer { font-size: 14px; color: #555; margin-top: 5px; }
+            </style>
+          </head>
+          <body>
+            <img src="${printQrUrl}" onload="window.print(); window.close();" />
+            <div class="title">${printQrTitle}</div>
+            <div class="footer">Hệ thống Logistics Management System (LMS)</div>
+          </body>
+        </html>
+      `)
+      win.document.close()
+    }
+  }
 
   const fetchReceiptDetail = async () => {
     if (!id) return
@@ -131,16 +175,37 @@ export default function ReceiptDetailPage() {
           </div>
         </div>
 
-        {/* Action Button: Force Close if PartiallyReceived */}
-        {receipt.status === 'PartiallyReceived' && (
-          <Button 
-            onClick={() => setForceCloseOpen(true)}
-            className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold shrink-0 shadow-sm flex items-center gap-1.5 h-9"
+        <div className="shrink-0 flex items-center gap-2">
+          {/* Print QR button */}
+          <Button
+            variant="outline"
+            onClick={loadPrintQr}
+            className="border-muted hover:bg-muted font-bold text-xs flex items-center gap-1.5 h-9"
           >
-            <Lock className="h-4 w-4" />
-            Đóng Cưỡng Chế (Force Close)
+            <QrCode className="h-4 w-4" />
+            In Tem QR Code
           </Button>
-        )}
+
+          {/* Quick link to scanner */}
+          <Button
+            onClick={() => router.push(`/wms/scanner?receiptId=${receipt.id}&tab=actions&action=scan-receive`)}
+            className="bg-[#C41E3A] hover:bg-[#A01830] text-white font-bold shadow-sm flex items-center gap-1.5 h-9"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Quét Nhập Kho
+          </Button>
+
+          {/* Action Button: Force Close if PartiallyReceived */}
+          {receipt.status === 'PartiallyReceived' && (
+            <Button 
+              onClick={() => setForceCloseOpen(true)}
+              className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold shrink-0 shadow-sm flex items-center gap-1.5 h-9"
+            >
+              <Lock className="h-4 w-4" />
+              Đóng Cưỡng Chế
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Main Grid Content */}
@@ -252,6 +317,41 @@ export default function ReceiptDetailPage() {
         onOpenChange={setForceCloseOpen}
         onSuccess={fetchReceiptDetail}
       />
+
+      {/* Printable QR Code Dialog */}
+      {printQrUrl && (
+        <Dialog open={!!printQrUrl} onOpenChange={(open) => !open && setPrintQrUrl(null)}>
+          <DialogContent className="max-w-xs w-full bg-slate-900 border-slate-800 shadow-2xl text-white">
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-[#C41E3A]" />
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-sm font-bold text-slate-100">Tem Nhãn QR Code</DialogTitle>
+              <DialogDescription className="text-[10px] text-slate-400 font-mono mt-0.5">{printQrTitle}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="bg-white p-3 rounded-lg flex items-center justify-center border border-slate-800">
+                <img src={printQrUrl} className="w-48 h-48 block" alt="Printable QR Code" />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 border-slate-800 text-slate-300 hover:bg-slate-800"
+                  onClick={() => setPrintQrUrl(null)}
+                >
+                  Đóng
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-[#C41E3A] hover:bg-[#a01830] text-white font-bold"
+                  onClick={handlePrint}
+                >
+                  In Ngay (Print)
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

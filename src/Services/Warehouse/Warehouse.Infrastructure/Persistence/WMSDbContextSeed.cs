@@ -16,12 +16,79 @@ public static class WMSDbContextSeed
             try
             {
                 logger.LogInformation("Cleaning WMS transactional tables for fresh seed...");
-                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\", \"PutawayTasks\", \"ReplenishmentTasks\", \"CountTasks\" CASCADE;");
+                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"ShipmentItems\", \"ShipmentOrders\", \"Shipments\", \"OutboundOrderLines\", \"OutboundOrders\", \"InboundReceiptLines\", \"InboundReceipts\", \"InventoryItems\", \"PickTasks\", \"PutawayTasks\", \"ReplenishmentTasks\", \"CountTasks\", \"CrossDockTasks\", \"InboundDiscrepancies\", \"TransitDiscrepancies\" CASCADE;");
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Could not truncate transactional tables.");
             }
+
+            // Seed standard WMS Roles if not present
+            if (!await context.Roles.AnyAsync(r => r.Code == "WMS_ADMIN"))
+            {
+                logger.LogInformation("Seeding standard WMS Roles...");
+                var adminRole = new Role("WMS_ADMIN", "WMS Administrator");
+                var supervisorRole = new Role("WMS_SUPERVISOR", "WMS Supervisor");
+                var operatorRole = new Role("WMS_OPERATOR", "WMS Operator / Staff");
+                context.Roles.AddRange(adminRole, supervisorRole, operatorRole);
+                await context.SaveChangesAsync();
+            }
+
+            // Link permissions to standard roles if missing
+            var allPermissions = await context.Permissions.ToListAsync();
+            
+            var adminRoleEntity = await context.Roles.Include(r => r.RolePermissions).FirstOrDefaultAsync(r => r.Code == "WMS_ADMIN");
+            if (adminRoleEntity != null)
+            {
+                foreach (var perm in allPermissions)
+                {
+                    adminRoleEntity.AddPermission(perm);
+                }
+            }
+
+            var supervisorRoleEntity = await context.Roles.Include(r => r.RolePermissions).FirstOrDefaultAsync(r => r.Code == "WMS_SUPERVISOR");
+            if (supervisorRoleEntity != null)
+            {
+                foreach (var perm in allPermissions)
+                {
+                    if (perm.Code != "role:manage")
+                    {
+                        supervisorRoleEntity.AddPermission(perm);
+                    }
+                }
+            }
+
+            var operatorRoleEntity = await context.Roles.Include(r => r.RolePermissions).FirstOrDefaultAsync(r => r.Code == "WMS_OPERATOR");
+            if (operatorRoleEntity != null)
+            {
+                var operatorCodes = new HashSet<string>
+                {
+                    "inbound:receive",
+                    "inbound:putaway",
+                    "inbound:transit_receive",
+                    "outbound:pick",
+                    "outbound:pack",
+                    "outbound:load",
+                    "inventory:transfer",
+                    "inventory:count",
+                    "inventory:replenish",
+                    "crossdock:execute"
+                };
+                foreach (var perm in allPermissions)
+                {
+                    if (operatorCodes.Contains(perm.Code))
+                    {
+                        operatorRoleEntity.AddPermission(perm);
+                    }
+                }
+            }
+
+            if (context.ChangeTracker.HasChanges())
+            {
+                await context.SaveChangesAsync();
+                logger.LogInformation("Successfully linked standard permissions to WMS roles.");
+            }
+
 
             // 1. Seed Warehouses
             var ctId = Guid.Parse("b61a8f61-5238-4a18-809c-335cc293a025"); // Can Tho (Matching default Postman ID!)
@@ -345,6 +412,97 @@ public static class WMSDbContextSeed
                         new CountTask("default-tenant", sgId, countBinRedTshirt.Id, "SKU-RED-TSHIRT", null, null, 500),
                         new CountTask("default-tenant", sgId, countBinRedTshirt.Id, "A0-001", null, null, 150)
                     );
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.CrossDockTasks.AnyAsync())
+            {
+                logger.LogInformation("Seeding Cross-Dock Tasks...");
+                var inboundStagingBin = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-DOCK-01" && b.WarehouseId == sgId);
+                var outboundStagingBin = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-02" && b.WarehouseId == sgId);
+                var receipt = await context.InboundReceipts.FirstOrDefaultAsync();
+                var outboundOrder = await context.OutboundOrders.FirstOrDefaultAsync();
+
+                if (inboundStagingBin != null && outboundStagingBin != null && receipt != null && outboundOrder != null)
+                {
+                    var task1 = new CrossDockTask(
+                        "default-tenant",
+                        sgId,
+                        receipt.Id,
+                        outboundOrder.Id,
+                        "SKU-RED-TSHIRT",
+                        20,
+                        inboundStagingBin.Id,
+                        outboundStagingBin.Id
+                    );
+                    
+                    var task2 = new CrossDockTask(
+                        "default-tenant",
+                        sgId,
+                        receipt.Id,
+                        outboundOrder.Id,
+                        "SKU-BLUE-JEANS",
+                        5,
+                        inboundStagingBin.Id,
+                        outboundStagingBin.Id
+                    );
+
+                    context.CrossDockTasks.AddRange(task1, task2);
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.InboundDiscrepancies.AnyAsync())
+            {
+                logger.LogInformation("Seeding Inbound Discrepancies...");
+                var receipt = await context.InboundReceipts.FirstOrDefaultAsync();
+                if (receipt != null)
+                {
+                    var discrepancy1 = new InboundDiscrepancy(
+                        receipt.Id,
+                        sgId,
+                        "SKU-RED-TSHIRT",
+                        100,
+                        95,
+                        "system",
+                        "Missing 5 items in shipment box"
+                    );
+
+                    var discrepancy2 = new InboundDiscrepancy(
+                        receipt.Id,
+                        sgId,
+                        "SKU-BLUE-JEANS",
+                        50,
+                        48,
+                        "system",
+                        "2 items damaged during unloading"
+                    );
+
+                    context.InboundDiscrepancies.AddRange(discrepancy1, discrepancy2);
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            if (!await context.TransitDiscrepancies.AnyAsync())
+            {
+                logger.LogInformation("Seeding Transit Discrepancies...");
+                var order = await context.OutboundOrders.FirstOrDefaultAsync();
+                if (order != null)
+                {
+                    var discrepancy = new TransitDiscrepancy(
+                        order.Id,
+                        Guid.NewGuid(),
+                        sgId,
+                        "SKU-RED-TSHIRT",
+                        10,
+                        9,
+                        "FastDelivery",
+                        "system",
+                        "1 item lost in transit between hubs"
+                    );
+
+                    context.TransitDiscrepancies.Add(discrepancy);
                     await context.SaveChangesAsync();
                 }
             }

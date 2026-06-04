@@ -4,26 +4,35 @@ export interface PutawayTaskDto {
   id: string;
   sku: string;
   quantity: number;
-  sourceBinId: string;
-  suggestedBinId: string;
+  sourceBinCode: string;
+  suggestedBinCode: string;
   status: TaskStatus;
+  operatorName?: string;
+  createdAt: string;
+  completedAt?: string;
 }
 
 export interface ReplenishmentTaskDto {
   id: string;
   sku: string;
   quantity: number;
-  fromBinId: string; // Kệ lưu trữ
-  toBinId: string;   // Kệ lấy hàng (Pick Face)
+  fromBinCode: string;
+  toBinCode: string;
   status: TaskStatus;
+  operatorName?: string;
+  createdAt: string;
+  completedAt?: string;
 }
 
 export interface CycleCountTaskDto {
   id: string;
-  binId: string;
+  binCode: string;
   sku: string;
-  expectedQty: number; // Có thể ẩn đối với nhân viên đếm (Blind Count)
+  expectedQty: number;
   countedQty?: number;
   status: 'Pending' | 'Counted' | 'Approved' | 'Rejected';
-  operatorId?: string;
+  operatorName?: string;
+  completedAt?: string;
+  notes?: string;
+  supervisorNotes?: string;
 }

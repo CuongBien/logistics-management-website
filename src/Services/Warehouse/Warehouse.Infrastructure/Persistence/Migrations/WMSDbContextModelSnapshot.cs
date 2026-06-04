@@ -1291,6 +1291,39 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.ToTable("OutboundReturns");
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.PackVerification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastScannedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OperatorId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OutboundOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ScannedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OutboundOrderId", "Sku")
+                        .IsUnique();
+
+                    b.ToTable("PackVerifications", (string)null);
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.Permission", b =>
                 {
                     b.Property<Guid>("Id")

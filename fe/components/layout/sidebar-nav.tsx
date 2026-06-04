@@ -16,12 +16,16 @@ import {
   GitMerge,
   Users,
   Layers,
-  RefreshCw
+  RefreshCw,
+  BarChart3,
+  QrCode
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { useSession } from "next-auth/react"
+import { usePermissions } from "@/components/wms/rbac/usePermissions"
 
 interface NavItem {
   label: string
@@ -34,13 +38,14 @@ const navItems: NavItem[] = [
   { label: "Orders", href: "/orders", icon: <ShoppingCart className="h-4 w-4" /> },
   { label: "Inbound", href: "/wms/inbound/receipts", icon: <PackageOpen className="h-4 w-4" /> },
   { label: "Outbound", href: "/wms/outbound/orders", icon: <Truck className="h-4 w-4" /> },
+  { label: "Scanner", href: "/wms/scanner", icon: <QrCode className="h-4 w-4" /> },
   { label: "Wave Planning", href: "/wms/outbound/waves", icon: <Layers className="h-4 w-4" /> },
   { label: "Returns & RTO", href: "/wms/outbound/returns", icon: <RefreshCw className="h-4 w-4" /> },
   { label: "Inventory", href: "/wms/inventory", icon: <Boxes className="h-4 w-4" /> },
   { label: "Warehouse Layout", href: "/wms/layout", icon: <Warehouse className="h-4 w-4" /> },
-  { label: "Internal Tasks", href: "/tasks", icon: <ClipboardList className="h-4 w-4" /> },
-  { label: "Cross-docking", href: "/wms/tasks/cross-dock", icon: <GitMerge className="h-4 w-4" /> },
+  { label: "Internal Tasks", href: "/wms/tasks/putaway", icon: <ClipboardList className="h-4 w-4" /> },
   { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
+  { label: "Reports", href: "/reports", icon: <BarChart3 className="h-4 w-4" /> },
   { label: "Staff", href: "/wms/staff", icon: <Users className="h-4 w-4" /> },
   { label: "Role Management", href: "/wms/roles", icon: <Settings className="h-4 w-4" /> },
 ]
@@ -52,6 +57,8 @@ const bottomItems: NavItem[] = [
 export function SidebarNav() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const { data: session } = useSession()
+  const { hasPermissionInAnyWarehouse, loading } = usePermissions()
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"
@@ -62,7 +69,7 @@ export function SidebarNav() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "flex flex-col h-full bg-[#1a1a2e] border-r border-[#16213e] transition-all duration-300 ease-in-out",
+          "flex flex-col sticky top-0 h-screen bg-[#1a1a2e] border-r border-[#16213e] transition-all duration-300 ease-in-out",
           collapsed ? "w-14" : "w-52"
         )}
       >
@@ -85,8 +92,15 @@ export function SidebarNav() {
 
         {/* Main nav */}
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = isActive(item.href)
+          {navItems
+            .filter((item) => {
+              if (item.href === "/wms/staff" || item.href === "/wms/roles") {
+                return hasPermissionInAnyWarehouse("role:manage")
+              }
+              return true
+            })
+            .map((item) => {
+              const active = isActive(item.href)
             const linkContent = (
               <Link
                 key={item.href}
@@ -155,15 +169,15 @@ export function SidebarNav() {
           })}
 
           {/* User */}
-          {!collapsed && (
-            <div className="mt-2 px-2.5 py-2">
+          {!collapsed && session?.user && (
+            <div className="mt-2 px-2.5 py-2 border-t border-[#16213e]">
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 bg-[#C41E3A]/30 flex items-center justify-center text-[10px] font-bold text-[#C41E3A]">
-                  A
+                  {session.user.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-white/80 font-medium">Admin</span>
-                  <span className="text-[9px] text-white/40">Operator</span>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-[10px] text-white/80 font-medium truncate">{session.user.name || 'User'}</span>
+                  <span className="text-[9px] text-white/40 truncate">{session.user.email || ''}</span>
                 </div>
               </div>
             </div>

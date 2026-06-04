@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Microsoft.EntityFrameworkCore;
+using Warehouse.Application.Common.Interfaces;
+using Warehouse.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,7 @@ System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeM
 // Add services to the container.
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

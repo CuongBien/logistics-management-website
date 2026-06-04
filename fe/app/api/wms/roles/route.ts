@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     })
 
     if (!res.ok) {
-      console.error("Failed to fetch roles", await res.text())
+      console.error("Failed to fetch roles from WMS C# backend", await res.text())
       return NextResponse.json({ error: "Failed to fetch roles" }, { status: res.status })
     }
 
@@ -49,11 +49,12 @@ export async function POST(request: Request) {
     })
 
     if (!res.ok) {
-      console.error("Failed to create role", await res.text())
+      console.error("Failed to create role in WMS C# backend", await res.text())
       return NextResponse.json({ error: "Failed to create role" }, { status: res.status })
     }
 
-    const data = await res.json()
+    const responseText = await res.text()
+    const data = responseText ? JSON.parse(responseText) : { isSuccess: true }
     return NextResponse.json(data)
   } catch (error) {
     console.error("Create Role Error:", error)

@@ -328,3 +328,4 @@ public class OutboundController : ApiControllerBase
 }
 
 public record PutToWallRequest(string Sku);
+

@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { ReserveActionsDropdown } from "./ReserveActionsDropdown"
-import { Search, MapPin, AlertCircle, Sparkles, FilterX } from "lucide-react"
+import { Search, MapPin, AlertCircle, Sparkles, FilterX, Boxes } from "lucide-react"
 
 interface InventoryDataTableProps {
   data: InventoryItemDto[]
@@ -16,11 +16,15 @@ interface InventoryDataTableProps {
 export function InventoryDataTable({ data, onAction }: InventoryDataTableProps) {
   const [skuSearch, setSkuSearch] = useState("")
   const [binSearch, setBinSearch] = useState("")
+  const [warehouseSearch, setWarehouseSearch] = useState("")
 
   const filteredData = data.filter(item => {
     const matchSku = item.sku.toLowerCase().includes(skuSearch.toLowerCase())
     const matchBin = item.binCode.toLowerCase().includes(binSearch.toLowerCase())
-    return matchSku && matchBin
+    const matchWarehouse = 
+      (item.warehouseCode || "").toLowerCase().includes(warehouseSearch.toLowerCase()) ||
+      (item.warehouseName || "").toLowerCase().includes(warehouseSearch.toLowerCase())
+    return matchSku && matchBin && matchWarehouse
   })
 
   // Format Tenant helper
@@ -55,6 +59,15 @@ export function InventoryDataTable({ data, onAction }: InventoryDataTableProps) 
             onChange={(e) => setBinSearch(e.target.value)}
           />
         </div>
+        <div className="relative flex-1 w-full">
+          <Boxes className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Tìm theo kho hàng (Code/Tên)..."
+            className="pl-10 bg-background"
+            value={warehouseSearch}
+            onChange={(e) => setWarehouseSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Main Table Grid */}
@@ -63,6 +76,7 @@ export function InventoryDataTable({ data, onAction }: InventoryDataTableProps) 
           <TableHeader className="bg-muted/30">
             <TableRow>
               <TableHead className="font-bold">Chủ hàng (Tenant)</TableHead>
+              <TableHead className="font-bold">Kho Hàng</TableHead>
               <TableHead className="font-bold">Mã SKU</TableHead>
               <TableHead className="font-bold">Vị Trí (Bin)</TableHead>
               <TableHead className="font-bold text-center">Lô Hàng (Lot)</TableHead>
@@ -85,6 +99,16 @@ export function InventoryDataTable({ data, onAction }: InventoryDataTableProps) 
                   {/* Tenant */}
                   <TableCell className="align-middle py-3.5">
                     {formatTenant(item.tenantId)}
+                  </TableCell>
+
+                  {/* Warehouse */}
+                  <TableCell className="align-middle py-3.5">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs">{item.warehouseCode}</span>
+                      <span className="text-[11px] text-muted-foreground truncate max-w-[150px]" title={item.warehouseName}>
+                        {item.warehouseName}
+                      </span>
+                    </div>
                   </TableCell>
 
                   {/* SKU */}

@@ -14,7 +14,10 @@ public record InventoryItemDto(
     int QuantityOnHand,
     int AvailableQuantity,
     string? LotNo,
-    DateTime? ExpiryDate
+    DateTime? ExpiryDate,
+    Guid WarehouseId,
+    string WarehouseCode,
+    string WarehouseName
 );
 
 public class GetInventoryListQueryHandler : IRequestHandler<GetInventoryListQuery, List<InventoryItemDto>>
@@ -28,29 +31,42 @@ public class GetInventoryListQueryHandler : IRequestHandler<GetInventoryListQuer
 
     public async Task<List<InventoryItemDto>> Handle(GetInventoryListQuery request, CancellationToken cancellationToken)
     {
-        var query = _context.InventoryItems.AsQueryable();
+        var itemsQuery = from i in _context.InventoryItems
+                         join b in _context.Bins on i.BinId equals b.Id into binGroup
+                         from bin in binGroup.DefaultIfEmpty()
+                         join w in _context.Warehouses on i.WarehouseId equals w.Id into whGroup
+                         from wh in whGroup.DefaultIfEmpty()
+                         select new {
+                             Item = i,
+                             BinCode = bin != null ? bin.BinCode : i.BinId.ToString(),
+                             WarehouseCode = wh != null ? wh.Code : "UNKNOWN",
+                             WarehouseName = wh != null ? wh.Name : "Unknown Warehouse"
+                         };
 
         if (!string.IsNullOrEmpty(request.TenantId))
         {
-            query = query.Where(i => i.TenantId == request.TenantId);
+            itemsQuery = itemsQuery.Where(x => x.Item.TenantId == request.TenantId);
         }
 
         if (request.WarehouseId.HasValue)
         {
-            query = query.Where(i => i.WarehouseId == request.WarehouseId.Value);
+            itemsQuery = itemsQuery.Where(x => x.Item.WarehouseId == request.WarehouseId.Value);
         }
 
-        var items = await query.ToListAsync(cancellationToken);
+        var result = await itemsQuery.ToListAsync(cancellationToken);
 
-        return items.Select(i => new InventoryItemDto(
-            i.Id,
-            i.TenantId,
-            i.Sku,
-            i.BinId.ToString(),
-            i.QuantityOnHand,
-            i.AvailableQty,
-            i.LotNo,
-            i.ExpiryDate
+        return result.Select(x => new InventoryItemDto(
+            x.Item.Id,
+            x.Item.TenantId,
+            x.Item.Sku,
+            x.BinCode,
+            x.Item.QuantityOnHand,
+            x.Item.AvailableQty,
+            x.Item.LotNo,
+            x.Item.ExpiryDate,
+            x.Item.WarehouseId,
+            x.WarehouseCode,
+            x.WarehouseName
         )).ToList();
     }
 }

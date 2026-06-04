@@ -19,17 +19,21 @@ public class GetTopMovingSkusQueryHandler : IRequestHandler<GetTopMovingSkusQuer
         // Simple heuristic: count occurrences in InventoryTransactions over the last 7 days.
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
-        var topSkus = await _context.InventoryLedgers
+        var ledgers = await _context.InventoryLedgers
             .AsNoTracking()
             .Where(t => t.OccurredAt >= sevenDaysAgo)
+            .Select(t => new { t.Sku, t.DeltaQty })
+            .ToListAsync(cancellationToken);
+
+        var topSkus = ledgers
             .GroupBy(t => t.Sku)
             .Select(g => new TopMovingSkuDto(
-                g.Key.ToString(),
+                g.Key,
                 g.Sum(x => Math.Abs(x.DeltaQty))
             ))
             .OrderByDescending(x => x.TotalMovement)
             .Take(5)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         return Result<List<TopMovingSkuDto>>.Success(topSkus);
     }
