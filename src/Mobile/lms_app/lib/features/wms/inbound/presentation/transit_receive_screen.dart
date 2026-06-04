@@ -9,6 +9,7 @@ import '../../qr/domain/qr_models.dart';
 import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
 import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class TransitReceiveScreen extends ConsumerStatefulWidget {
   const TransitReceiveScreen({super.key});
@@ -81,10 +82,9 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi tải phiếu: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -179,10 +179,9 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
         await _loadReceipt(_orderId);
       } catch (e) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
       return;
     }
@@ -238,10 +237,9 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi nhận hàng: ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 

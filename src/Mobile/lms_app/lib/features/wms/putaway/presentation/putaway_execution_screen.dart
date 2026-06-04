@@ -8,7 +8,7 @@ import '../../../../../core/widgets/camera_scanner_dialog.dart';
 import '../../qr/providers/qr_providers.dart';
 import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
-import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class PutawayExecutionScreen extends ConsumerStatefulWidget {
   final String taskId;
@@ -72,10 +72,9 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
         }
       } catch (e) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
       return;
     }
@@ -98,10 +97,9 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 

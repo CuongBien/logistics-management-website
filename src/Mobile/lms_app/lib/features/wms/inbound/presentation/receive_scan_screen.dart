@@ -11,6 +11,7 @@ import '../../qr/domain/qr_models.dart';
 import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
 import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class ReceiveScanScreen extends ConsumerStatefulWidget {
   const ReceiveScanScreen({super.key});
@@ -75,10 +76,9 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi tải phiếu nhập: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -203,10 +203,9 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi nhận hàng: ${e is QrException ? e.friendlyMessage : e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -225,10 +224,9 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
