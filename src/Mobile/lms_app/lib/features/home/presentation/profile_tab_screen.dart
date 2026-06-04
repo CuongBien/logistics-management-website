@@ -26,7 +26,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
     _loadWarehouses();
   }
 
-  Future<void> _loadWarehouses() async {
+  Future<bool> _loadWarehouses() async {
     setState(() => _isLoadingWarehouses = true);
     try {
       final response = await apiClient.dio.get('/Warehouse?all=true');
@@ -34,11 +34,23 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
         setState(() {
           _warehouses = response.data as List<dynamic>;
         });
+        return true;
       }
     } catch (e) {
-      // Bỏ qua lỗi hoặc log, vì có thể offline
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     } finally {
       setState(() => _isLoadingWarehouses = false);
+    }
+    return false;
+  }
+
+  Future<void> _handleWarehouseTap() async {
+    if (_isLoadingWarehouses) return;
+    final success = await _loadWarehouses();
+    if (mounted && (success || _warehouses.isNotEmpty)) {
+      _showWarehouseSelector();
     }
   }
 
@@ -68,7 +80,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
               'Tổng số tác vụ: ${result.total}\n'
               'Thành công: ${result.succeeded}\n'
               'Thất bại: ${result.failed}'
-              '${result.errors.isNotEmpty ? "\n\nChi tiết lỗi:\n" + result.errors.join("\n") : ""}',
+              '${result.errors.isNotEmpty ? "\n\nChi tiết lỗi:\n${result.errors.join("\n")}" : ""}',
             ),
             actions: [
               TextButton(
@@ -89,50 +101,42 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
   }
 
   void _showWarehouseSelector() {
-    if (_warehouses.isEmpty && !_isLoadingWarehouses) {
-      _loadWarehouses();
-    }
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Chọn kho làm việc'),
-          content: _isLoadingWarehouses
-              ? const SizedBox(
-                  height: 100,
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              : _warehouses.isEmpty
-                  ? const Text('Không tải được danh sách kho hoặc không có kho nào có sẵn.')
-                  : SizedBox(
-                      width: double.maxFinite,
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _warehouses.length,
-                        itemBuilder: (context, index) {
-                          final wh = _warehouses[index];
-                          final id = wh['id'] as String;
-                          final name = wh['name'] as String;
+          content: _warehouses.isEmpty
+              ? const Text('Không tải được danh sách kho hoặc không có kho nào có sẵn.')
+              : SizedBox(
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _warehouses.length,
+                    itemBuilder: (context, index) {
+                      final wh = _warehouses[index];
+                      final id = wh['id'] as String;
+                      final name = wh['name'] as String;
 
-                          return ListTile(
-                            title: Text(name),
-                            subtitle: Text('ID: ${id.substring(0, 8)}...'),
-                            onTap: () async {
-                              Navigator.pop(context);
-                              final newContext = WarehouseContext(warehouseId: id, warehouseName: name);
-                              await newContext.save();
-                              ref.read(warehouseContextProvider.notifier).setWarehouse(newContext);
-                              
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('Đã chuyển sang kho: $name'),
-                                backgroundColor: AppColors.success,
-                              ));
-                            },
-                          );
+                      return ListTile(
+                        title: Text(name),
+                        subtitle: Text('ID: ${id.substring(0, 8)}...'),
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(context);
+                          final newContext = WarehouseContext(warehouseId: id, warehouseName: name);
+                          await newContext.save();
+                          ref.read(warehouseContextProvider.notifier).setWarehouse(newContext);
+                          
+                          messenger.showSnackBar(SnackBar(
+                            content: Text('Đã chuyển sang kho: $name'),
+                            backgroundColor: AppColors.success,
+                          ));
                         },
-                      ),
-                    ),
+                      );
+                    },
+                  ),
+                ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -209,8 +213,14 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                       : (userProfile?.warehouseName ?? 'Chưa chọn kho'),
                   style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
                 ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: _showWarehouseSelector,
+                trailing: _isLoadingWarehouses
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      )
+                    : const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: _isLoadingWarehouses ? null : _handleWarehouseTap,
               ),
             ),
             const SizedBox(height: 16),
