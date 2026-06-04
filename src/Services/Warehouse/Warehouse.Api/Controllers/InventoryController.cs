@@ -73,10 +73,10 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetList([FromQuery] Guid? warehouseId)
+    public async Task<IActionResult> GetList([FromQuery] Guid? warehouseId, [FromQuery] Guid? binId)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User);
-        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetInventoryList.GetInventoryListQuery(tenantId, warehouseId));
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetInventoryList.GetInventoryListQuery(tenantId, warehouseId, binId));
         return Ok(result);
     }
 

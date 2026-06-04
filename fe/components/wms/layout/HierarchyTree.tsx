@@ -10,14 +10,14 @@ import { AddBlockDialog } from "./AddBlockDialog"
 import { AddZoneDialog } from "./AddZoneDialog"
 import { AddBinDialog } from "./AddBinDialog"
 import { BinStatusBadge } from "./BinStatusBadge"
-import { EditBinStatusDialog } from "./EditBinStatusDialog"
+import { BinDetailsDialog } from "./BinDetailsDialog"
 import { usePermissions } from "@/components/wms/rbac/usePermissions"
 
 export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHierarchyDto, onRefresh: () => void }) {
   const [addBlockOpen, setAddBlockOpen] = useState(false)
   const [addZoneOpen, setAddZoneOpen] = useState(false)
   const [addBinOpen, setAddBinOpen] = useState(false)
-  const [editBinOpen, setEditBinOpen] = useState(false)
+  const [binDetailsOpen, setBinDetailsOpen] = useState(false)
   
   const [selectedBlockId, setSelectedBlockId] = useState("")
   const [selectedZoneId, setSelectedZoneId] = useState("")
@@ -38,9 +38,9 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
     setAddBinOpen(true)
   }
 
-  const openEditBin = (bin: BinDto) => {
+  const openBinDetails = (bin: BinDto) => {
     setSelectedBin(bin)
-    setEditBinOpen(true)
+    setBinDetailsOpen(true)
   }
 
   return (
@@ -56,10 +56,7 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
               Sơ Đồ Phân Cấp Kho: {hierarchy.name}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {isWmsAdmin 
-                ? "Click vào Block/Zone để xem chi tiết, và click vào ô Bin để thay đổi trạng thái kệ." 
-                : "Chế độ xem thông tin cấu trúc dãy Block, khu vực Zone và các ô kệ Bin."
-              }
+              Click vào ô Bin để xem thông tin chi tiết cấu hình và hàng hóa.
             </p>
           </div>
         </div>
@@ -116,18 +113,14 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
                     {zone.bins.map((bin) => (
                       <div
                         key={bin.id}
-                        onClick={() => isWmsAdmin && openEditBin(bin)}
-                        className={`flex flex-col p-3 border border-muted/60 rounded-xl bg-background text-center group relative overflow-hidden transition-all duration-300 ${
-                          isWmsAdmin ? "hover:border-primary hover:shadow-sm cursor-pointer" : "cursor-default"
-                        }`}
+                        onClick={() => openBinDetails(bin)}
+                        className={`flex flex-col p-3 border border-muted/60 rounded-xl bg-background text-center group relative overflow-hidden transition-all duration-300 hover:border-primary hover:shadow-sm cursor-pointer`}
                       >
                         {/* Hover accent line */}
                         {isWmsAdmin && (
                           <div className="absolute top-0 left-0 w-full h-[2px] bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
                         )}
-                        <span className={`text-xs font-semibold font-mono mb-2 ${
-                          isWmsAdmin ? "group-hover:text-primary" : ""
-                        } transition-colors`}>
+                        <span className="text-xs font-semibold font-mono mb-2 group-hover:text-primary transition-colors">
                           {bin.binCode}
                         </span>
                         <BinStatusBadge status={bin.status} />
@@ -167,12 +160,12 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
       </Accordion>
 
       {/* Action Dialogs */}
+      <BinDetailsDialog bin={selectedBin} open={binDetailsOpen} onOpenChange={setBinDetailsOpen} onUpdated={onRefresh} isWmsAdmin={isWmsAdmin} />
       {isWmsAdmin && (
         <>
           <AddBlockDialog warehouseId={hierarchy.warehouseId} open={addBlockOpen} onOpenChange={setAddBlockOpen} onCreated={onRefresh} />
           <AddZoneDialog blockId={selectedBlockId} open={addZoneOpen} onOpenChange={setAddZoneOpen} onCreated={onRefresh} />
           <AddBinDialog zoneId={selectedZoneId} warehouseId={hierarchy.warehouseId} open={addBinOpen} onOpenChange={setAddBinOpen} onCreated={onRefresh} />
-          <EditBinStatusDialog bin={selectedBin} open={editBinOpen} onOpenChange={setEditBinOpen} onUpdated={onRefresh} />
         </>
       )}
     </div>

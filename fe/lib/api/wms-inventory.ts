@@ -2,8 +2,11 @@ import { InventoryItemDto, InventoryLedgerDto } from '@/types/wms-inventory';
 import { fetchApi } from '@/lib/api-client';
 
 // API Services
-export const getInventoryList = async (warehouseId?: string): Promise<InventoryItemDto[]> => {
-  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+export const getInventoryList = async (warehouseId?: string, binId?: string): Promise<InventoryItemDto[]> => {
+  const params = [];
+  if (warehouseId) params.push(`warehouseId=${warehouseId}`);
+  if (binId) params.push(`binId=${binId}`);
+  const query = params.length > 0 ? `?${params.join('&')}` : '';
   const res = await fetchApi<InventoryItemDto[]>('wms', `/inventory${query}`);
   return res || [];
 };
