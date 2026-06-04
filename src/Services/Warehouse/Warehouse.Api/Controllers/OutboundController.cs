@@ -35,20 +35,27 @@ public class OutboundController : ApiControllerBase
 
     [HttpGet("orders")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> GetOrders()
+    public async Task<ActionResult> GetOrders([FromQuery] Guid? warehouseId)
     {
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        var result = await Mediator.Send(new Warehouse.Application.Features.Outbound.Queries.GetOutboundOrdersList.GetOutboundOrdersListQuery(operatorSub));
+        var result = await Mediator.Send(new Warehouse.Application.Features.Outbound.Queries.GetOutboundOrdersList.GetOutboundOrdersListQuery(operatorSub, warehouseId));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
 
     [HttpGet("shipments")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> GetShipments()
+    public async Task<ActionResult> GetShipments([FromQuery] Guid? warehouseId)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-        var shipments = await _context.Shipments
-            .Where(x => x.TenantId == tenantId)
+        var query = _context.Shipments
+            .Where(x => x.TenantId == tenantId);
+            
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+
+        var shipments = await query
             .OrderByDescending(x => x.CreatedAt)
             .Take(50)
             .ToListAsync();

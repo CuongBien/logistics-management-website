@@ -21,10 +21,10 @@ public class InventoryTasksController : ControllerBase
     }
 
     [HttpGet("cycle-count")]
-    public async Task<IActionResult> GetCycleCountTasks()
+    public async Task<IActionResult> GetCycleCountTasks([FromQuery] Guid? warehouseId)
     {
         var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        var query = new Warehouse.Application.Features.Inventory.Queries.GetCycleCountTasksList.GetCycleCountTasksListQuery(operatorSub);
+        var query = new Warehouse.Application.Features.Inventory.Queries.GetCycleCountTasksList.GetCycleCountTasksListQuery(operatorSub, warehouseId);
         var result = await _mediator.Send(query);
         
         if (!result.IsSuccess)
@@ -34,10 +34,10 @@ public class InventoryTasksController : ControllerBase
     }
 
     [HttpGet("replenish")]
-    public async Task<IActionResult> GetReplenishmentTasks()
+    public async Task<IActionResult> GetReplenishmentTasks([FromQuery] Guid? warehouseId)
     {
         var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        var query = new Warehouse.Application.Features.Inventory.Queries.GetReplenishmentTasksList.GetReplenishmentTasksListQuery(operatorSub);
+        var query = new Warehouse.Application.Features.Inventory.Queries.GetReplenishmentTasksList.GetReplenishmentTasksListQuery(operatorSub, warehouseId);
         var result = await _mediator.Send(query);
         
         if (!result.IsSuccess)

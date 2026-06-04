@@ -19,24 +19,24 @@ public class GetPendingWorkloadsQueryHandler : IRequestHandler<GetPendingWorkloa
     public async Task<Result<PendingWorkloadsDto>> Handle(GetPendingWorkloadsQuery request, CancellationToken cancellationToken)
     {
         // Receipts: Not Completed
-        var pendingReceipts = await _context.InboundReceipts
-            .AsNoTracking()
-            .CountAsync(r => r.Status != InboundReceiptStatus.Received && r.Status != InboundReceiptStatus.CompletedWithExceptions, cancellationToken);
+        var receiptsQuery = _context.InboundReceipts.AsNoTracking().Where(r => r.Status != InboundReceiptStatus.Received && r.Status != InboundReceiptStatus.CompletedWithExceptions);
+        if (request.WarehouseId.HasValue) receiptsQuery = receiptsQuery.Where(r => r.WarehouseId == request.WarehouseId.Value);
+        var pendingReceipts = await receiptsQuery.CountAsync(cancellationToken);
 
         // Putaway: Not Completed
-        var pendingPutaways = await _context.PutawayTasks
-            .AsNoTracking()
-            .CountAsync(p => p.Status != PutawayTaskStatus.Completed, cancellationToken);
+        var putawaysQuery = _context.PutawayTasks.AsNoTracking().Where(p => p.Status != PutawayTaskStatus.Completed);
+        if (request.WarehouseId.HasValue) putawaysQuery = putawaysQuery.Where(p => p.SourceBin != null && p.SourceBin.WarehouseId == request.WarehouseId.Value);
+        var pendingPutaways = await putawaysQuery.CountAsync(cancellationToken);
 
-        // We don't have OutboundWaves currently. We will count OutboundOrders that are not Dispatched/Completed.
-        var pendingWaves = await _context.OutboundOrders
-            .AsNoTracking()
-            .CountAsync(o => o.Status != OutboundOrderStatus.Shipped && o.Status != OutboundOrderStatus.Delivered, cancellationToken);
+        // OutboundWaves/Orders
+        var wavesQuery = _context.OutboundOrders.AsNoTracking().Where(o => o.Status != OutboundOrderStatus.Shipped && o.Status != OutboundOrderStatus.Delivered);
+        if (request.WarehouseId.HasValue) wavesQuery = wavesQuery.Where(o => o.WarehouseId == request.WarehouseId.Value);
+        var pendingWaves = await wavesQuery.CountAsync(cancellationToken);
 
         // CrossDock: Pending or Processing
-        var pendingCrossDocks = await _context.CrossDockTasks
-            .AsNoTracking()
-            .CountAsync(c => c.Status == CrossDockTaskStatus.Pending || c.Status == CrossDockTaskStatus.InProgress, cancellationToken);
+        var crossDocksQuery = _context.CrossDockTasks.AsNoTracking().Where(c => c.Status == CrossDockTaskStatus.Pending || c.Status == CrossDockTaskStatus.InProgress);
+        if (request.WarehouseId.HasValue) crossDocksQuery = crossDocksQuery.Where(c => c.WarehouseId == request.WarehouseId.Value);
+        var pendingCrossDocks = await crossDocksQuery.CountAsync(cancellationToken);
 
         var dto = new PendingWorkloadsDto(
             pendingReceipts,

@@ -5,7 +5,7 @@ using Warehouse.Application.Common.Interfaces;
 
 namespace Warehouse.Application.Features.Inbound.Queries.GetInboundReceiptsList;
 
-public record GetInboundReceiptsListQuery(string OperatorSub) : IRequest<Result<List<InboundReceiptDto>>>;
+public record GetInboundReceiptsListQuery(string OperatorSub, Guid? WarehouseId = null) : IRequest<Result<List<InboundReceiptDto>>>;
 
 public class InboundReceiptDto
 {
@@ -43,27 +43,34 @@ public class GetInboundReceiptsListQueryHandler : IRequestHandler<GetInboundRece
             .Include(r => r.Lines)
             .AsQueryable();
 
-        var isAdmin = request.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8" || 
-                      (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8"));
-
-        if (isAdmin)
+        if (request.WarehouseId.HasValue)
         {
-            // Admin sees all receipts
-        }
-        else if (opProfile != null)
-        {
-            var assignedWarehouseIds = await _context.OperatorRoleAssignments
-                .Where(a => a.OperatorProfileId == opProfile.Id)
-                .Select(a => a.WarehouseId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-            
-            query = query.Where(w => assignedWarehouseIds.Contains(w.WarehouseId));
+            query = query.Where(w => w.WarehouseId == request.WarehouseId.Value);
         }
         else
         {
-            // fallback: return empty if not found
-            return Result<List<InboundReceiptDto>>.Success(new List<InboundReceiptDto>());
+            var isAdmin = request.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8" || 
+                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8"));
+
+            if (isAdmin)
+            {
+                // Admin sees all receipts
+            }
+            else if (opProfile != null)
+            {
+                var assignedWarehouseIds = await _context.OperatorRoleAssignments
+                    .Where(a => a.OperatorProfileId == opProfile.Id)
+                    .Select(a => a.WarehouseId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                
+                query = query.Where(w => assignedWarehouseIds.Contains(w.WarehouseId));
+            }
+            else
+            {
+                // fallback: return empty if not found
+                return Result<List<InboundReceiptDto>>.Success(new List<InboundReceiptDto>());
+            }
         }
 
         var receipts = await query

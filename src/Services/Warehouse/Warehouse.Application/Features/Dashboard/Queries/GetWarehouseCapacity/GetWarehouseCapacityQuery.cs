@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Warehouse.Application.Features.Dashboard.Queries.GetWarehouseCapacity;
 
-public record GetWarehouseCapacityQuery() : IRequest<Result<WarehouseCapacityDto>>;
+public record GetWarehouseCapacityQuery(Guid? WarehouseId = null) : IRequest<Result<WarehouseCapacityDto>>;
 
 public record WarehouseCapacityDto(
     int TotalBins,

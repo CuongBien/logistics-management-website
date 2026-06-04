@@ -49,10 +49,10 @@ public class InboundController : ApiControllerBase
 
     [HttpGet("receipts")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> GetReceipts()
+    public async Task<ActionResult> GetReceipts([FromQuery] Guid? warehouseId)
     {
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        var result = await Mediator.Send(new Warehouse.Application.Features.Inbound.Queries.GetInboundReceiptsList.GetInboundReceiptsListQuery(operatorSub));
+        var result = await Mediator.Send(new Warehouse.Application.Features.Inbound.Queries.GetInboundReceiptsList.GetInboundReceiptsListQuery(operatorSub, warehouseId));
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
     }
     /// <summary>
@@ -144,9 +144,16 @@ public class InboundController : ApiControllerBase
 
     [HttpGet("discrepancies")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> GetInboundDiscrepancies()
+    public async Task<ActionResult> GetInboundDiscrepancies([FromQuery] Guid? warehouseId)
     {
-        var list = await _context.InboundDiscrepancies
+        var query = _context.InboundDiscrepancies.AsQueryable();
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(d => d.WarehouseId == warehouseId.Value);
+        }
+
+        var list = await query
             .AsNoTracking()
             .ToListAsync();
         return Ok(list);
@@ -218,9 +225,14 @@ public class InboundController : ApiControllerBase
 
     [HttpGet("cross-dock-tasks")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> GetCrossDockTasks([FromQuery] string? status)
+    public async Task<ActionResult> GetCrossDockTasks([FromQuery] string? status, [FromQuery] Guid? warehouseId)
     {
         var tasksQuery = _context.CrossDockTasks.AsQueryable();
+
+        if (warehouseId.HasValue)
+        {
+            tasksQuery = tasksQuery.Where(t => t.WarehouseId == warehouseId.Value);
+        }
 
         if (!string.IsNullOrEmpty(status))
         {

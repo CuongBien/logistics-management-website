@@ -17,7 +17,12 @@ public class GetWarehouseCapacityQueryHandler : IRequestHandler<GetWarehouseCapa
 
     public async Task<Result<WarehouseCapacityDto>> Handle(GetWarehouseCapacityQuery request, CancellationToken cancellationToken)
     {
-        var bins = await _context.Bins.AsNoTracking().ToListAsync(cancellationToken);
+        var query = _context.Bins.AsNoTracking();
+        if (request.WarehouseId.HasValue)
+        {
+            query = query.Where(b => b.WarehouseId == request.WarehouseId.Value);
+        }
+        var bins = await query.ToListAsync(cancellationToken);
 
         int totalBins = bins.Count;
         int emptyBins = bins.Count(b => b.Status == BinStatus.Available.ToString());

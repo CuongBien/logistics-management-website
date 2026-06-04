@@ -20,16 +20,14 @@ public class GetOperatorProductivityQueryHandler : IRequestHandler<GetOperatorPr
         var today = DateTime.UtcNow.Date;
 
         // Inbound Receipts
-        var receipts = await _context.InboundReceipts
-            .AsNoTracking()
-            .Where(r => r.CreatedByOperatorId != null)
-            .ToListAsync(cancellationToken);
+        var receiptsQuery = _context.InboundReceipts.AsNoTracking().Where(r => r.CreatedByOperatorId != null);
+        if (request.WarehouseId.HasValue) receiptsQuery = receiptsQuery.Where(r => r.WarehouseId == request.WarehouseId.Value);
+        var receipts = await receiptsQuery.ToListAsync(cancellationToken);
 
         // Putaway Tasks
-        var putaways = await _context.PutawayTasks
-            .AsNoTracking()
-            .Where(p => p.OperatorId != null)
-            .ToListAsync(cancellationToken);
+        var putawaysQuery = _context.PutawayTasks.AsNoTracking().Include(p => p.SourceBin).Where(p => p.OperatorId != null);
+        if (request.WarehouseId.HasValue) putawaysQuery = putawaysQuery.Where(p => p.SourceBin != null && p.SourceBin.WarehouseId == request.WarehouseId.Value);
+        var putaways = await putawaysQuery.ToListAsync(cancellationToken);
             
         // We can aggregate per operator
         var allOperatorIds = receipts.Select(r => r.CreatedByOperatorId)

@@ -73,12 +73,10 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetList()
+    public async Task<IActionResult> GetList([FromQuery] Guid? warehouseId)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User);
-        // Note: For now we'll get all inventory across warehouses for this tenant
-        // A better approach would read the ActiveWarehouseId from headers/claims if passed.
-        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetInventoryList.GetInventoryListQuery(tenantId, null));
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetInventoryList.GetInventoryListQuery(tenantId, warehouseId));
         return Ok(result);
     }
 

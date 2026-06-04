@@ -17,13 +17,14 @@ public class GetDiscrepanciesStatsQueryHandler : IRequestHandler<GetDiscrepancie
 
     public async Task<Result<DiscrepanciesStatsDto>> Handle(GetDiscrepanciesStatsQuery request, CancellationToken cancellationToken)
     {
-        var unresolvedInbound = await _context.InboundDiscrepancies
-            .AsNoTracking()
-            .CountAsync(d => d.Status != InboundDiscrepancyStatus.Resolved, cancellationToken);
+        var inboundQuery = _context.InboundDiscrepancies.AsNoTracking().Where(d => d.Status != InboundDiscrepancyStatus.Resolved);
+        if (request.WarehouseId.HasValue) inboundQuery = inboundQuery.Where(d => d.WarehouseId == request.WarehouseId.Value);
+        var unresolvedInbound = await inboundQuery.CountAsync(cancellationToken);
 
-        var unresolvedTransit = await _context.TransitDiscrepancies
-            .AsNoTracking()
-            .CountAsync(d => d.Status != TransitDiscrepancyStatus.Resolved, cancellationToken);
+        var transitQuery = _context.TransitDiscrepancies.AsNoTracking().Where(d => d.Status != TransitDiscrepancyStatus.Resolved);
+        // Assuming TransitDiscrepancy does not have WarehouseId directly or we don't filter it if it doesn't.
+        // Actually TransitDiscrepancies might not have WarehouseId.
+        var unresolvedTransit = await transitQuery.CountAsync(cancellationToken);
 
         var dto = new DiscrepanciesStatsDto(unresolvedInbound, unresolvedTransit);
 
