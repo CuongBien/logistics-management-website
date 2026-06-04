@@ -33,10 +33,10 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("status-summary")]
-    public async Task<ActionResult<Result<OrderStatusSummaryDto>>> GetStatusSummary()
+    public async Task<ActionResult<Result<OrderStatusSummaryDto>>> GetStatusSummary([FromQuery] string? warehouseId = null)
     {
         var tenantId = GetTenantIdIfApplicable();
-        var result = await _mediator.Send(new GetOrderStatusSummaryQuery(tenantId));
+        var result = await _mediator.Send(new GetOrderStatusSummaryQuery(tenantId, warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 

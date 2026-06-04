@@ -14,7 +14,8 @@ public record GetOrdersQuery(
     string? Status = null,
     string? Type = null,
     string? Fulfillment = null,
-    string? SearchTerm = null
+    string? SearchTerm = null,
+    string? WarehouseId = null
 ) : IRequest<Result<PaginatedList<OrderSummaryDto>>>;
 
 public record OrderSummaryDto(
@@ -95,6 +96,11 @@ public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, Result<Pagi
                 x.ExternalReference!.ToLower().Contains(term) ||
                 x.Consignee.FullName.ToLower().Contains(term) ||
                 x.Consignee.Phone.Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.WarehouseId))
+        {
+            query = query.Where(x => x.WarehouseId == request.WarehouseId || x.DestinationWarehouseId == request.WarehouseId);
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

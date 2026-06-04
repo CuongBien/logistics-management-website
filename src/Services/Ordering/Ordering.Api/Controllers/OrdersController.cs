@@ -80,7 +80,8 @@ public class OrdersController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
         [FromQuery] string? fulfillment = null,
-        [FromQuery] string? searchTerm = null)
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] string? warehouseId = null)
     {
         // Default to user's tenant if not explicitly requesting another (or if no permission to query others)
         var userTenantId = CurrentUserClaims.GetTenantId(User);
@@ -92,7 +93,7 @@ public class OrdersController : ControllerBase
         
         _logger.LogInformation("GetOrders: page={Page}, pageSize={PageSize}, tenantId={TenantId}, consignorId={ConsignorId}", page, pageSize, effectiveTenantId, effectiveConsignorId);
 
-        var query = new GetOrdersQuery(page, pageSize, effectiveTenantId, effectiveConsignorId, status, type, fulfillment, searchTerm);
+        var query = new GetOrdersQuery(page, pageSize, effectiveTenantId, effectiveConsignorId, status, type, fulfillment, searchTerm, warehouseId);
         var result = await _mediator.Send(query);
         
         if (result.IsSuccess) 

@@ -26,6 +26,11 @@ public class GetOrderStatusSummaryQueryHandler : IRequestHandler<GetOrderStatusS
             query = query.Where(o => o.TenantId == request.TenantId);
         }
 
+        if (!string.IsNullOrWhiteSpace(request.WarehouseId))
+        {
+            query = query.Where(x => x.WarehouseId == request.WarehouseId || x.DestinationWarehouseId == request.WarehouseId);
+        }
+
         var orders = await query
             .Select(o => new { o.Status })
             .ToListAsync(cancellationToken);

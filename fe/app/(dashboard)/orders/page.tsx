@@ -45,6 +45,7 @@ import * as orderingService from "@/lib/services/ordering"
 import { getQrImageUrl } from "@/lib/services/qrcode"
 import { Order, OrderStatusHistory, OrderStatus } from "@/lib/types"
 import { format } from "date-fns"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 // Zod validation schema for Create Order Form
 const createOrderSchema = z.object({
@@ -74,6 +75,8 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1)
   const [pageSize] = useState(5)
   const [isLoading, setIsLoading] = useState(true)
+
+  const { activeWarehouseId } = useWarehouseContext()
 
   // Details Modal and Timeline Tracking states
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -149,8 +152,9 @@ export default function OrdersPage() {
 
   // Fetch orders status summary KPIs dynamically
   const fetchSummary = useCallback(async () => {
+    if (!activeWarehouseId) return;
     try {
-      const res = await orderingService.getOrderStatusSummary()
+      const res = await orderingService.getOrderStatusSummary(activeWarehouseId)
       if (res.isSuccess && res.value) {
         const val = res.value
         const total = val.pending + val.dispatched + val.delivered + val.failed + val.cancelled
@@ -163,9 +167,10 @@ export default function OrdersPage() {
 
   // Fetch orders from mock API service
   const fetchOrders = useCallback(async () => {
+    if (!activeWarehouseId) return;
     setIsLoading(true)
     try {
-      const res = await orderingService.searchOrders(searchQuery, statusFilter, page, pageSize)
+      const res = await orderingService.searchOrders(searchQuery, statusFilter, page, pageSize, activeWarehouseId)
       if (res.isSuccess && res.value) {
         setOrders(res.value.orders)
         setTotalCount(res.value.totalCount)
@@ -176,11 +181,13 @@ export default function OrdersPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [searchQuery, statusFilter, page, pageSize, fetchSummary])
+  }, [searchQuery, statusFilter, page, pageSize, activeWarehouseId, fetchSummary])
 
   useEffect(() => {
-    fetchOrders()
-  }, [fetchOrders])
+    if (activeWarehouseId) {
+      fetchOrders()
+    }
+  }, [fetchOrders, activeWarehouseId])
 
   // Open Order detail Drawer panel and fetch metadata
   const handleViewDetails = async (order: Order) => {

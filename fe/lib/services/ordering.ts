@@ -155,12 +155,14 @@ export async function searchOrders(
   query: string, 
   statusFilter: string, 
   page: number = 1, 
-  pageSize: number = 5
+  pageSize: number = 5,
+  warehouseId?: string
 ): Promise<ApiResult<{ orders: Order[]; totalCount: number }>> {
   try {
     const statusParam = (statusFilter && statusFilter !== 'All') ? `&status=${statusFilter}` : '';
     const searchParam = query.trim() ? `&searchTerm=${encodeURIComponent(query.trim())}` : '';
-    const res = await fetchApi<any>('oms', `/orders?page=${page}&pageSize=${pageSize}${statusParam}${searchParam}`);
+    const whParam = warehouseId ? `&warehouseId=${warehouseId}` : '';
+    const res = await fetchApi<any>('oms', `/orders?page=${page}&pageSize=${pageSize}${statusParam}${searchParam}${whParam}`);
     
     if (res && res.isSuccess && res.value) {
       const items = res.value.items || [];
@@ -207,9 +209,10 @@ export async function searchOrders(
   }
 }
 
-export async function getOrderStatusSummary(): Promise<ApiResult<{ pending: number; dispatched: number; delivered: number; failed: number; cancelled: number }>> {
+export async function getOrderStatusSummary(warehouseId?: string): Promise<ApiResult<{ pending: number; dispatched: number; delivered: number; failed: number; cancelled: number }>> {
   try {
-    const res = await fetchApi<any>('oms', '/dashboard/status-summary');
+    const whParam = warehouseId ? `?warehouseId=${warehouseId}` : '';
+    const res = await fetchApi<any>('oms', `/dashboard/status-summary${whParam}`);
     if (res && res.isSuccess && res.value) {
       return {
         isSuccess: true,
