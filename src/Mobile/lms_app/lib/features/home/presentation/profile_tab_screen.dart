@@ -29,11 +29,47 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
   Future<bool> _loadWarehouses() async {
     setState(() => _isLoadingWarehouses = true);
     try {
-      final response = await apiClient.dio.get('/Warehouse?all=true');
+      final userProfile = ref.read(currentUserProvider);
+      final allParam = userProfile?.isManager == true ? 'true' : 'false';
+      final response = await apiClient.dio.get('/Warehouse?all=$allParam');
       if (response.statusCode == 200) {
+        final List<dynamic> loaded = response.data as List<dynamic>;
         setState(() {
-          _warehouses = response.data as List<dynamic>;
+          _warehouses = loaded;
         });
+
+        // Tự động kiểm tra và cập nhật kho đang chọn (WarehouseContext)
+        final activeWarehouse = ref.read(warehouseContextProvider);
+        if (activeWarehouse != null) {
+          final isAllowed = loaded.any((w) => w['id'] == activeWarehouse.warehouseId);
+          if (!isAllowed) {
+            // Kho đang chọn không còn nằm trong danh sách quyền -> đặt về kho đầu tiên được phép
+            if (loaded.isNotEmpty) {
+              final wh = loaded.first;
+              final newContext = WarehouseContext(
+                warehouseId: wh['id'] as String,
+                warehouseName: wh['name'] as String,
+              );
+              await ref.read(warehouseContextProvider.notifier).setWarehouse(newContext);
+            } else {
+              // Không có kho nào được phép
+              await ref.read(warehouseContextProvider.notifier).clear();
+            }
+          }
+        } else {
+          // Chưa chọn kho -> đặt mặc định theo thông tin Keycloak hoặc kho đầu tiên
+          if (loaded.isNotEmpty) {
+            final jwtWh = loaded.firstWhere(
+              (w) => w['id'] == userProfile?.warehouseId,
+              orElse: () => loaded.first,
+            );
+            final newContext = WarehouseContext(
+              warehouseId: jwtWh['id'] as String,
+              warehouseName: jwtWh['name'] as String,
+            );
+            await ref.read(warehouseContextProvider.notifier).setWarehouse(newContext);
+          }
+        }
         return true;
       }
     } catch (e) {

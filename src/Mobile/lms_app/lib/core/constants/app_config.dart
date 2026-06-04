@@ -133,10 +133,28 @@ class WarehouseContext {
 
 class WarehouseContextNotifier extends Notifier<WarehouseContext?> {
   @override
-  WarehouseContext? build() => null;
+  WarehouseContext? build() {
+    _init();
+    return null;
+  }
 
-  void setWarehouse(WarehouseContext? context) {
+  Future<void> _init() async {
+    final ctx = await WarehouseContext.load();
+    state = ctx;
+  }
+
+  Future<void> setWarehouse(WarehouseContext? context) async {
+    if (context != null) {
+      await context.save();
+    } else {
+      await WarehouseContext.clear();
+    }
     state = context;
+  }
+
+  Future<void> clear() async {
+    await WarehouseContext.clear();
+    state = null;
   }
 }
 

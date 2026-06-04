@@ -186,6 +186,7 @@ class AuthNotifier extends Notifier<AuthState> {
     }
     Future.microtask(() {
       ref.read(notificationServiceProvider).stopConnection();
+      ref.read(warehouseContextProvider.notifier).clear();
     });
     state = const AuthUnauthenticated();
     log('Auth: Đã đăng xuất');
