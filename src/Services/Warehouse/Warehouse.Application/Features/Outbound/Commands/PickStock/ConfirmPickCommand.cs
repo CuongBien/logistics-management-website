@@ -11,7 +11,8 @@ namespace Warehouse.Application.Features.Outbound.Commands.PickStock;
 
 public record ConfirmPickCommand(
     Guid PickTaskId, 
-    string OperatorId) : IRequest<Result<bool>>;
+    string OperatorId,
+    int? PickedQuantity = null) : IRequest<Result<bool>>;
 
 public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickCommand, Result<bool>>
 {
@@ -57,7 +58,8 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
 
         // Update Line
         var line = pickTask.OutboundOrderLine;
-        line.UpdatePicked(line.PickedQty + pickTask.Quantity);
+        var actualPickedQty = request.PickedQuantity ?? pickTask.Quantity;
+        line.UpdatePicked(line.PickedQty + actualPickedQty);
 
         // Check if all lines are fully picked
         

@@ -534,10 +534,10 @@ public class QrCodeController : ApiControllerBase
             return UnprocessableEntity(Err("QR.SkuMismatch", $"SKU scan '{skuValue}' không khớp SKU cần lấy '{task.OutboundOrderLine.Sku}'."));
 
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? "sys";
-        var result = await Mediator.Send(new ConfirmPickCommand(req.PickTaskId, operatorSub));
+        var result = await Mediator.Send(new ConfirmPickCommand(req.PickTaskId, operatorSub, req.Quantity));
         if (!result.IsSuccess) return BadRequest(Err(result.Error.Code, result.Error.Message));
 
-        return Ok(new { success = true, pickTaskId = req.PickTaskId, sku = task.OutboundOrderLine.Sku, quantity = task.Quantity });
+        return Ok(new { success = true, pickTaskId = req.PickTaskId, sku = task.OutboundOrderLine.Sku, quantity = req.Quantity ?? task.Quantity });
     }
 
     /// <summary>C6: Scan SKU → xác nhận đúng sản phẩm khi đóng gói (verify-pack)</summary>
@@ -842,7 +842,7 @@ public record ScanReceiveRequest(Guid ReceiptId, string ScannedSku, string Scann
 public record ConfirmPutawayRequest(Guid TaskId, string ScannedBin);
 public record ConfirmCrossDockRequest(Guid TaskId, string ScannedBin);
 public record TransitReceiveRequest(string ScannedOrder, Guid WarehouseId, string? ScannedBin = null, Dictionary<string, int>? ReceivedItems = null);
-public record ConfirmPickRequest(Guid PickTaskId, string ScannedBin, string ScannedSku);
+public record ConfirmPickRequest(Guid PickTaskId, string ScannedBin, string ScannedSku, int? Quantity = null);
 public record VerifyPackRequest(Guid OutboundOrderId, string ScannedSku, int Quantity);
 public record ScanSortRequest(string ScannedOrder, Guid? DestinationWarehouseId = null);
 public record ScanLoadRequest(string ScannedOrder, Guid? ShipmentId = null);
