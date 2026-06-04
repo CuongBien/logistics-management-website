@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/role_manager.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'dashboard_screen.dart';
 
-class MainSkeleton extends StatefulWidget {
+class MainSkeleton extends ConsumerStatefulWidget {
   const MainSkeleton({super.key});
 
   @override
-  State<MainSkeleton> createState() => _MainSkeletonState();
+  ConsumerState<MainSkeleton> createState() => _MainSkeletonState();
 }
 
-class _MainSkeletonState extends State<MainSkeleton> {
+class _MainSkeletonState extends ConsumerState<MainSkeleton> {
   int _currentIndex = 0;
   AppRole _currentRole = AppRole.operator; // Mặc định để test
 
@@ -30,7 +32,9 @@ class _MainSkeletonState extends State<MainSkeleton> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isManager = _currentRole == AppRole.manager;
+    final userProfile = ref.watch(currentUserProvider);
+    final bool isManager = userProfile?.isManager ?? false;
+    final String roleName = isManager ? 'Quản lý kho' : 'Nhân viên kho';
 
     return Scaffold(
       appBar: AppBar(
@@ -59,9 +63,18 @@ class _MainSkeletonState extends State<MainSkeleton> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    isManager ? 'Quản lý kho' : 'Nhân viên kho',
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                    userProfile?.username ?? 'Nhân viên',
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                   ),
+                  Text(
+                    roleName,
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  if (userProfile?.warehouseName != null)
+                    Text(
+                      'Kho: ${userProfile!.warehouseName}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
                 ],
               ),
             ),
@@ -173,6 +186,14 @@ class _MainSkeletonState extends State<MainSkeleton> {
               onTap: () {
                 Navigator.pop(context);
                 context.push('/wms/count');
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                ref.read(authProvider.notifier).logout();
               },
             ),
           ],
