@@ -42,17 +42,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 }
 
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(
+      authProvider,
+      (_, __) => notifyListeners(),
+    );
+  }
+}
+
+final routerNotifierProvider = Provider((ref) => RouterNotifier(ref));
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = ref.watch(routerNotifierProvider);
 
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: notifier,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isAuth = authState is AuthAuthenticated;
       final isGoingToLogin = state.matchedLocation == '/login';
 
-      if (authState is AuthInitial || authState is AuthLoading) {
+      if (authState is AuthInitial) {
         return '/'; 
+      }
+      
+      if (authState is AuthLoading && state.matchedLocation == '/') {
+        return '/';
       }
 
       if (!isAuth && !isGoingToLogin) {

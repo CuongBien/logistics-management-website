@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/error/app_exception.dart';
 import '../data/auth_repository.dart';
 import '../domain/auth_models.dart';
+import '../../../core/constants/app_config.dart';
 
 // ============================================================================
 // Auth State - sealed class hierarchy cho các trạng thái xác thực
@@ -47,13 +48,6 @@ class AuthError extends AuthState {
 // ============================================================================
 // Auth Notifier - quản lý logic xác thực
 // ============================================================================
-
-/// Keycloak token endpoint - có thể cấu hình qua biến môi trường
-const String _keycloakTokenEndpoint =
-    'http://10.0.2.2:8080/realms/logistics_realm/protocol/openid-connect/token';
-
-/// Client ID đăng ký trên Keycloak
-const String _clientId = 'oms-client';
 
 /// AuthNotifier quản lý toàn bộ logic xác thực.
 /// Kế thừa Notifier<AuthState> theo chuẩn Riverpod v3.0.
@@ -125,10 +119,13 @@ class AuthNotifier extends Notifier<AuthState> {
     state = const AuthLoading();
 
     try {
+      final config = ref.read(appConfigProvider);
+      final tokenEndpoint = '${config.keycloakRealmUrl}/protocol/openid-connect/token';
+      
       final response = await _dio.post(
-        _keycloakTokenEndpoint,
+        tokenEndpoint,
         data: {
-          'client_id': _clientId,
+          'client_id': config.keycloakClientId,
           'grant_type': 'password',
           'username': username.trim(),
           'password': password,
@@ -200,10 +197,13 @@ class AuthNotifier extends Notifier<AuthState> {
   /// Logic refresh token nội bộ
   Future<void> _refreshToken(String refreshTokenValue) async {
     try {
+      final config = ref.read(appConfigProvider);
+      final tokenEndpoint = '${config.keycloakRealmUrl}/protocol/openid-connect/token';
+      
       final response = await _dio.post(
-        _keycloakTokenEndpoint,
+        tokenEndpoint,
         data: {
-          'client_id': _clientId,
+          'client_id': config.keycloakClientId,
           'grant_type': 'refresh_token',
           'refresh_token': refreshTokenValue,
         },
