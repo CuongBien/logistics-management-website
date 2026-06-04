@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/role_manager.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'dashboard_screen.dart';
+import 'scan_tab_screen.dart';
+import 'profile_tab_screen.dart';
+import '../../wms/notification/providers/notification_providers.dart';
 
 class MainSkeleton extends ConsumerStatefulWidget {
   const MainSkeleton({super.key});
@@ -35,15 +38,45 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
     final userProfile = ref.watch(currentUserProvider);
     final bool isManager = userProfile?.isManager ?? false;
     final String roleName = isManager ? 'Quản lý kho' : 'Nhân viên kho';
+    final unreadCount = ref.watch(unreadNotificationsCountProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('LMS Enterprise'),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {},
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: () => context.push('/notifications'),
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -201,7 +234,9 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
       ),
       body: _currentIndex == 0 
           ? DashboardScreen(role: _currentRole)
-          : const Center(child: Text('Coming Soon')),
+          : _currentIndex == 1
+              ? const ScanTabScreen()
+              : const ProfileTabScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),

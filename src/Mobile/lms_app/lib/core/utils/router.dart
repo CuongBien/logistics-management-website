@@ -17,6 +17,7 @@ import '../../features/wms/inventory/presentation/cycle_count_screen.dart';
 import '../../features/wms/inbound/presentation/transit_receive_screen.dart';
 import '../../features/wms/outbound/presentation/sort_screen.dart';
 import '../../features/wms/returns/presentation/receive_return_screen.dart';
+import '../../features/wms/notification/presentation/notification_list_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -159,6 +160,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/wms/sort',
         builder: (context, state) => const SortScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationListScreen(),
       ),
     ],
   );

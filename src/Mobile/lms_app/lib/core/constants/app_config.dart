@@ -22,8 +22,8 @@ class AppConfig {
   /// Cấu hình cho Android emulator và điện thoại thật qua mạng LAN
   factory AppConfig.dev() {
     return const AppConfig(
-      apiBaseUrl: 'http://192.168.88.214:5051/api',
-      keycloakBaseUrl: 'http://192.168.88.214:18080',
+      apiBaseUrl: 'http://192.168.1.6:5051/api',
+      keycloakBaseUrl: 'http://192.168.1.6:18080',
       keycloakRealm: 'logistics_realm',
       keycloakClientId: 'oms-client',
       signalRUrl: 'http://192.168.88.214:5051/hubs',

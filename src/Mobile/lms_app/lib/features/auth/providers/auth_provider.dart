@@ -8,6 +8,7 @@ import '../../../core/error/app_exception.dart';
 import '../data/auth_repository.dart';
 import '../domain/auth_models.dart';
 import '../../../core/constants/app_config.dart';
+import '../../wms/notification/providers/notification_providers.dart';
 
 // ============================================================================
 // Auth State - sealed class hierarchy cho các trạng thái xác thực
@@ -103,6 +104,9 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = UserProfile.fromJwt(accessToken);
       state = AuthAuthenticated(user);
       log('Auth: Đã khôi phục phiên đăng nhập cho ${user.username}');
+      Future.microtask(() {
+        ref.read(notificationServiceProvider).startConnection();
+      });
     } catch (e) {
       log('Auth: Lỗi kiểm tra trạng thái - $e');
       state = const AuthUnauthenticated();
@@ -149,6 +153,9 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = UserProfile.fromJwt(tokenResponse.accessToken);
         state = AuthAuthenticated(user);
         log('Auth: Đăng nhập thành công - ${user.username} (${user.appRole.name})');
+        Future.microtask(() {
+          ref.read(notificationServiceProvider).startConnection();
+        });
       } else {
         state = const AuthError('Đăng nhập thất bại. Vui lòng thử lại.');
       }
@@ -177,6 +184,9 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       log('Auth: Lỗi khi đăng xuất - $e');
     }
+    Future.microtask(() {
+      ref.read(notificationServiceProvider).stopConnection();
+    });
     state = const AuthUnauthenticated();
     log('Auth: Đã đăng xuất');
   }
@@ -225,6 +235,9 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = UserProfile.fromJwt(tokenResponse.accessToken);
         state = AuthAuthenticated(user);
         log('Auth: Refresh token thành công - ${user.username}');
+        Future.microtask(() {
+          ref.read(notificationServiceProvider).startConnection();
+        });
       } else {
         state = const AuthUnauthenticated();
       }

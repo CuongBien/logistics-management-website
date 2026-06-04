@@ -5,6 +5,9 @@ import 'core/utils/router.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/network/api_client.dart';
 import 'core/constants/app_config.dart';
+import 'features/wms/notification/providers/notification_providers.dart';
+import 'features/wms/notification/domain/notification_models.dart';
+import 'core/widgets/in_app_notification_toast.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +31,22 @@ class LMSApp extends ConsumerWidget {
     // Theo dõi trạng thái mạng, mặc định coi là online (chỉ báo lỗi khi chắc chắn false)
     final isOffline = ref.watch(isOnlineProvider).value == false;
     final router = ref.watch(routerProvider);
+
+    // Lắng nghe thông báo thời gian thực SignalR để hiển thị in-app toast
+    ref.listen<AsyncValue<AppNotification>>(
+      notificationIncomingStreamProvider,
+      (previous, next) {
+        next.whenData((notification) {
+          InAppNotificationToast.show(
+            context: context,
+            notification: notification,
+            onTap: () {
+              router.push('/notifications');
+            },
+          );
+        });
+      },
+    );
 
     return MaterialApp.router(
       title: 'LMS Enterprise',
