@@ -11,6 +11,7 @@ import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
 import '../../../../../core/error/app_exception.dart';
 import '../../../../../core/error/error_handler.dart';
+import '../../../../../core/constants/app_config.dart';
 
 class PackOrderScreen extends ConsumerStatefulWidget {
   const PackOrderScreen({super.key});
@@ -55,6 +56,18 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
 
       final repo = ref.read(outboundRepositoryProvider);
       final order = await repo.getOutboundOrder(targetId);
+
+      // Chặn nếu đơn hàng thuộc kho khác
+      final activeWarehouse = ref.read(warehouseContextProvider);
+      final orderWarehouseId = order['warehouseId']?.toString() ?? order['warehouse_id']?.toString() ?? '';
+      
+      if (activeWarehouse != null && activeWarehouse.warehouseId.isNotEmpty &&
+          orderWarehouseId.isNotEmpty && orderWarehouseId != activeWarehouse.warehouseId) {
+        throw AppException(
+          'Đơn hàng này thuộc kho khác (${order['warehouseName'] ?? orderWarehouseId}).\nBạn đang ở kho: ${activeWarehouse.warehouseName}. Vui lòng chuyển đúng kho làm việc.',
+          code: 'Warehouse.Mismatch',
+        );
+      }
 
       setState(() {
         _orderId = targetId;

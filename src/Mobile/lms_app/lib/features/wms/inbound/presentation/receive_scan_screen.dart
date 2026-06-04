@@ -12,6 +12,7 @@ import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
 import '../../../../../core/error/app_exception.dart';
 import '../../../../../core/error/error_handler.dart';
+import '../../../../../core/constants/app_config.dart';
 
 class ReceiveScanScreen extends ConsumerStatefulWidget {
   const ReceiveScanScreen({super.key});
@@ -60,6 +61,18 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
 
       final repo = ref.read(inboundRepositoryProvider);
       final receipt = await repo.getReceiptByOrderId(targetId);
+
+      // Chặn nếu phiếu nhập thuộc kho khác
+      final activeWarehouse = ref.read(warehouseContextProvider);
+      final receiptWarehouseId = receipt['warehouseId']?.toString() ?? receipt['warehouse_id']?.toString() ?? '';
+      
+      if (activeWarehouse != null && activeWarehouse.warehouseId.isNotEmpty &&
+          receiptWarehouseId.isNotEmpty && receiptWarehouseId != activeWarehouse.warehouseId) {
+        throw AppException(
+          'Phiếu nhập này thuộc kho khác (${receipt['warehouseName'] ?? receiptWarehouseId}).\nBạn đang ở kho: ${activeWarehouse.warehouseName}. Vui lòng chuyển đúng kho làm việc.',
+          code: 'Warehouse.Mismatch',
+        );
+      }
       
       setState(() {
         _orderId = targetId;

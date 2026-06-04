@@ -229,7 +229,10 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Trạng thái kết nối:'),
+                        const Expanded(
+                          child: Text('Trạng thái kết nối:'),
+                        ),
+                        const SizedBox(width: 8),
                         Row(
                           children: [
                             Container(
@@ -242,7 +245,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              isOnline ? 'Trực tuyến (Online)' : 'Ngoại tuyến (Offline)',
+                              isOnline ? 'Trực tuyến' : 'Ngoại tuyến',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: isOnline ? AppColors.success : AppColors.error,
@@ -256,7 +259,10 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Tác vụ đang chờ đồng bộ:'),
+                        const Expanded(
+                          child: Text('Tác vụ đang chờ đồng bộ:'),
+                        ),
+                        const SizedBox(width: 8),
                         Chip(
                           label: Text(
                             '$pendingCount tác vụ',

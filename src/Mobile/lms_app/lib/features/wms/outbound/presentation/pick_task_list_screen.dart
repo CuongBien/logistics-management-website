@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/app_colors.dart';
+import '../../../../../core/constants/app_config.dart';
 import '../providers/outbound_provider.dart';
 
 String _generateRandomGuid() {
@@ -38,6 +39,17 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
       final repo = ref.read(outboundRepositoryProvider);
       final tasks = await repo.getPickTasksForWave(waveId);
       
+      // Chặn nếu Wave thuộc kho khác kho đang làm việc
+      if (tasks.isNotEmpty) {
+        final activeWarehouse = ref.read(warehouseContextProvider);
+        final taskWarehouseId = tasks[0]['warehouseId']?.toString() ?? tasks[0]['warehouse_id']?.toString() ?? '';
+        
+        if (activeWarehouse != null && activeWarehouse.warehouseId.isNotEmpty &&
+            taskWarehouseId.isNotEmpty && taskWarehouseId != activeWarehouse.warehouseId) {
+          throw Exception('Wave này thuộc kho khác (${tasks[0]['warehouseName'] ?? taskWarehouseId}).\nBạn đang ở kho: ${activeWarehouse.warehouseName}. Vui lòng chuyển đúng kho làm việc.');
+        }
+      }
+
       setState(() {
         _tasks = tasks;
         _activeWaveId = waveId;
@@ -63,6 +75,7 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
     final orderId = _generateRandomGuid();
     final randomInt = Random().nextInt(100000);
     final orderNo = 'ORD-E2E-$randomInt';
+    final activeWarehouse = ref.read(warehouseContextProvider);
 
     try {
       // Step 1: Create Outbound Order
@@ -71,6 +84,7 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
         orderNo: orderNo,
         sku: 'SKU-RED-TSHIRT',
         quantity: 1,
+        warehouseId: activeWarehouse?.warehouseId,
       );
 
       // Step 2: Allocate Stock
@@ -112,22 +126,35 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
     setState(() => _isLoading = true);
     final repo = ref.read(outboundRepositoryProvider);
     final random = Random();
+    final activeWarehouse = ref.read(warehouseContextProvider);
 
     try {
       // Tạo Order 1 (RED TSHIRT)
       final oId1 = _generateRandomGuid();
       final oNo1 = 'ORD-MUL-${random.nextInt(100000)}';
-      await repo.createTestOrder(orderId: oId1, orderNo: oNo1, sku: 'SKU-RED-TSHIRT', quantity: 1);
+      await repo.createTestOrder(
+        orderId: oId1,
+        orderNo: oNo1,
+        sku: 'SKU-RED-TSHIRT',
+        quantity: 1,
+        warehouseId: activeWarehouse?.warehouseId,
+      );
       await repo.allocateStock(oId1);
 
       // Tạo Order 2 (BLUE JEANS)
       final oId2 = _generateRandomGuid();
       final oNo2 = 'ORD-MUL-${random.nextInt(100000)}';
-      await repo.createTestOrder(orderId: oId2, orderNo: oNo2, sku: 'SKU-BLUE-JEANS', quantity: 1);
+      await repo.createTestOrder(
+        orderId: oId2,
+        orderNo: oNo2,
+        sku: 'SKU-BLUE-JEANS',
+        quantity: 1,
+        warehouseId: activeWarehouse?.warehouseId,
+      );
       await repo.allocateStock(oId2);
 
       // Step 3: Auto Plan Waves (Gom Wave)
-      final result = await repo.autoPlanWaves();
+      final result = await repo.autoPlanWaves(warehouseId: activeWarehouse?.warehouseId);
       final createdWaves = result['createdWaveIds'] as List<dynamic>? ?? [];
 
       if (createdWaves.isEmpty) {
@@ -174,6 +201,8 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activeWarehouse = ref.watch(warehouseContextProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Danh sách Lấy Hàng (Outbound)'),
@@ -195,13 +224,15 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.auto_awesome, color: AppColors.primary),
-                        SizedBox(width: 8),
-                        Text(
-                          'Trợ lý Kiểm thử Outbound E2E (HCM Hub)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                        const Icon(Icons.auto_awesome, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Trợ lý Kiểm thử Outbound E2E (${activeWarehouse?.warehouseName ?? "HCM Hub"})',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                          ),
                         ),
                       ],
                     ),

@@ -64,6 +64,7 @@ class OutboundRepository {
     required String orderNo,
     required String sku,
     required int quantity,
+    String? warehouseId,
   }) async {
     try {
       final response = await _apiClient.dio.post(
@@ -71,7 +72,7 @@ class OutboundRepository {
         data: {
           'tenantId': 'default-tenant',
           'customerId': 'cust-default',
-          'warehouseId': 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
+          'warehouseId': warehouseId ?? 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
           'orderId': orderId,
           'orderNo': orderNo,
           'destinationAddress': '123 E2E St',
@@ -114,12 +115,12 @@ class OutboundRepository {
     }
   }
 
-  Future<Map<String, dynamic>> autoPlanWaves() async {
+  Future<Map<String, dynamic>> autoPlanWaves({String? warehouseId}) async {
     try {
       final response = await _apiClient.dio.post(
         '/outbound/waves/auto-plan',
         data: {
-          'warehouseId': 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
+          'warehouseId': warehouseId ?? 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
           'maxSingleItemOrdersPerWave': 50,
           'maxMultiItemOrdersPerWave': 20,
         },
