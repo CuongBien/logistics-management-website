@@ -54,23 +54,26 @@ export function usePermissions() {
     };
   }, [session]);
 
+  const isSystemAdmin = session?.user?.name === 'admin' || session?.user?.email?.startsWith('admin@');
+  const hasWmsAccess = isSystemAdmin || permissions.length > 0 || roles.length > 0 || warehousePermissions.length > 0;
+
   const hasPermission = (permissionCode: string, warehouseId: string) => {
     // Admin user override
-    if (session?.user?.name === 'admin' || session?.user?.email?.startsWith('admin@')) return true;
+    if (isSystemAdmin) return true;
     return warehousePermissions.some(
       (p) => p.permissionCode === permissionCode && p.warehouseId === warehouseId
     );
   };
 
   const hasRole = (roleCode: string, warehouseId: string) => {
-    if (session?.user?.name === 'admin' || session?.user?.email?.startsWith('admin@')) return true;
+    if (isSystemAdmin) return true;
     return roles.some(
       (r) => r.roleCode === roleCode && r.warehouseId === warehouseId
     );
   };
 
   const hasPermissionInAnyWarehouse = (permissionCode: string) => {
-    if (session?.user?.name === 'admin' || session?.user?.email?.startsWith('admin@')) return true;
+    if (isSystemAdmin) return true;
     return permissions.includes(permissionCode);
   };
 
@@ -82,5 +85,7 @@ export function usePermissions() {
     hasPermission,
     hasRole,
     hasPermissionInAnyWarehouse,
+    isSystemAdmin,
+    hasWmsAccess,
   };
 }

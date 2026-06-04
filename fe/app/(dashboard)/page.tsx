@@ -7,13 +7,28 @@ import { ActivityLog } from "@/components/dashboard/activity-log"
 import { OrderQueue } from "@/components/dashboard/order-queue"
 import { WorkerStatus } from "@/components/dashboard/worker-status"
 import { ZoneOverview } from "@/components/dashboard/zone-overview"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
+import { getWarehouses } from "@/lib/api/wms-layout"
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
+  const { activeWarehouseId } = useWarehouseContext()
+  const [activeWarehouseCode, setActiveWarehouseCode] = useState("---")
   
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (activeWarehouseId) {
+      getWarehouses(true).then(warehouses => {
+        const wh = warehouses.find(w => w.id === activeWarehouseId)
+        if (wh) {
+          setActiveWarehouseCode(wh.code)
+        }
+      }).catch(console.error)
+    }
+  }, [activeWarehouseId])
 
   const currentTime = mounted ? new Date().toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -35,7 +50,7 @@ export default function DashboardPage() {
       <div className="bg-muted border-b border-border px-4 py-1 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-sm font-semibold text-foreground">Operations Dashboard</h1>
-          <span className="text-[10px] text-muted-foreground">Warehouse: ATL-01</span>
+          <span className="text-[10px] text-muted-foreground">Warehouse: {activeWarehouseCode}</span>
         </div>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span>{currentDate}</span>

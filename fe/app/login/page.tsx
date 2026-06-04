@@ -21,6 +21,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Clear any previously selected warehouse on login screen to force selection
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('wms_active_wh_')) {
+        localStorage.removeItem(key)
+      }
+    })
+
     if (status === 'authenticated') {
       router.replace('/')
     }

@@ -3,6 +3,7 @@
 import { SessionProvider, useSession, signOut } from "next-auth/react"
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
+import { WarehouseProvider } from "@/components/wms/rbac/WarehouseContext"
 
 function SessionErrorWrapper({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
@@ -24,7 +25,11 @@ function SessionErrorWrapper({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <SessionErrorWrapper>{children}</SessionErrorWrapper>
+      <SessionErrorWrapper>
+        <WarehouseProvider>
+          {children}
+        </WarehouseProvider>
+      </SessionErrorWrapper>
     </SessionProvider>
   )
 }

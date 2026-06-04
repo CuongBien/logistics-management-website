@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/dashboard/navbar"
 import { SidebarNav } from "@/components/layout/sidebar-nav"
-import { WarehouseProvider } from "@/components/wms/rbac/WarehouseContext"
+import { DashboardGuard } from "@/components/wms/rbac/DashboardGuard"
 
 export default function DashboardLayout({
   children,
@@ -8,7 +8,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <WarehouseProvider>
+    <DashboardGuard>
       <div className="min-h-screen bg-background flex">
         <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0">
@@ -28,6 +28,6 @@ export default function DashboardLayout({
           </footer>
         </div>
       </div>
-    </WarehouseProvider>
+    </DashboardGuard>
   )
 }
