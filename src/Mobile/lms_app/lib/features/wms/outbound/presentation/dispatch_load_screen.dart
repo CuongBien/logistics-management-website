@@ -242,7 +242,8 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
               const SizedBox(height: 24),
 
               // Trạng thái chuyến hàng
-              Expanded(
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 24),
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _shipmentId.isEmpty

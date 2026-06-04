@@ -215,10 +215,11 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
               const SizedBox(height: 24),
 
               // Trạng thái cất hàng
-                      Expanded(
-                        child: _isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : _waveId.isEmpty
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 24),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _waveId.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
