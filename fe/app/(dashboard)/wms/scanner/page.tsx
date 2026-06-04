@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
 import * as qrService from "@/lib/services/qrcode"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 // Define history log interface
 interface ScanLog {
@@ -47,11 +48,12 @@ export default function QrScannerPage() {
   const [verifyPackOrderNo, setVerifyPackOrderNo] = useState("")
 
   // Context input fields state for Actions
+  const { activeWarehouseId } = useWarehouseContext()
   const [lotNo, setLotNo] = useState("")
   const [binCode, setBinCode] = useState("BIN-DOCK-01")
   const [expiryDate, setExpiryDate] = useState("")
   const [qtyInput, setQtyInput] = useState(1)
-  const [warehouseIdInput, setWarehouseIdInput] = useState("a1b2c3d4-0000-0000-0000-000000000001") // Mock fallback
+  const [warehouseIdInput, setWarehouseIdInput] = useState(activeWarehouseId || "")
   
   // Dialog state for printable QR code
   const [printQrUrl, setPrintQrUrl] = useState<string | null>(null)

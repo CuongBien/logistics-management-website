@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 export default function ReplenishmentTasksPage() {
   const pathname = usePathname()
@@ -38,11 +39,12 @@ export default function ReplenishmentTasksPage() {
   const [search, setSearch] = useState("")
   const [isTriggering, setIsTriggering] = useState(false)
   const [completingRow, setCompletingRow] = useState<Record<string, boolean>>({})
+  const { activeWarehouseId } = useWarehouseContext()
 
   const fetchTasks = async () => {
     try {
       setLoading(true)
-      const data = await getReplenishmentTasks()
+      const data = await getReplenishmentTasks(activeWarehouseId || undefined)
       setTasks(data)
     } catch (e: any) {
       toast.error("Không thể tải danh sách tác vụ châm hàng (Replenishment)")
@@ -53,12 +55,16 @@ export default function ReplenishmentTasksPage() {
 
   useEffect(() => {
     fetchTasks()
-  }, [])
+  }, [activeWarehouseId])
 
   const handleRunAlgorithm = async () => {
     try {
+      if (!activeWarehouseId) {
+        toast.error("Vui lòng chọn kho trước")
+        return
+      }
       setIsTriggering(true)
-      const updatedList = await generateReplenishment()
+      const updatedList = await generateReplenishment(activeWarehouseId)
       setTasks(updatedList)
       toast.success("Kích hoạt thuật toán bổ sung hàng thành công! Đã tự động sinh tác vụ châm hàng mới.")
     } catch (e: any) {

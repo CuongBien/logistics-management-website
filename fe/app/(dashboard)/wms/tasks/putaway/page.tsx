@@ -24,12 +24,19 @@ import {
   AlertCircle,
   RefreshCcw,
   ClipboardList,
-  Loader2
+  Loader2,
+  PlayCircle,
+  PlusCircle,
+  LayoutList,
+  Boxes,
+  FileSpreadsheet,
+  CheckCircle
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 export default function PutawayTasksPage() {
   const pathname = usePathname()
@@ -41,10 +48,12 @@ export default function PutawayTasksPage() {
   const [scannedBins, setScannedBins] = useState<Record<string, string>>({})
   const [completingRow, setCompletingRow] = useState<Record<string, boolean>>({})
 
+  const { activeWarehouseId } = useWarehouseContext()
+
   const fetchTasks = async () => {
     try {
       setLoading(true)
-      const data = await getPutawayTasks()
+      const data = await getPutawayTasks(activeWarehouseId || undefined)
       setTasks(data)
     } catch (e: any) {
       toast.error("Không thể tải danh sách tác vụ cất hàng (Putaway)")
@@ -55,7 +64,7 @@ export default function PutawayTasksPage() {
 
   useEffect(() => {
     fetchTasks()
-  }, [])
+  }, [activeWarehouseId])
 
   const handleComplete = async (taskId: string, suggestedBin: string) => {
     const binToUse = scannedBins[taskId] || suggestedBin

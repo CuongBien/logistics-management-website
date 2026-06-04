@@ -1,8 +1,10 @@
 import { InboundReceiptDto, DiscrepancyDto } from '@/types/wms-inbound';
 import { fetchApi } from '../api-client';
 
-export const getReceipts = async (): Promise<InboundReceiptDto[]> => {
-  return await fetchApi<InboundReceiptDto[]>('wms', '/inbound/receipts');
+export const getReceipts = async (warehouseId?: string): Promise<InboundReceiptDto[]> => {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<InboundReceiptDto[]>('wms', `/inbound/receipts${query}`);
+  return res || [];
 };
 
 export const getReceipt = async (id: string): Promise<InboundReceiptDto | undefined> => {

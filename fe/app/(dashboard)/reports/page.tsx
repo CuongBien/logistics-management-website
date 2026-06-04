@@ -38,6 +38,7 @@ import {
 } from "@/lib/api/reports"
 import { getItems } from "@/lib/api/master-data"
 import { ItemDto } from "@/types/master-data"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 export default function ReportsPage() {
   const [timeRange, setTimeRange] = useState("30days")
@@ -54,16 +55,19 @@ export default function ReportsPage() {
   const [itemsMaster, setItemsMaster] = useState<ItemDto[]>([])
   const [loading, setLoading] = useState(true)
 
+  const { activeWarehouseId } = useWarehouseContext()
+
   const loadReportData = async () => {
+    if (!activeWarehouseId) return;
     try {
       setLoading(true)
       const [cap, inv, work, disc, prod, top, items] = await Promise.all([
-        getCapacity(),
-        getInventoryStats(),
-        getWorkloads(),
-        getDiscrepancies(),
-        getOperatorProductivity(),
-        getTopMovingSkus(),
+        getCapacity(activeWarehouseId),
+        getInventoryStats(activeWarehouseId),
+        getWorkloads(activeWarehouseId),
+        getDiscrepancies(activeWarehouseId),
+        getOperatorProductivity(activeWarehouseId),
+        getTopMovingSkus(activeWarehouseId),
         getItems()
       ])
       setCapacity(cap)
@@ -83,7 +87,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadReportData()
-  }, [])
+  }, [activeWarehouseId])
 
   useEffect(() => {
     setCurrentTime(new Date().toLocaleTimeString("en-US", {

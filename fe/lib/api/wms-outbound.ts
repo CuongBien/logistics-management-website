@@ -38,10 +38,9 @@ function mapStatus(status: number | string): OutboundOrderStatus {
   }
 }
 
-const DEFAULT_WAREHOUSE_ID = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'; // HCM warehouse ID from seed
-
-export const getOrders = async (): Promise<OutboundOrderDto[]> => {
-  const res = await fetchApi<any[]>('wms', '/outbound/orders');
+export const getOrders = async (warehouseId?: string): Promise<OutboundOrderDto[]> => {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any[]>('wms', `/outbound/orders${query}`);
   if (res) {
     return res.map((s: any) => ({
       id: s.id,
@@ -111,9 +110,8 @@ export const splitOrder = async (id: string, lineId: string, splitQty: number): 
   return { success: true };
 };
 
-export const getReturns = async (warehouseId?: string): Promise<OutboundReturnDto[]> => {
-  const whId = warehouseId || DEFAULT_WAREHOUSE_ID;
-  const res = await fetchApi<OutboundReturnDto[]>('wms', `/outbound/returns?warehouseId=${whId}`);
+export const getReturns = async (warehouseId: string): Promise<OutboundReturnDto[]> => {
+  const res = await fetchApi<OutboundReturnDto[]>('wms', `/outbound/returns?warehouseId=${warehouseId}`);
   return res || [];
 };
 
@@ -138,18 +136,16 @@ export const processDisposition = async (id: string, disposition: 'Restocked' | 
   return { success: true };
 };
 
-export const getWaves = async (warehouseId?: string): Promise<WaveDto[]> => {
-  const whId = warehouseId || DEFAULT_WAREHOUSE_ID;
-  const res = await fetchApi<WaveDto[]>('wms', `/outbound/waves?warehouseId=${whId}`);
+export const getWaves = async (warehouseId: string): Promise<WaveDto[]> => {
+  const res = await fetchApi<WaveDto[]>('wms', `/outbound/waves?warehouseId=${warehouseId}`);
   return res || [];
 };
 
-export const autoPlanWaves = async (warehouseId?: string): Promise<{ success: boolean; createdWavesCount: number }> => {
-  const whId = warehouseId || DEFAULT_WAREHOUSE_ID;
+export const autoPlanWaves = async (warehouseId: string): Promise<{ success: boolean; createdWavesCount: number }> => {
   const res = await fetchApi<{ createdWaveIds: string[], totalOrdersPlanned: number }>('wms', `/outbound/waves/auto-plan`, {
     method: 'POST',
     body: {
-      warehouseId: whId,
+      warehouseId,
       maxSingleItemOrdersPerWave: 50,
       maxMultiItemOrdersPerWave: 20
     }

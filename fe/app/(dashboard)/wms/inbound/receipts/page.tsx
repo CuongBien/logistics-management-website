@@ -9,17 +9,20 @@ import { Loader2, ClipboardList, Layers, AlertCircle, CheckCircle2, Search, Refr
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 export default function InboundReceiptsPage() {
   const [receipts, setReceipts] = useState<InboundReceiptDto[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
 
+  const { activeWarehouseId } = useWarehouseContext()
+
   // Fetch receipts list
   const fetchReceipts = async () => {
     setIsLoading(true)
     try {
-      const data = await getReceipts()
+      const data = await getReceipts(activeWarehouseId || undefined)
       setReceipts(data)
     } catch (error) {
       toast.error("Lỗi khi tải danh sách phiếu nhập")
@@ -30,7 +33,7 @@ export default function InboundReceiptsPage() {
 
   useEffect(() => {
     fetchReceipts()
-  }, [])
+  }, [activeWarehouseId])
 
   // Filter logic
   const filteredReceipts = receipts.filter(

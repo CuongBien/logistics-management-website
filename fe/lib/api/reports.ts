@@ -36,32 +36,38 @@ export interface TopMovingSkuDto {
   totalMovement: number;
 }
 
-export async function getCapacity(): Promise<WarehouseCapacityDto> {
-  const res = await fetchApi<any>('wms', '/Dashboard/capacity');
+export async function getCapacity(warehouseId?: string): Promise<WarehouseCapacityDto> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any>('wms', `/Dashboard/capacity${query}`);
   return res?.value || res;
 }
 
-export async function getInventoryStats(): Promise<InventoryStatsDto> {
-  const res = await fetchApi<any>('wms', '/Dashboard/inventory');
+export async function getInventoryStats(warehouseId?: string): Promise<InventoryStatsDto> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any>('wms', `/Dashboard/inventory${query}`);
   return res?.value || res;
 }
 
-export async function getWorkloads(): Promise<PendingWorkloadsDto> {
-  const res = await fetchApi<any>('wms', '/Dashboard/workloads');
+export async function getWorkloads(warehouseId?: string): Promise<PendingWorkloadsDto> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any>('wms', `/Dashboard/workloads${query}`);
   return res?.value || res;
 }
 
-export async function getDiscrepancies(): Promise<DiscrepanciesStatsDto> {
-  const res = await fetchApi<any>('wms', '/Dashboard/discrepancies');
+export async function getDiscrepancies(warehouseId?: string): Promise<DiscrepanciesStatsDto> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any>('wms', `/Dashboard/discrepancies${query}`);
   return res?.value || res;
 }
 
-export async function getOperatorProductivity(): Promise<OperatorProductivityDto[]> {
-  const res = await fetchApi<any>('wms', '/Dashboard/operator-productivity');
+export async function getOperatorProductivity(warehouseId?: string): Promise<OperatorProductivityDto[]> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any>('wms', `/Dashboard/operator-productivity${query}`);
   return res?.value || res || [];
 }
 
-export async function getTopMovingSkus(): Promise<TopMovingSkuDto[]> {
-  const res = await fetchApi<any>('wms', '/Dashboard/top-skus');
+export async function getTopMovingSkus(warehouseId?: string): Promise<TopMovingSkuDto[]> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any>('wms', `/Dashboard/top-skus${query}`);
   return res?.value || res || [];
 }

@@ -8,9 +8,9 @@ import { fetchApi } from '@/lib/api-client';
 // ----------------------------------------------------------------------------
 // 1. GET ALL WAREHOUSES (Query all=true to fetch all system warehouses)
 // ----------------------------------------------------------------------------
-export const getWarehouses = async (): Promise<WarehouseDto[]> => {
+export const getWarehouses = async (all: boolean = false): Promise<WarehouseDto[]> => {
   try {
-    const res = await fetchApi<WarehouseDto[]>('wms', '/warehouse?all=true');
+    const res = await fetchApi<WarehouseDto[]>('wms', `/warehouse?all=${all}`);
     return res || [];
   } catch (err) {
     console.error("Error fetching warehouses from live WMS DB:", err);
@@ -63,10 +63,10 @@ export const createZone = async (blockId: string, type: ZoneType) => {
 // ----------------------------------------------------------------------------
 // 6. CREATE BIN
 // ----------------------------------------------------------------------------
-export const createBin = async (zoneId: string, binCode: string) => {
+export const createBin = async (zoneId: string, binCode: string, warehouseId: string) => {
   return fetchApi('wms', `/warehouse/zones/${zoneId}/bins`, {
     method: 'POST',
-    body: { warehouseId: '00000000-0000-0000-0000-000000000000', binCode }
+    body: { warehouseId, binCode }
   });
 };
 

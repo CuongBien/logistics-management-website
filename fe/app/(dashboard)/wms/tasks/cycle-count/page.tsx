@@ -37,6 +37,7 @@ import {
 import { toast } from "sonner"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 import {
   Dialog,
   DialogContent,
@@ -67,11 +68,13 @@ export default function CycleCountTasksPage() {
   // Approval dialog state
   const [selectedTask, setSelectedTask] = useState<CycleCountTaskDto | null>(null)
   const [isApprovalOpen, setIsApprovalOpen] = useState(false)
+  
+  const { activeWarehouseId } = useWarehouseContext()
 
   const fetchTasks = async () => {
     try {
       setLoading(true)
-      const data = await getCycleCountTasks()
+      const data = await getCycleCountTasks(activeWarehouseId || undefined)
       setTasks(data)
     } catch (e: any) {
       toast.error("Không thể tải danh sách tác vụ kiểm kê (Cycle Count)")
@@ -82,21 +85,25 @@ export default function CycleCountTasksPage() {
 
   useEffect(() => {
     fetchTasks()
-  }, [])
+  }, [activeWarehouseId])
 
   const handleGenerateCycleCount = async () => {
+    if (!activeWarehouseId) {
+      toast.error("Vui lòng chọn kho làm việc")
+      return
+    }
     try {
       setIsGenerating(true)
       let generated;
       if (creationMethod === "auto") {
-        generated = await generateCycleCount("ST-BABY-03", "BIMTA-HUG-M")
+        generated = await generateCycleCount(activeWarehouseId, "ST-BABY-03", "BIMTA-HUG-M")
         toast.success(`Đã tự động khởi tạo thành công phiên kiểm kho mới tại ô kệ ST-BABY-03!`)
       } else {
         if (!manualBin.trim() || !manualSku.trim()) {
           toast.error("Vui lòng nhập đầy đủ Mã Ô kệ và Mã SKU sản phẩm")
           return
         }
-        generated = await generateCycleCount(manualBin.toUpperCase().trim(), manualSku.toUpperCase().trim())
+        generated = await generateCycleCount(activeWarehouseId, manualBin.toUpperCase().trim(), manualSku.toUpperCase().trim())
         toast.success(`Đã phát lệnh kiểm đếm thủ công thành công cho SKU ${manualSku.toUpperCase().trim()} tại ô kệ ${manualBin.toUpperCase().trim()}.`)
       }
       setIsCreateOpen(false)

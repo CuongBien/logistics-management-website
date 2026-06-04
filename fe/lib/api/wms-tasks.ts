@@ -4,8 +4,9 @@ import { fetchApi } from "@/lib/api-client";
 // ----------------------------------------------------------------------------
 // 1. GET ALL PUTAWAY TASKS
 // ----------------------------------------------------------------------------
-export async function getPutawayTasks(): Promise<PutawayTaskDto[]> {
-  return await fetchApi<PutawayTaskDto[]>("wms", "/inbound/putaway-tasks");
+export async function getPutawayTasks(warehouseId?: string): Promise<PutawayTaskDto[]> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  return await fetchApi<PutawayTaskDto[]>("wms", `/inbound/putaway-tasks${query}`);
 }
 
 export async function fetchPutawayTasks(): Promise<PutawayTaskDto[]> {
@@ -22,8 +23,9 @@ export async function completePutawayTask(taskId: string, scannedDestinationBinC
 // ----------------------------------------------------------------------------
 // 2. GET ALL REPLENISHMENT TASKS
 // ----------------------------------------------------------------------------
-export async function getReplenishmentTasks(): Promise<ReplenishmentTaskDto[]> {
-  return await fetchApi<ReplenishmentTaskDto[]>("wms", "/inventory/tasks/replenish");
+export async function getReplenishmentTasks(warehouseId?: string): Promise<ReplenishmentTaskDto[]> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  return await fetchApi<ReplenishmentTaskDto[]>("wms", `/inventory/tasks/replenish${query}`);
 }
 
 export async function fetchReplenishmentTasks(): Promise<ReplenishmentTaskDto[]> {
@@ -39,8 +41,9 @@ export async function completeReplenishmentTask(taskId: string): Promise<void> {
 // ----------------------------------------------------------------------------
 // 3. GET ALL CYCLE COUNT TASKS
 // ----------------------------------------------------------------------------
-export async function getCycleCountTasks(): Promise<CycleCountTaskDto[]> {
-  return await fetchApi<CycleCountTaskDto[]>("wms", "/inventory/tasks/cycle-count");
+export async function getCycleCountTasks(warehouseId?: string): Promise<CycleCountTaskDto[]> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  return await fetchApi<CycleCountTaskDto[]>("wms", `/inventory/tasks/cycle-count${query}`);
 }
 
 export async function fetchCycleCountTasks(): Promise<CycleCountTaskDto[]> {
@@ -57,9 +60,8 @@ export async function submitCycleCount(taskId: string, countedQty: number): Prom
 // ----------------------------------------------------------------------------
 // 4. TRIGGER REPLENISHMENT ALGORITHM
 // ----------------------------------------------------------------------------
-export async function generateReplenishment(): Promise<ReplenishmentTaskDto[]> {
-  const defaultWarehouseId = "a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"; // HCM warehouse ID from seed
-  return await fetchApi<ReplenishmentTaskDto[]>("wms", `/inventory/tasks/replenish/generate?tenantId=default-tenant&warehouseId=${defaultWarehouseId}`, {
+export async function generateReplenishment(warehouseId: string): Promise<ReplenishmentTaskDto[]> {
+  return await fetchApi<ReplenishmentTaskDto[]>("wms", `/inventory/tasks/replenish/generate?tenantId=default-tenant&warehouseId=${warehouseId}`, {
     method: "POST"
   });
 }
@@ -67,9 +69,8 @@ export async function generateReplenishment(): Promise<ReplenishmentTaskDto[]> {
 // ----------------------------------------------------------------------------
 // 5. GENERATE AUTO-CYCLE COUNT TASK
 // ----------------------------------------------------------------------------
-export async function generateCycleCount(binCode: string, sku: string): Promise<CycleCountTaskDto> {
-  const defaultWarehouseId = "a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"; // HCM warehouse ID from seed
-  return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/generate?tenantId=default-tenant&warehouseId=${defaultWarehouseId}&maxTasks=1`, {
+export async function generateCycleCount(warehouseId: string, binCode: string, sku: string): Promise<CycleCountTaskDto> {
+  return await fetchApi<CycleCountTaskDto>("wms", `/inventory/tasks/cycle-count/generate?tenantId=default-tenant&warehouseId=${warehouseId}&maxTasks=1`, {
     method: "POST"
   });
 }

@@ -9,17 +9,22 @@ import { Loader2, FileText, Layers, AlertCircle, CheckCircle2, Search, RefreshCw
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 export default function OutboundOrdersPage() {
   const [orders, setOrders] = useState<OutboundOrderDto[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [splittingId, setSplittingId] = useState<string | null>(null)
+  
+  const { activeWarehouseId } = useWarehouseContext()
 
   // Fetch outbound orders list
   const fetchOrders = async () => {
     setIsLoading(true)
     try {
-      const data = await getOrders()
+      const data = await getOrders(activeWarehouseId || undefined)
       setOrders(data)
     } catch (error) {
       toast.error("Lỗi khi tải danh sách đơn xuất kho")
@@ -30,7 +35,7 @@ export default function OutboundOrdersPage() {
 
   useEffect(() => {
     fetchOrders()
-  }, [])
+  }, [activeWarehouseId])
 
   // Filter logic
   const filteredOrders = orders.filter(

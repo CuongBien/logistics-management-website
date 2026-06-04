@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Loader2, Boxes, Layers, ShieldCheck, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 export default function InventoryOverviewPage() {
   const [inventoryList, setInventoryList] = useState<InventoryItemDto[]>([])
@@ -20,11 +21,13 @@ export default function InventoryOverviewPage() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [reconcileOpen, setReconcileOpen] = useState(false)
 
+  const { activeWarehouseId } = useWarehouseContext()
+
   // Fetch all inventory list
   const fetchInventory = async () => {
     setIsLoading(true)
     try {
-      const data = await getInventoryList()
+      const data = await getInventoryList(activeWarehouseId || undefined)
       setInventoryList(data)
     } catch (error) {
       toast.error("Lỗi khi tải dữ liệu tồn kho")
@@ -35,7 +38,7 @@ export default function InventoryOverviewPage() {
 
   useEffect(() => {
     fetchInventory()
-  }, [])
+  }, [activeWarehouseId])
 
   // Action dispatcher
   const handleAction = async (action: 'transfer' | 'reconcile' | 'reserve' | 'release', item: InventoryItemDto) => {
