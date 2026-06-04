@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/dashboard/navbar"
 import { SidebarNav } from "@/components/layout/sidebar-nav"
 import { DashboardGuard } from "@/components/wms/rbac/DashboardGuard"
+import { NotificationProvider } from "@/contexts/NotificationContext"
 
 export default function DashboardLayout({
   children,
@@ -9,8 +10,9 @@ export default function DashboardLayout({
 }) {
   return (
     <DashboardGuard>
-      <div className="min-h-screen bg-background flex">
-        <SidebarNav />
+      <NotificationProvider>
+        <div className="min-h-screen bg-background flex">
+          <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0">
           <Navbar />
           <main className="flex-1 overflow-auto">
@@ -26,8 +28,9 @@ export default function DashboardLayout({
               <span>BEST Inc Internal Operations v2.4.1</span>
             </div>
           </footer>
+          </div>
         </div>
-      </div>
+      </NotificationProvider>
     </DashboardGuard>
   )
 }

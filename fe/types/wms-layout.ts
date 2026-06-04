@@ -12,6 +12,10 @@ export interface BinDto {
   id: string;
   binCode: string;
   status: BinStatus;
+  aisle?: string;
+  rack?: string;
+  shelf?: string;
+  pickSequence?: number;
 }
 
 export interface ZoneDto {

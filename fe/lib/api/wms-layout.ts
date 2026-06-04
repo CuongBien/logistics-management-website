@@ -50,6 +50,7 @@ export const createBlock = async (warehouseId: string, blockCode: string) => {
   });
 };
 
+
 // ----------------------------------------------------------------------------
 // 5. CREATE ZONE
 // ----------------------------------------------------------------------------
@@ -63,10 +64,10 @@ export const createZone = async (blockId: string, type: ZoneType) => {
 // ----------------------------------------------------------------------------
 // 6. CREATE BIN
 // ----------------------------------------------------------------------------
-export const createBin = async (zoneId: string, binCode: string, warehouseId: string) => {
+export const createBin = async (zoneId: string, binCode: string, warehouseId: string, aisle?: string, rack?: string, shelf?: string, pickSequence?: number) => {
   return fetchApi('wms', `/warehouse/zones/${zoneId}/bins`, {
     method: 'POST',
-    body: { warehouseId, binCode }
+    body: { warehouseId, binCode, aisle, rack, shelf, pickSequence }
   });
 };
 

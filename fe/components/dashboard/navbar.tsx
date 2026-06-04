@@ -31,72 +31,40 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { useSession, signOut } from "next-auth/react"
+import { useNotifications } from "@/contexts/NotificationContext"
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return "Vừa xong"
+  if (minutes < 60) return `${minutes} phút trước`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} giờ trước`
+  return `${Math.floor(hours / 24)} ngày trước`
+}
 
 export function Navbar() {
   const { data: session } = useSession()
   const userName = session?.user?.name || "Nguyễn Văn Admin"
   const userEmail = session?.user?.email || "admin@best-inc.com.vn"
 
-  // Notification State for premium interactivity
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Lệch tồn kho kiểm kê",
-      desc: "Chênh lệch 2 SKU IPHONE15PM tại ô kệ ST-ELEC-22.",
-      time: "2 phút trước",
-      type: "error",
-      unread: true,
-    },
-    {
-      id: 2,
-      title: "Hoàn thành cất hàng",
-      desc: "Nhân viên Nguyễn Văn Khoa đã cất xong lô PT-TASK-001.",
-      time: "15 phút trước",
-      type: "success",
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "Lô hàng inbound mới",
-      desc: "Lô #IN-9082 đã nhập kho, chờ Quản đốc phân ô kệ.",
-      time: "1 giờ trước",
-      type: "info",
-      unread: true,
-    },
-    {
-      id: 4,
-      title: "Yêu cầu châm hàng khẩn",
-      desc: "Khu A-02 cạn SKU BIMTA-HUG-M, cần châm hàng gấp.",
-      time: "3 giờ trước",
-      type: "warning",
-      unread: false,
-    },
-    {
-      id: 5,
-      title: "Đợt xuất hàng (Wave)",
-      desc: "Đợt WAVE-2026-05 đã gom đủ sản phẩm, chờ phân xe.",
-      time: "5 giờ trước",
-      type: "info",
-      unread: false,
-    },
-  ])
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
 
   // Warehouse selection state
   const [activeWarehouse, setActiveWarehouse] = useState("ATL-01")
-  const unreadCount = notifications.filter(n => n.unread).length
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, unread: false })))
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead()
     toast.success("Đã đánh dấu đọc tất cả thông báo thành công!", {
       icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
       duration: 3000
     })
   }
 
-  const handleToggleNotification = (id: number) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, unread: !n.unread } : n))
-    )
+  const handleToggleNotification = async (id: string, isRead: boolean) => {
+    if (!isRead) {
+      await markAsRead(id)
+    }
   }
 
   const handleSwitchWarehouse = (code: string, name: string) => {
@@ -167,8 +135,8 @@ export function Navbar() {
               {notifications.map((n) => (
                 <div 
                   key={n.id} 
-                  onClick={() => handleToggleNotification(n.id)}
-                  className={`p-3 transition-colors cursor-pointer hover:bg-slate-50 flex items-start gap-2.5 ${n.unread ? 'bg-[#C41E3A]/5' : ''}`}
+                  onClick={() => handleToggleNotification(n.id, n.isRead)}
+                  className={`p-3 transition-colors cursor-pointer hover:bg-slate-50 flex items-start gap-2.5 ${!n.isRead ? 'bg-[#C41E3A]/5' : ''}`}
                 >
                   {/* Type icon indicator */}
                   <div className="mt-0.5 shrink-0">
@@ -181,21 +149,21 @@ export function Navbar() {
                   {/* Notification text details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className={`text-xs ${n.unread ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
+                      <p className={`text-xs ${!n.isRead ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
                         {n.title}
                       </p>
                       <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1 shrink-0">
                         <Clock className="h-3 w-3" />
-                        {n.time}
+                        {timeAgo(n.createdAt)}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-normal">
-                      {n.desc}
+                      {n.message}
                     </p>
                   </div>
 
                   {/* Read state dot indicator */}
-                  {n.unread && (
+                  {!n.isRead && (
                     <div className="h-2 w-2 bg-[#C41E3A] rounded-full mt-1.5 shrink-0" />
                   )}
                 </div>

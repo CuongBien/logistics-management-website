@@ -163,3 +163,15 @@ export const releaseWave = async (waveId: string): Promise<{ success: boolean }>
   await fetchApi<{ success: boolean }>('wms', `/outbound/waves/${waveId}/release`, { method: 'POST' });
   return { success: true };
 };
+
+export const getWaveById = async (id: string): Promise<WaveDto | undefined> => {
+  return await fetchApi<WaveDto>("wms", `/outbound/waves/${id}`);
+};
+
+export const getPickTasksByOrder = async (id: string): Promise<any[]> => {
+  return await fetchApi<any[]>("wms", `/outbound/orders/${id}/pick-tasks`) || [];
+};
+
+export const getOptimizedPickTasks = async (waveId: string): Promise<any[]> => {
+  return await fetchApi<any[]>("wms", `/outbound/waves/${waveId}/pick-tasks`) || [];
+};

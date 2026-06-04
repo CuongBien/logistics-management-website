@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Package, Calendar } from "lucide-react"
+import { Loader2, Package, Calendar, MapPin } from "lucide-react"
 
 const formSchema = z.object({
   status: z.string().min(1, "Vui lòng chọn một trạng thái mới"),
@@ -83,6 +83,32 @@ export function BinDetailsDialog({ bin, open, onOpenChange, onUpdated, isWmsAdmi
         </DialogHeader>
 
         <div className="space-y-6 mt-2">
+          {/* Location Details Section */}
+          <div className="border rounded-xl bg-slate-50/50 overflow-hidden">
+            <div className="bg-slate-100 px-3 py-2 border-b flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-slate-500" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">Định vị vật lý (Location)</h4>
+            </div>
+            <div className="p-4 grid grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-slate-500 font-medium mb-1">Lối đi (Aisle)</p>
+                <p className="text-sm font-semibold">{bin.aisle || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-medium mb-1">Kệ (Rack)</p>
+                <p className="text-sm font-semibold">{bin.rack || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-medium mb-1">Tầng (Shelf)</p>
+                <p className="text-sm font-semibold">{bin.shelf || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-medium mb-1">Pick Seq</p>
+                <p className="text-sm font-semibold">{bin.pickSequence || 0}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Inventory Items Section */}
           <div className="border rounded-xl bg-slate-50/50 overflow-hidden">
             <div className="bg-slate-100 px-3 py-2 border-b flex items-center gap-2">

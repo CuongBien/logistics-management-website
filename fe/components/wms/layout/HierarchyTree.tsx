@@ -113,6 +113,7 @@ export function HierarchyTree({ hierarchy, onRefresh }: { hierarchy: WarehouseHi
                     {zone.bins.map((bin) => (
                       <div
                         key={bin.id}
+                        title={`Lối đi: ${bin.aisle || '-'} | Kệ: ${bin.rack || '-'} | Tầng: ${bin.shelf || '-'}`}
                         onClick={() => openBinDetails(bin)}
                         className={`flex flex-col p-3 border border-muted/60 rounded-xl bg-background text-center group relative overflow-hidden transition-all duration-300 hover:border-primary hover:shadow-sm cursor-pointer`}
                       >

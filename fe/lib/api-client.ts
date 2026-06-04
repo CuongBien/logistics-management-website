@@ -19,7 +19,7 @@ function getBaseUrl(service: ServiceTarget): string {
 
 async function getToken(): Promise<string | null> {
   const isPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
-  const session = await getSession(isPortal ? { basePath: '/api/auth/oms' } : undefined);
+  const session = await getSession(isPortal ? { basePath: '/api/auth-oms' } : undefined);
   console.log("api-client [DEBUG]: isPortal =", isPortal, "session =", session, "accessToken =", (session as any)?.accessToken ? "PRESENT (length " + (session as any).accessToken.length + ")" : "MISSING");
   return (session as any)?.accessToken || null;
 }

@@ -8,11 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Loader2, Layers, RefreshCw, Play, Trash2, Cpu, AlertTriangle, CheckCircle2, Hourglass } from "lucide-react"
+import { Loader2, Layers, RefreshCw, Play, Trash2, Cpu, AlertTriangle, CheckCircle2, Hourglass, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 import { WarehouseContextSelector } from "@/components/wms/rbac/WarehouseContextSelector"
+import Link from "next/link"
 
 export default function WavePlanningPage() {
   const [waves, setWaves] = useState<WaveDto[]>([])
@@ -298,6 +299,16 @@ export default function WavePlanningPage() {
                           Đang vận hành
                         </span>
                       )}
+                      <Link href={`/wms/outbound/waves/${wave.id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1 ml-2"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Chi tiết
+                        </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

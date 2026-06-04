@@ -12,17 +12,35 @@ import { toast } from "sonner"
 
 const formSchema = z.object({
   binCode: z.string().min(2, "Bin Code must be at least 2 characters"),
+  aisle: z.string().optional(),
+  rack: z.string().optional(),
+  shelf: z.string().optional(),
+  pickSequence: z.coerce.number().min(0).optional().default(0),
 })
 
 export function AddBinDialog({ zoneId, warehouseId, open, onOpenChange, onCreated }: { zoneId: string, warehouseId: string, open: boolean, onOpenChange: (open: boolean) => void, onCreated: () => void }) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { binCode: "" },
+    defaultValues: { 
+      binCode: "",
+      aisle: "",
+      rack: "",
+      shelf: "",
+      pickSequence: 0,
+    },
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await createBin(zoneId, values.binCode, warehouseId)
+      await createBin(
+        zoneId, 
+        values.binCode, 
+        warehouseId, 
+        values.aisle || undefined, 
+        values.rack || undefined, 
+        values.shelf || undefined, 
+        values.pickSequence
+      )
       toast.success("Bin created successfully")
       onOpenChange(false)
       form.reset()
@@ -54,6 +72,62 @@ export function AddBinDialog({ zoneId, warehouseId, open, onOpenChange, onCreate
                 </FormItem>
               )}
             />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="aisle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Aisle (Lối đi)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. A1" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="rack"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rack (Kệ)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. R2" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="shelf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shelf (Tầng)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. S3" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="pickSequence"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pick Seq</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <DialogFooter>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? "Saving..." : "Save"}

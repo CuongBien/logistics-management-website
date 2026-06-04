@@ -10,6 +10,8 @@ export async function GET(req: Request) {
     }
 
     const apiUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment/MyPermissions`
+    console.log(`[MyPermissions Proxy] Fetching from: ${apiUrl}`);
+    
     const res = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${session.accessToken}`
@@ -17,7 +19,10 @@ export async function GET(req: Request) {
       signal: AbortSignal.timeout(3000)
     })
 
+    console.log(`[MyPermissions Proxy] Response status: ${res.status}`);
+
     if (!res.ok) {
+      console.log(`[MyPermissions Proxy] Response failed text: await res.text()`);
       return NextResponse.json({ error: "Failed to fetch permissions" }, { status: res.status })
     }
 
