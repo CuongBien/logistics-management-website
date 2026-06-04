@@ -1,24 +1,33 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { RoleName } from '@/types/wms-rbac';
+import { usePermissions } from './usePermissions';
+import { useWarehouseContext } from './WarehouseContext';
 
 interface RequirePermissionProps {
   children: ReactNode;
-  role: RoleName;
+  permission?: string;
+  role?: string;
   fallback?: ReactNode;
 }
 
-export function RequirePermission({ children, role, fallback = null }: RequirePermissionProps) {
-  // In a full implementation, you would:
-  // 1. Get the current user's roles from Session/Context
-  // 2. Get the active warehouse from WarehouseContext
-  // 3. Check if the user has the required 'role' at the 'activeWarehouseId'
-  
-  // For demonstration purposes, we assume they have permission
-  const hasPermission = true;
+export function RequirePermission({ children, permission, role, fallback = null }: RequirePermissionProps) {
+  const { hasPermission, hasRole, loading } = usePermissions();
+  const { activeWarehouseId } = useWarehouseContext();
 
-  if (!hasPermission) {
+  if (loading) {
+    return null; // Or show loading state if preferred
+  }
+
+  let allowed = true;
+
+  if (permission && activeWarehouseId) {
+    allowed = hasPermission(permission, activeWarehouseId);
+  } else if (role && activeWarehouseId) {
+    allowed = hasRole(role, activeWarehouseId);
+  }
+
+  if (!allowed) {
     return <>{fallback}</>;
   }
 

@@ -37,7 +37,7 @@ export async function GET(req: Request) {
       const targetRealm = 'logistics_realm'
 
       // 2. Fetch Users from Keycloak
-      const usersUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users`
+      const usersUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users?max=100`
       const kcRes = await fetch(usersUrl, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -77,12 +77,10 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "WMS backend operation failed", details: rolesData.error?.message || "Unknown error" }, { status: 400 })
       }
 
-      // 4. Merge Keycloak Users with WMS Role Assignments (filtering out customer accounts without role assignments)
+      // 4. Merge Keycloak Users with WMS Role Assignments (only show users who have WMS role assignments, filtering out OMS customer accounts)
       const result = kcUsers
         .filter((u: any) => {
-          const hasRoles = roleAssignments.some((r: any) => r.operatorSub === u.id)
-          const isDefaultStaff = u.username === 'admin' || u.username === 'staff1'
-          return hasRoles || isDefaultStaff
+          return roleAssignments.some((r: any) => r.operatorSub === u.id)
         })
         .map((u: any) => {
           const userRoles = roleAssignments.filter((r: any) => r.operatorSub === u.id).map((r: any) => ({

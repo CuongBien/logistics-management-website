@@ -27,7 +27,8 @@ import {
   HelpCircle,
   Cpu,
   Inbox,
-  Loader2
+  Loader2,
+  QrCode
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,6 +42,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import * as orderingService from "@/lib/services/ordering"
+import { getQrImageUrl } from "@/lib/services/qrcode"
 import { Order, OrderStatusHistory, OrderStatus } from "@/lib/types"
 import { format } from "date-fns"
 
@@ -78,6 +80,47 @@ export default function OrdersPage() {
   const [timeline, setTimeline] = useState<OrderStatusHistory[]>([])
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
+  
+  // Printable QR Code Dialog states
+  const [printQrUrl, setPrintQrUrl] = useState<string | null>(null)
+  const [printQrTitle, setPrintQrTitle] = useState("")
+
+  const loadPrintQr = async (waybillCode: string) => {
+    if (!selectedOrder) return
+    try {
+      const url = await getQrImageUrl('order', selectedOrder.id)
+      setPrintQrUrl(url)
+      setPrintQrTitle(`Đơn hàng OMS: ${waybillCode}`)
+    } catch (e) {
+      toast.error("Không thể sinh ảnh QR Code cho đơn hàng này.")
+    }
+  }
+
+  const handlePrint = () => {
+    if (!printQrUrl) return
+    const win = window.open("", "_blank")
+    if (win) {
+      win.document.write(`
+        <html>
+          <head>
+            <title>In nhãn QR - ${printQrTitle}</title>
+            <style>
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: monospace; }
+              img { width: 300px; height: 300px; }
+              .title { font-size: 24px; font-weight: bold; margin-top: 15px; }
+              .footer { font-size: 14px; color: #555; margin-top: 5px; }
+            </style>
+          </head>
+          <body>
+            <img src="${printQrUrl}" onload="window.print(); window.close();" />
+            <div class="title">${printQrTitle}</div>
+            <div class="footer">Hệ thống Logistics Management System (LMS)</div>
+          </body>
+        </html>
+      `)
+      win.document.close()
+    }
+  }
 
   // Create Order Dialog state
   const [createOpen, setCreateOpen] = useState(false)
@@ -489,11 +532,22 @@ export default function OrdersPage() {
       <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
         <SheetContent className="sm:max-w-[700px] overflow-y-auto bg-card border-l border-muted p-0 shadow-xl">
           <SheetHeader className="p-6 border-b border-muted">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap w-full pr-6">
               <SheetTitle className="text-lg font-extrabold text-foreground">
                 Giám Sát Đơn Hàng: <span className="font-mono text-blue-600 text-base">{selectedOrder?.waybillCode}</span>
               </SheetTitle>
               {selectedOrder && formatStatusBadge(selectedOrder.status as string)}
+              {selectedOrder && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-7 text-[10px] font-bold border-[#C41E3A] text-[#C41E3A] hover:bg-[#C41E3A] hover:text-white ml-auto"
+                  onClick={() => loadPrintQr(selectedOrder.waybillCode)}
+                >
+                  <QrCode className="h-3.5 w-3.5 mr-1" />
+                  In Tem QR Code
+                </Button>
+              )}
             </div>
             <SheetDescription className="text-xs text-muted-foreground mt-0.5">
               Khối kiểm tra vết kỹ thuật, hành trình đơn hàng ERP & MassTransit Saga.
@@ -908,6 +962,40 @@ export default function OrdersPage() {
           </Form>
         </DialogContent>
       </Dialog>
+      {/* Printable QR Code Dialog */}
+      {printQrUrl && (
+        <Dialog open={!!printQrUrl} onOpenChange={(open) => !open && setPrintQrUrl(null)}>
+          <DialogContent className="max-w-xs w-full bg-slate-900 border-slate-800 shadow-2xl text-white">
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-[#C41E3A]" />
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-sm font-bold text-slate-100">Tem Nhãn QR Code</DialogTitle>
+              <DialogDescription className="text-[10px] text-slate-400 font-mono mt-0.5">{printQrTitle}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="bg-white p-3 rounded-lg flex items-center justify-center border border-slate-800">
+                <img src={printQrUrl} className="w-48 h-48 block" alt="Printable QR Code" />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 border-slate-800 text-slate-300 hover:bg-slate-800"
+                  onClick={() => setPrintQrUrl(null)}
+                >
+                  Đóng
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-[#C41E3A] hover:bg-[#a01830] text-white font-bold"
+                  onClick={handlePrint}
+                >
+                  In Ngay (Print)
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

@@ -14,8 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import {
   Users, Shield, ShieldAlert, RefreshCw, Search, Loader2, UserPlus
 } from 'lucide-react';
+import { usePermissions } from '@/components/wms/rbac/usePermissions';
+import { AccessDeniedMessage } from '@/components/wms/rbac/AccessDeniedMessage';
 
 export default function StaffPage() {
+  const { hasPermissionInAnyWarehouse, loading: authLoading } = usePermissions();
   const [operators, setOperators] = useState<OperatorDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +75,19 @@ export default function StaffPage() {
 
     return result;
   }, [operators, searchQuery, filterStatus]);
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C41E3A]" />
+        <span className="ml-2 text-sm text-muted-foreground">Đang xác thực quyền truy cập...</span>
+      </div>
+    );
+  }
+
+  if (!hasPermissionInAnyWarehouse("role:manage")) {
+    return <AccessDeniedMessage />;
+  }
 
   return (
     <WarehouseProvider>

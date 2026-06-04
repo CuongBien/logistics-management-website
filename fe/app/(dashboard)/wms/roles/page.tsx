@@ -5,14 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RoleDto, PermissionDto } from '@/types/wms-rbac';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { RoleDialog } from './components/RoleDialog';
 import { toast as sonnerToast } from 'sonner';
+import { usePermissions } from '@/components/wms/rbac/usePermissions';
+import { AccessDeniedMessage } from '@/components/wms/rbac/AccessDeniedMessage';
 
 export default function RolesPage() {
+  const { hasPermissionInAnyWarehouse, loading: authLoading } = usePermissions();
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [permissions, setPermissions] = useState<PermissionDto[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ... (useEffects and other definitions will follow, let's inject checks at the return statement or directly at the top)
+
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleDto | undefined>();
@@ -103,6 +109,19 @@ export default function RolesPage() {
       sonnerToast.error(`Lỗi hệ thống khi xóa vai trò: ${e.message}`);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C41E3A]" />
+        <span className="ml-2 text-sm text-muted-foreground">Đang xác thực quyền truy cập...</span>
+      </div>
+    );
+  }
+
+  if (!hasPermissionInAnyWarehouse("role:manage")) {
+    return <AccessDeniedMessage />;
+  }
 
   return (
     <div className="p-6">

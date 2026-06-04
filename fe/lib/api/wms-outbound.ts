@@ -41,8 +41,22 @@ function mapStatus(status: number | string): OutboundOrderStatus {
 const DEFAULT_WAREHOUSE_ID = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'; // HCM warehouse ID from seed
 
 export const getOrders = async (): Promise<OutboundOrderDto[]> => {
-  const res = await fetchApi<OutboundOrderDto[]>('wms', '/outbound/orders');
-  return res || [];
+  const res = await fetchApi<any[]>('wms', '/outbound/orders');
+  if (res) {
+    return res.map((s: any) => ({
+      id: s.id,
+      orderNo: s.orderNo,
+      tenantId: s.tenantId,
+      status: mapStatus(s.status),
+      lines: (s.lines || []).map((l: any) => ({
+        id: l.id,
+        sku: l.sku || l.skuCode || '',
+        quantity: l.quantity ?? l.orderedQuantity ?? l.requestedQty ?? 0
+      })),
+      createdAt: s.createdAt
+    }));
+  }
+  return [];
 };
 
 export const getOrderById = async (id: string): Promise<OutboundOrderDto | undefined> => {
@@ -56,7 +70,7 @@ export const getOrderById = async (id: string): Promise<OutboundOrderDto | undef
       lines: (s.lines || []).map((l: any) => ({
         id: l.id,
         sku: l.sku || l.skuCode || '',
-        quantity: l.quantity || l.requestedQty || 0
+        quantity: l.quantity ?? l.orderedQuantity ?? l.requestedQty ?? 0
       })),
       createdAt: s.createdAt
     };

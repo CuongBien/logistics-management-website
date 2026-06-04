@@ -16,9 +16,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, ArrowLeft, ClipboardList, ShieldAlert, ArrowRightLeft, FileText, ChevronDown, Check, X, ShieldCheck } from "lucide-react"
+import { Loader2, ArrowLeft, ClipboardList, ShieldAlert, ArrowRightLeft, FileText, ChevronDown, Check, X, ShieldCheck, QrCode, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { getQrImageUrl } from "@/lib/services/qrcode"
 
 // Zod schemas for forms
 const cancelSchema = z.object({
@@ -42,6 +43,47 @@ export default function OutboundOrderDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [splitOpen, setSplitOpen] = useState(false)
   const [selectedLine, setSelectedLine] = useState<{ id: string; sku: string; quantity: number } | null>(null)
+
+  // QR printing states
+  const [printQrUrl, setPrintQrUrl] = useState<string | null>(null)
+  const [printQrTitle, setPrintQrTitle] = useState("")
+
+  const loadPrintQr = async () => {
+    if (!order) return
+    try {
+      const url = await getQrImageUrl('outbound-order', order.id)
+      setPrintQrUrl(url)
+      setPrintQrTitle(`Đơn xuất WMS: ${order.orderNo}`)
+    } catch (e) {
+      toast.error("Không thể sinh ảnh QR Code cho đơn hàng này.")
+    }
+  }
+
+  const handlePrint = () => {
+    if (!printQrUrl) return
+    const win = window.open("", "_blank")
+    if (win) {
+      win.document.write(`
+        <html>
+          <head>
+            <title>In nhãn QR - ${printQrTitle}</title>
+            <style>
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: monospace; }
+              img { width: 300px; height: 300px; }
+              .title { font-size: 24px; font-weight: bold; margin-top: 15px; }
+              .footer { font-size: 14px; color: #555; margin-top: 5px; }
+            </style>
+          </head>
+          <body>
+            <img src="${printQrUrl}" onload="window.print(); window.close();" />
+            <div class="title">${printQrTitle}</div>
+            <div class="footer">Hệ thống Logistics Management System (LMS)</div>
+          </body>
+        </html>
+      `)
+      win.document.close()
+    }
+  }
 
   const cancelForm = useForm<z.infer<typeof cancelSchema>>({
     resolver: zodResolver(cancelSchema),
@@ -210,38 +252,61 @@ export default function OutboundOrderDetailPage() {
           </div>
         </div>
 
-        {/* Action Dropdown Menu (Manual Override) */}
-        {!isShippedOrCancelled && (
-          <div className="shrink-0 flex items-center gap-2">
-            {order.status === 'New' && (
-              <Button 
-                onClick={handleAllocate}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm h-9 flex items-center gap-1.5"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Cấp Phát Tồn Kho
-              </Button>
-            )}
+        {/* Action Button Group */}
+        <div className="shrink-0 flex items-center gap-2">
+          {/* Print QR button */}
+          <Button
+            variant="outline"
+            onClick={loadPrintQr}
+            className="border-muted hover:bg-muted font-bold text-xs flex items-center gap-1.5 h-9"
+          >
+            <QrCode className="h-4 w-4" />
+            In Tem QR Code
+          </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-9 font-semibold flex items-center gap-1">
-                  Manual Actions
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card border border-muted shadow-md rounded-lg w-[160px]">
-                <DropdownMenuItem 
-                  onClick={() => setCancelOpen(true)}
-                  className="text-rose-500 cursor-pointer focus:bg-rose-500/10 flex items-center gap-2 font-medium"
+          {/* Quick link to scanner for pack verification */}
+          {(order.status === 'Picked' || order.status === 'Packing') && (
+            <Button
+              onClick={() => router.push(`/wms/scanner?contextId=${order.id}&tab=actions&action=verify-pack`)}
+              className="bg-[#C41E3A] hover:bg-[#A01830] text-white font-bold shadow-sm flex items-center gap-1.5 h-9"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Xác Thực Đóng Gói
+            </Button>
+          )}
+
+          {!isShippedOrCancelled && (
+            <>
+              {order.status === 'New' && (
+                <Button 
+                  onClick={handleAllocate}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm h-9 flex items-center gap-1.5"
                 >
-                  <X className="h-4 w-4" />
-                  Hủy đơn hàng
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+                  <ShieldCheck className="h-4 w-4" />
+                  Cấp Phát Tồn Kho
+                </Button>
+              )}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-9 font-semibold flex items-center gap-1">
+                    Manual Actions
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card border border-muted shadow-md rounded-lg w-[160px]">
+                  <DropdownMenuItem 
+                    onClick={() => setCancelOpen(true)}
+                    className="text-rose-500 cursor-pointer focus:bg-rose-500/10 flex items-center gap-2 font-medium"
+                  >
+                    <X className="h-4 w-4" />
+                    Hủy đơn hàng
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Main Grid Content */}
@@ -437,6 +502,41 @@ export default function OutboundOrderDetailPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Printable QR Code Dialog */}
+      {printQrUrl && (
+        <Dialog open={!!printQrUrl} onOpenChange={(open) => !open && setPrintQrUrl(null)}>
+          <DialogContent className="max-w-xs w-full bg-slate-900 border-slate-800 shadow-2xl text-white">
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-[#C41E3A]" />
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-sm font-bold text-slate-100">Tem Nhãn QR Code</DialogTitle>
+              <DialogDescription className="text-[10px] text-slate-400 font-mono mt-0.5">{printQrTitle}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="bg-white p-3 rounded-lg flex items-center justify-center border border-slate-800">
+                <img src={printQrUrl} className="w-48 h-48 block" alt="Printable QR Code" />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 border-slate-800 text-slate-300 hover:bg-slate-800"
+                  onClick={() => setPrintQrUrl(null)}
+                >
+                  Đóng
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-[#C41E3A] hover:bg-[#a01830] text-white font-bold"
+                  onClick={handlePrint}
+                >
+                  In Ngay (Print)
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

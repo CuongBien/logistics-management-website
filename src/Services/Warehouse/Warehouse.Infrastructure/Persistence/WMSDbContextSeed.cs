@@ -34,6 +34,62 @@ public static class WMSDbContextSeed
                 await context.SaveChangesAsync();
             }
 
+            // Link permissions to standard roles if missing
+            var allPermissions = await context.Permissions.ToListAsync();
+            
+            var adminRoleEntity = await context.Roles.Include(r => r.RolePermissions).FirstOrDefaultAsync(r => r.Code == "WMS_ADMIN");
+            if (adminRoleEntity != null)
+            {
+                foreach (var perm in allPermissions)
+                {
+                    adminRoleEntity.AddPermission(perm);
+                }
+            }
+
+            var supervisorRoleEntity = await context.Roles.Include(r => r.RolePermissions).FirstOrDefaultAsync(r => r.Code == "WMS_SUPERVISOR");
+            if (supervisorRoleEntity != null)
+            {
+                foreach (var perm in allPermissions)
+                {
+                    if (perm.Code != "role:manage")
+                    {
+                        supervisorRoleEntity.AddPermission(perm);
+                    }
+                }
+            }
+
+            var operatorRoleEntity = await context.Roles.Include(r => r.RolePermissions).FirstOrDefaultAsync(r => r.Code == "WMS_OPERATOR");
+            if (operatorRoleEntity != null)
+            {
+                var operatorCodes = new HashSet<string>
+                {
+                    "inbound:receive",
+                    "inbound:putaway",
+                    "inbound:transit_receive",
+                    "outbound:pick",
+                    "outbound:pack",
+                    "outbound:load",
+                    "inventory:transfer",
+                    "inventory:count",
+                    "inventory:replenish",
+                    "crossdock:execute"
+                };
+                foreach (var perm in allPermissions)
+                {
+                    if (operatorCodes.Contains(perm.Code))
+                    {
+                        operatorRoleEntity.AddPermission(perm);
+                    }
+                }
+            }
+
+            if (context.ChangeTracker.HasChanges())
+            {
+                await context.SaveChangesAsync();
+                logger.LogInformation("Successfully linked standard permissions to WMS roles.");
+            }
+
+
             // 1. Seed Warehouses
             var ctId = Guid.Parse("b61a8f61-5238-4a18-809c-335cc293a025"); // Can Tho (Matching default Postman ID!)
             var sgId = Guid.Parse("a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"); // HCM
