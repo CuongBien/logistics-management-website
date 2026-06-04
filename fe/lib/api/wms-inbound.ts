@@ -32,13 +32,49 @@ export const forceCloseReceipt = async (id: string): Promise<{ success: boolean 
 
 export const resolveDiscrepancy = async (
   id: string, 
-  status: 'ResolvedApprove' | 'ResolvedReject', 
+  status: number, 
   notes?: string
 ): Promise<{ success: boolean }> => {
   await fetchApi("wms", `/inbound/discrepancies/${id}/resolve`, {
     method: "POST",
     body: {
-      newStatus: 4, // map to Resolved = 4
+      newStatus: status,
+      notes: notes || 'Resolved via Web UI'
+    }
+  });
+  return { success: true };
+};
+
+export const getTransitDiscrepancies = async (warehouseId?: string): Promise<any[]> => {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any[]>('wms', `/inbound/transit-discrepancies${query}`);
+  return (res || []).map(d => ({
+    id: d.id,
+    outboundOrderId: d.outboundOrderId,
+    shipmentId: d.shipmentId,
+    sku: d.sku,
+    expectedQty: d.expectedQty || 0,
+    receivedQty: d.receivedQty || 0,
+    discrepancyQty: (d.expectedQty || 0) - (d.receivedQty || 0),
+    carrierName: d.carrierName || '',
+    reportedBy: d.reportedBy || '',
+    status: d.status,
+    notes: d.notes || '',
+    resolutionNotes: d.resolutionNotes || '',
+    resolvedByOperatorId: d.resolvedByOperatorId || '',
+    occurredAt: d.createdAt || d.occurredAt
+  }));
+};
+
+export const resolveTransitDiscrepancy = async (
+  id: string,
+  status: number,
+  notes?: string
+): Promise<{ success: boolean }> => {
+  await fetchApi("wms", `/inbound/transit-discrepancies/${id}/resolve`, {
+    method: "POST",
+    body: {
+      newStatus: status,
       notes: notes || 'Resolved via Web UI'
     }
   });

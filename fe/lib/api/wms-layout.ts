@@ -79,3 +79,26 @@ export const updateBinStatus = async (binId: string, status: BinStatus) => {
     body: { newStatus: status }
   });
 };
+
+// ----------------------------------------------------------------------------
+// 8. WAREHOUSE ROUTES (NEXT-HOP MATRIX)
+// ----------------------------------------------------------------------------
+export const getWarehouseRoutes = async (): Promise<any[]> => {
+  const res = await fetchApi<any>('wms', '/warehouseRoutes');
+  return res?.value || res || [];
+};
+
+export const createWarehouseRoute = async (data: { sourceWarehouseId: string; destinationWarehouseId: string; nextHopWarehouseId: string }) => {
+  const res = await fetchApi<any>('wms', '/warehouseRoutes', {
+    method: 'POST',
+    body: data
+  });
+  return res?.value || res;
+};
+
+export const deleteWarehouseRoute = async (id: string): Promise<boolean> => {
+  await fetchApi('wms', `/warehouseRoutes/${id}`, {
+    method: 'DELETE'
+  });
+  return true;
+};

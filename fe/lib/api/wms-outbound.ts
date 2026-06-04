@@ -111,23 +111,24 @@ export const splitOrder = async (id: string, lineId: string, splitQty: number): 
   return { success: true };
 };
 
-export const getReturns = async (): Promise<OutboundReturnDto[]> => {
-  const res = await fetchApi<OutboundReturnDto[]>('wms', `/outbound/returns?warehouseId=${DEFAULT_WAREHOUSE_ID}`);
+export const getReturns = async (warehouseId?: string): Promise<OutboundReturnDto[]> => {
+  const whId = warehouseId || DEFAULT_WAREHOUSE_ID;
+  const res = await fetchApi<OutboundReturnDto[]>('wms', `/outbound/returns?warehouseId=${whId}`);
   return res || [];
 };
 
-export const processDisposition = async (id: string, disposition: 'Restocked' | 'Scrapped' | 'Penalized', notes?: string): Promise<{ success: boolean }> => {
+export const processDisposition = async (id: string, disposition: 'Restocked' | 'Scrapped' | 'Penalized', warehouseId: string, notes?: string): Promise<{ success: boolean }> => {
   let condition = 1; // Good
   if (disposition === 'Scrapped' || disposition === 'Penalized') condition = 2; // Damaged
 
   await fetchApi<{ success: boolean }>('wms', `/outbound/returns/disposition`, {
     method: 'POST',
     body: {
-      warehouseId: DEFAULT_WAREHOUSE_ID,
+      warehouseId,
       sku: 'UNKNOWN', 
       quantity: 1, 
       condition,
-      targetBinCode: disposition === 'Restocked' ? 'ST-B-01' : undefined,
+      targetBinCode: disposition === 'Restocked' ? 'BIN-A1-01' : undefined,
       referenceId: id,
       referenceType: 'OutboundReturn',
       notes: notes || 'Processed via Web UI'
@@ -137,16 +138,18 @@ export const processDisposition = async (id: string, disposition: 'Restocked' | 
   return { success: true };
 };
 
-export const getWaves = async (): Promise<WaveDto[]> => {
-  const res = await fetchApi<WaveDto[]>('wms', `/outbound/waves?warehouseId=${DEFAULT_WAREHOUSE_ID}`);
+export const getWaves = async (warehouseId?: string): Promise<WaveDto[]> => {
+  const whId = warehouseId || DEFAULT_WAREHOUSE_ID;
+  const res = await fetchApi<WaveDto[]>('wms', `/outbound/waves?warehouseId=${whId}`);
   return res || [];
 };
 
-export const autoPlanWaves = async (): Promise<{ success: boolean; createdWavesCount: number }> => {
+export const autoPlanWaves = async (warehouseId?: string): Promise<{ success: boolean; createdWavesCount: number }> => {
+  const whId = warehouseId || DEFAULT_WAREHOUSE_ID;
   const res = await fetchApi<{ createdWaveIds: string[], totalOrdersPlanned: number }>('wms', `/outbound/waves/auto-plan`, {
     method: 'POST',
     body: {
-      warehouseId: DEFAULT_WAREHOUSE_ID,
+      warehouseId: whId,
       maxSingleItemOrdersPerWave: 50,
       maxMultiItemOrdersPerWave: 20
     }
