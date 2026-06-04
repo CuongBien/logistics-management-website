@@ -19,7 +19,8 @@ class LMSApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOffline = ref.watch(connectivityServiceProvider);
+    // Theo dõi trạng thái mạng, mặc định coi là online (chỉ báo lỗi khi chắc chắn false)
+    final isOffline = ref.watch(isOnlineProvider).value == false;
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
