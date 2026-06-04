@@ -6,6 +6,9 @@ using Warehouse.Application.Features.Inventory.Commands.ReleaseStock;
 using Warehouse.Application.Features.Inventory.Commands.ReserveStock;
 using Warehouse.Application.Features.Inventory.Queries.GetInventoryLedger;
 using Warehouse.Application.Features.Inventory.Commands.ReconcileInventory;
+using Warehouse.Application.Features.Inventory.Queries.GetReconciliationReports;
+using Warehouse.Application.Features.Inventory.Commands.ResolveReconciliationReport;
+using Warehouse.Application.Features.Inventory.Commands.IgnoreReconciliationReport;
 
 namespace Warehouse.Api.Controllers;
 
@@ -59,6 +62,13 @@ public class InventoryController : ControllerBase
     public async Task<IActionResult> GetLedger(Guid inventoryItemId)
     {
         var result = await _mediator.Send(new GetInventoryLedgerQuery(inventoryItemId));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpGet("ledger")]
+    public async Task<IActionResult> GetGlobalLedger([FromQuery] Guid? warehouseId, [FromQuery] string? sku)
+    {
+        var result = await _mediator.Send(new GetGlobalInventoryLedgerQuery(warehouseId, sku));
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
@@ -128,4 +138,27 @@ public class InventoryController : ControllerBase
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
+
+    [HttpGet("reconciliation-reports")]
+    public async Task<IActionResult> GetReconciliationReports([FromQuery] Guid? warehouseId)
+    {
+        var result = await _mediator.Send(new GetReconciliationReportsQuery(warehouseId));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("reconciliation-reports/{id:guid}/resolve")]
+    public async Task<IActionResult> ResolveReconciliation(Guid id, [FromBody] ResolveReconciliationRequest request)
+    {
+        var result = await _mediator.Send(new ResolveReconciliationReportCommand(id, request.Notes));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("reconciliation-reports/{id:guid}/ignore")]
+    public async Task<IActionResult> IgnoreReconciliation(Guid id, [FromBody] ResolveReconciliationRequest request)
+    {
+        var result = await _mediator.Send(new IgnoreReconciliationReportCommand(id, request.Notes));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
 }
+
+public record ResolveReconciliationRequest(string Notes);

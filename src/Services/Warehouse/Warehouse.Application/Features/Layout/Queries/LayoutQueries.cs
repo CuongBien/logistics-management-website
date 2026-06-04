@@ -31,8 +31,8 @@ public class LayoutQueryHandlers :
             var opProfile = await _context.OperatorProfiles
                 .FirstOrDefaultAsync(x => x.OperatorSub == request.OperatorSub, cancellationToken);
 
-            var isAdmin = request.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e" || 
-                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e"));
+            var isAdmin = request.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8" || 
+                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8"));
 
             if (isAdmin)
             {

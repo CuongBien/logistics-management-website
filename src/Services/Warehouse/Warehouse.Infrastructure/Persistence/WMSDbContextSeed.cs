@@ -316,22 +316,64 @@ public static class WMSDbContextSeed
             var binRedTshirt = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-01" && b.WarehouseId == sgId);
             var binBlueJeans = await context.Bins.FirstOrDefaultAsync(b => b.BinCode == "BIN-A01-02" && b.WarehouseId == sgId);
 
-            if (binRedTshirt != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-RED-TSHIRT" && i.WarehouseId == sgId))
+            if (binRedTshirt != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-RED-TSHIRT" && i.WarehouseId == sgId && i.CustomerId == "cust-default"))
             {
                 var invRed = InventoryItem.Create("SKU-RED-TSHIRT", 500, "default-tenant", "cust-default", sgId, binRedTshirt.Id, "LOT2026-01", null);
                 context.InventoryItems.Add(invRed);
             }
 
-            if (binBlueJeans != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-BLUE-JEANS" && i.WarehouseId == sgId))
+            if (binBlueJeans != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-BLUE-JEANS" && i.WarehouseId == sgId && i.CustomerId == "cust-default"))
             {
                 var invBlue = InventoryItem.Create("SKU-BLUE-JEANS", 200, "default-tenant", "cust-default", sgId, binBlueJeans.Id, "LOT2026-02", null);
                 context.InventoryItems.Add(invBlue);
+            }
+
+            // Also seed stock for customer1 (5107728a-5b22-49dd-a608-718ed99dbaeb)
+            if (binRedTshirt != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-RED-TSHIRT" && i.WarehouseId == sgId && i.CustomerId == "5107728a-5b22-49dd-a608-718ed99dbaeb"))
+            {
+                var invRedCust1 = InventoryItem.Create("SKU-RED-TSHIRT", 300, "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", sgId, binRedTshirt.Id, "LOT2026-C1-01", null);
+                context.InventoryItems.Add(invRedCust1);
+            }
+
+            if (binBlueJeans != null && !await context.InventoryItems.AnyAsync(i => i.Sku == "SKU-BLUE-JEANS" && i.WarehouseId == sgId && i.CustomerId == "5107728a-5b22-49dd-a608-718ed99dbaeb"))
+            {
+                var invBlueCust1 = InventoryItem.Create("SKU-BLUE-JEANS", 150, "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", sgId, binBlueJeans.Id, "LOT2026-C1-02", null);
+                context.InventoryItems.Add(invBlueCust1);
             }
 
             if (context.ChangeTracker.HasChanges())
             {
                 await context.SaveChangesAsync();
                 logger.LogInformation("Successfully seeded Real Stock for Outbound E2E Testing in HCMC Mega Hub.");
+            }
+
+            // Seed Inventory Ledgers for the items above (including one mismatch for testing Reconciliation)
+            if (!await context.InventoryLedgers.AnyAsync())
+            {
+                logger.LogInformation("Seeding initial Inventory Ledgers...");
+                var itemsList = await context.InventoryItems.ToListAsync();
+                foreach (var item in itemsList)
+                {
+                    int balance = item.QuantityOnHand;
+                    // Co y de lech item SKU-RED-TSHIRT de kiem tra tinh nang doi chieu (Reconcile)
+                    if (item.Sku == "SKU-RED-TSHIRT" && item.CustomerId == "cust-default")
+                    {
+                        balance = 480; // Lệch 20 (Actual = 500, Ledger = 480)
+                    }
+                    var ledger = InventoryLedger.Create(
+                        item,
+                        InventoryLedgerReason.InboundReceived,
+                        item.QuantityOnHand,
+                        null,
+                        null,
+                        "system",
+                        null,
+                        balance
+                    );
+                    context.InventoryLedgers.Add(ledger);
+                }
+                await context.SaveChangesAsync();
+                logger.LogInformation("Successfully seeded initial Inventory Ledgers.");
             }
 
             // 6. Seed Inbound Receipts
@@ -348,7 +390,15 @@ public static class WMSDbContextSeed
                 var receipt3 = new InboundReceipt(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "REC-2026-0003", null);
                 receipt3.AddLine(new InboundReceiptLine(receipt3.Id, "default-tenant", "cust-default", "A0-001", 150));
 
-                context.InboundReceipts.AddRange(receipt1, receipt2, receipt3);
+                // Customer 1 Receipts
+                var receiptCust1_1 = new InboundReceipt(Guid.NewGuid(), "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", sgId, "REC-CUST1-0001", null);
+                receiptCust1_1.AddLine(new InboundReceiptLine(receiptCust1_1.Id, "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", "SKU-RED-TSHIRT", 150));
+                receiptCust1_1.AddLine(new InboundReceiptLine(receiptCust1_1.Id, "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", "SKU-BLUE-JEANS", 50));
+
+                var receiptCust1_2 = new InboundReceipt(Guid.NewGuid(), "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", sgId, "REC-CUST1-0002", null);
+                receiptCust1_2.AddLine(new InboundReceiptLine(receiptCust1_2.Id, "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", "SKU-RED-TSHIRT", 100));
+
+                context.InboundReceipts.AddRange(receipt1, receipt2, receipt3, receiptCust1_1, receiptCust1_2);
                 await context.SaveChangesAsync();
             }
 
@@ -366,8 +416,40 @@ public static class WMSDbContextSeed
                 var order3 = new OutboundOrder(Guid.NewGuid(), "default-tenant", "cust-default", sgId, "OUT-2026-0003", "789 Pine St", "Hanoi");
                 order3.AddLine("SKU-RED-TSHIRT", 50, "PCS");
 
-                context.OutboundOrders.AddRange(order1, order2, order3);
+                // Customer 1 Orders (Guids must match OMS Orders!)
+                var orderCust1_1 = new OutboundOrder(Guid.Parse("d1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1"), "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", sgId, "OUT-CUST1-0001", "789 Nguyen Hue, District 1", "HCMC");
+                orderCust1_1.AddLine("SKU-RED-TSHIRT", 2, "PCS");
+                orderCust1_1.AddLine("SKU-BLUE-JEANS", 1, "PCS");
+
+                var orderCust1_2 = new OutboundOrder(Guid.Parse("d2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2"), "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", sgId, "OUT-CUST1-0002", "456 Le Loi, District 1", "HCMC");
+                orderCust1_2.AddLine("SKU-RED-TSHIRT", 5, "PCS");
+
+                var orderCust1_3 = new OutboundOrder(Guid.Parse("d3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3"), "default-tenant", "5107728a-5b22-49dd-a608-718ed99dbaeb", sgId, "OUT-CUST1-0003", "123 Tran Hung Dao, District 5", "HCMC");
+                orderCust1_3.AddLine("SKU-BLUE-JEANS", 3, "PCS");
+
+                context.OutboundOrders.AddRange(order1, order2, order3, orderCust1_1, orderCust1_2, orderCust1_3);
                 await context.SaveChangesAsync();
+
+                // Seed InventoryReservations for Customer 1 Orders to transition them to Allocated
+                var invRedC1 = await context.InventoryItems.FirstOrDefaultAsync(i => i.Sku == "SKU-RED-TSHIRT" && i.WarehouseId == sgId && i.CustomerId == "5107728a-5b22-49dd-a608-718ed99dbaeb");
+                var invBlueC1 = await context.InventoryItems.FirstOrDefaultAsync(i => i.Sku == "SKU-BLUE-JEANS" && i.WarehouseId == sgId && i.CustomerId == "5107728a-5b22-49dd-a608-718ed99dbaeb");
+
+                if (invRedC1 != null && invBlueC1 != null)
+                {
+                    var resRed = InventoryReservation.Create(invRedC1.Id, orderCust1_1.Id.ToString(), ReservationType.OutboundOrder, 2, TimeSpan.FromDays(30));
+                    var resBlue = InventoryReservation.Create(invBlueC1.Id, orderCust1_1.Id.ToString(), ReservationType.OutboundOrder, 1, TimeSpan.FromDays(30));
+                    context.InventoryReservations.AddRange(resRed, resBlue);
+                    orderCust1_1.UpdateStatus(OutboundOrderStatus.Allocated);
+                }
+
+                if (invRedC1 != null)
+                {
+                    var resRed = InventoryReservation.Create(invRedC1.Id, orderCust1_2.Id.ToString(), ReservationType.OutboundOrder, 5, TimeSpan.FromDays(30));
+                    context.InventoryReservations.Add(resRed);
+                    orderCust1_2.UpdateStatus(OutboundOrderStatus.Allocated);
+                }
+                await context.SaveChangesAsync();
+                logger.LogInformation("Successfully allocated stock and updated status for OUT-CUST1-0001 and OUT-CUST1-0002.");
             }
 
             // 8. Seed Tasks (Putaway, Replenishment, Cycle Count)
@@ -504,8 +586,54 @@ public static class WMSDbContextSeed
 
                     context.TransitDiscrepancies.Add(discrepancy);
                     await context.SaveChangesAsync();
+            }
+
+            // 9. Seed Operator Profiles and Role Assignments for admin and staff1
+            logger.LogInformation("Seeding Operator Profiles and Role Assignments in WMS...");
+
+            var adminProfile = await context.OperatorProfiles.FirstOrDefaultAsync(p => p.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8");
+            if (adminProfile == null)
+            {
+                adminProfile = new OperatorProfile("default-tenant", "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8", "System Admin");
+                context.OperatorProfiles.Add(adminProfile);
+                await context.SaveChangesAsync();
+            }
+
+            var staffProfile = await context.OperatorProfiles.FirstOrDefaultAsync(p => p.OperatorSub == "1a382041-9098-4351-ab71-d3939f8368dd");
+            if (staffProfile == null)
+            {
+                staffProfile = new OperatorProfile("default-tenant", "1a382041-9098-4351-ab71-d3939f8368dd", "Nguyen Staff");
+                context.OperatorProfiles.Add(staffProfile);
+                await context.SaveChangesAsync();
+            }
+
+            var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "WMS_ADMIN");
+            var operatorRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "WMS_OPERATOR");
+
+            if (adminRole != null && adminProfile != null)
+            {
+                var warehouses = await context.Warehouses.ToListAsync();
+                foreach (var wh in warehouses)
+                {
+                    var exists = await context.OperatorRoleAssignments.AnyAsync(a => a.OperatorProfileId == adminProfile.Id && a.RoleId == adminRole.Id && a.WarehouseId == wh.Id);
+                    if (!exists)
+                    {
+                        context.OperatorRoleAssignments.Add(new OperatorRoleAssignment(adminProfile.Id, adminRole.Id, wh.Id, null));
+                    }
                 }
             }
+
+            if (operatorRole != null && staffProfile != null)
+            {
+                // Assign staff1 ONLY to HCMC Mega Hub (sgId)
+                var exists = await context.OperatorRoleAssignments.AnyAsync(a => a.OperatorProfileId == staffProfile.Id && a.RoleId == operatorRole.Id && a.WarehouseId == sgId);
+                if (!exists)
+                {
+                    context.OperatorRoleAssignments.Add(new OperatorRoleAssignment(staffProfile.Id, operatorRole.Id, sgId, null));
+                }
+            }
+            await context.SaveChangesAsync();
+        }
         }
         catch (Exception ex)
         {
