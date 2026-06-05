@@ -9,7 +9,6 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@repo/ui": "*",
     "@hookform/resolvers": "^3.9.1",
     "@microsoft/signalr": "^10.0.0",
     "@radix-ui/react-accordion": "1.2.12",
@@ -39,6 +38,7 @@
     "@radix-ui/react-toggle": "1.1.10",
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
+    "@repo/ui": "*",
     "@vercel/analytics": "1.6.1",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
@@ -51,6 +51,7 @@
     "next": "^16.2.6",
     "next-auth": "^4.24.14",
     "next-themes": "^0.4.6",
+    "qrcode.react": "^4.2.0",
     "react": "^19",
     "react-day-picker": "9.13.2",
     "react-dom": "^19",
