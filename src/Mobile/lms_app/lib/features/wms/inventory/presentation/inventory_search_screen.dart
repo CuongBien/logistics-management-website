@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
@@ -516,7 +517,28 @@ class _InventorySearchScreenState extends ConsumerState<InventorySearchScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-     @override
+                ),
+              ),
+          ],
+        );
+
+      case QrType.receipt:
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text(
+              'Tra cứu thông tin nhận hàng (Receipt) chưa được hỗ trợ.',
+              style: TextStyle(fontStyle: FontStyle.italic, color: AppColors.textSecondary),
+            ),
+          ),
+        );
+
+      case QrType.unknown:
+        return const SizedBox();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> filters = [
       {'label': 'Tất cả', 'icon': Icons.all_inclusive, 'hint': 'Nhập mã hoặc quét bất kỳ...'},
