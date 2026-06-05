@@ -35,7 +35,7 @@ public class OrdersController : ControllerBase
         var tenantId = CurrentUserClaims.GetTenantId(User);
         if (string.IsNullOrWhiteSpace(tenantId))
         {
-            tenantId = "tenant-1";
+            tenantId = "default-tenant";
         }
         
         _logger.LogInformation("Creating order... userId={UserId}, tenantId={TenantId}", userId, tenantId);
@@ -85,7 +85,11 @@ public class OrdersController : ControllerBase
     {
         // Default to user's tenant if not explicitly requesting another (or if no permission to query others)
         var userTenantId = CurrentUserClaims.GetTenantId(User);
-        var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) ? userTenantId : tenantId;
+        if (string.IsNullOrWhiteSpace(userTenantId))
+        {
+            userTenantId = "default-tenant";
+        }
+        var effectiveTenantId = userTenantId;
         
         var isAdmin = User.IsInRole("Admin");
         var userCustomerId = CurrentUserClaims.GetCustomerId(User);

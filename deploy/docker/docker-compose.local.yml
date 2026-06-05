@@ -160,7 +160,7 @@ services:
       - JwtOptions__Audience=oms-client
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      - ErpSync__BaseUrl=http://host.docker.internal:5009/api
+      - ErpSync__BaseUrl=http://masterdata.api:8080/api
       - ErpSync__ApiKey=dev-key
       - ErpSync__BatchSize=100
       - ErpSync__SyncIntervalSeconds=20
@@ -194,7 +194,7 @@ services:
       - JwtOptions__Audience=oms-client
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      - ErpSync__BaseUrl=http://host.docker.internal:5009/api
+      - ErpSync__BaseUrl=http://masterdata.api:8080/api
       - ErpSync__ApiKey=dev-key
       - ErpSync__BatchSize=100
       - ErpSync__SyncIntervalSeconds=20
