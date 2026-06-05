@@ -221,6 +221,9 @@ services:
       - MessageBroker__RabbitMQ__Host=rabbitmq
       - MessageBroker__RabbitMQ__Username=lms
       - MessageBroker__RabbitMQ__Password=lms123
+      - JwtOptions__Authority=http://keycloak:8080/realms/logistics_realm
+      - JwtOptions__MetadataAddress=http://keycloak:8080/realms/logistics_realm/.well-known/openid-configuration
+      - JwtOptions__Audience=oms-client
     depends_on:
       - postgres
       - rabbitmq
