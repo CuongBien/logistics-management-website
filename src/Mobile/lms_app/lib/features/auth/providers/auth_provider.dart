@@ -106,6 +106,15 @@ class AuthNotifier extends Notifier<AuthState> {
       log('Auth: Đã khôi phục phiên đăng nhập cho ${user.username}');
       Future.microtask(() {
         ref.read(notificationServiceProvider).startConnection();
+        final currentContext = ref.read(warehouseContextProvider);
+        if (currentContext == null && user.warehouseId != null && user.warehouseId!.isNotEmpty) {
+          ref.read(warehouseContextProvider.notifier).setWarehouse(
+            WarehouseContext(
+              warehouseId: user.warehouseId!,
+              warehouseName: user.warehouseName ?? 'Kho mặc định',
+            ),
+          );
+        }
       });
     } catch (e) {
       log('Auth: Lỗi kiểm tra trạng thái - $e');
@@ -155,6 +164,14 @@ class AuthNotifier extends Notifier<AuthState> {
         log('Auth: Đăng nhập thành công - ${user.username} (${user.appRole.name})');
         Future.microtask(() {
           ref.read(notificationServiceProvider).startConnection();
+          if (user.warehouseId != null && user.warehouseId!.isNotEmpty) {
+            ref.read(warehouseContextProvider.notifier).setWarehouse(
+              WarehouseContext(
+                warehouseId: user.warehouseId!,
+                warehouseName: user.warehouseName ?? 'Kho mặc định',
+              ),
+            );
+          }
         });
       } else {
         state = const AuthError('Đăng nhập thất bại. Vui lòng thử lại.');
@@ -238,6 +255,15 @@ class AuthNotifier extends Notifier<AuthState> {
         log('Auth: Refresh token thành công - ${user.username}');
         Future.microtask(() {
           ref.read(notificationServiceProvider).startConnection();
+          final currentContext = ref.read(warehouseContextProvider);
+          if (currentContext == null && user.warehouseId != null && user.warehouseId!.isNotEmpty) {
+            ref.read(warehouseContextProvider.notifier).setWarehouse(
+              WarehouseContext(
+                warehouseId: user.warehouseId!,
+                warehouseName: user.warehouseName ?? 'Kho mặc định',
+              ),
+            );
+          }
         });
       } else {
         state = const AuthUnauthenticated();

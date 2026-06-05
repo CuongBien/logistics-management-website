@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/role_manager.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'dashboard_screen.dart';
 import 'scan_tab_screen.dart';
 import 'profile_tab_screen.dart';
+import '../../wms/inventory/presentation/warehouse_layout_screen.dart';
 import '../../wms/notification/providers/notification_providers.dart';
 
 class MainSkeleton extends ConsumerStatefulWidget {
@@ -125,53 +127,30 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
               title: Text('Hệ thống WMS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             ListTile(
-              leading: const Icon(Icons.download),
-              title: const Text('Nhập kho (Inbound)'),
+              leading: const Icon(Icons.home),
+              title: const Text('Trang chủ / Tác vụ'),
               onTap: () {
-                Navigator.pop(context); // Close drawer
-                context.push('/wms/receive');
+                Navigator.pop(context);
+                setState(() => _currentIndex = 0);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.compare_arrows),
-              title: const Text('Nhận hàng luân chuyển'),
+              leading: const Icon(Icons.map),
+              title: const Text('Sơ đồ & Cấu trúc kho'),
               onTap: () {
                 Navigator.pop(context);
-                context.push('/wms/transit-receive');
+                setState(() => _currentIndex = 1);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.bolt),
-              title: const Text('Luân chuyển nhanh (Cross-Dock)'),
+              leading: const Icon(Icons.qr_code_scanner),
+              title: const Text('Quét mã thông minh'),
               onTap: () {
                 Navigator.pop(context);
-                context.push('/wms/crossdock');
+                setState(() => _currentIndex = 2);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.upload),
-              title: const Text('Xuất kho (Lấy hàng)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/pick');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.grid_view),
-              title: const Text('Chia chọn (Sort)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/sort');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.category),
-              title: const Text('Chia chọn (Put To Wall)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/put_to_wall');
-              },
-            ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.inventory_2),
               title: const Text('Đóng gói (Pack)'),
@@ -189,36 +168,19 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.move_to_inbox),
-              title: const Text('Cất hàng (Putaway)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/putaway');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.inventory),
-              title: const Text('Tra cứu tồn kho'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/inventory');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.assignment_return),
-              title: const Text('Nhận hàng hoàn (Returns)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/returns');
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.fact_check),
               title: const Text('Kiểm kê (Cycle Count)'),
               onTap: () {
                 Navigator.pop(context);
                 context.push('/wms/count');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.search),
+              title: const Text('Tra cứu tồn kho'),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/wms/inventory');
               },
             ),
             const Divider(),
@@ -235,18 +197,27 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
       body: _currentIndex == 0 
           ? DashboardScreen(role: _currentRole)
           : _currentIndex == 1
-              ? const ScanTabScreen()
-              : const ProfileTabScreen(),
+              ? const WarehouseLayoutScreen()
+              : _currentIndex == 2
+                  ? const ScanTabScreen()
+                  : const ProfileTabScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Trang chủ',
+            icon: Icon(Icons.assignment),
+            label: 'Tác vụ',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code_scanner, size: 32),
+            icon: Icon(Icons.map),
+            label: 'Sơ đồ kho',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.qr_code_scanner, size: 28),
             label: 'Quét mã',
           ),
           BottomNavigationBarItem(

@@ -13,6 +13,7 @@ import '../../features/wms/outbound/presentation/pack_order_screen.dart';
 import '../../features/wms/outbound/presentation/dispatch_load_screen.dart';
 import '../../features/wms/putaway/presentation/putaway_execution_screen.dart';
 import '../../features/wms/inventory/presentation/inventory_search_screen.dart';
+import '../../features/wms/inventory/presentation/warehouse_layout_screen.dart';
 import '../../features/wms/inventory/presentation/cycle_count_screen.dart';
 import '../../features/wms/inbound/presentation/transit_receive_screen.dart';
 import '../../features/wms/outbound/presentation/sort_screen.dart';
@@ -139,6 +140,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/wms/inventory',
         builder: (context, state) => const InventorySearchScreen(),
+      ),
+      GoRoute(
+        path: '/wms/layout',
+        builder: (context, state) {
+          final sku = state.uri.queryParameters['sku'];
+          return WarehouseLayoutScreen(preSearchedSku: sku);
+        },
       ),
       GoRoute(
         path: '/wms/put_to_wall',

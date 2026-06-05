@@ -352,7 +352,7 @@ class _ScanTabScreenState extends ConsumerState<ScanTabScreen> {
                 children: [
                   _buildDetailRow('Mã Vị Trí (Bin):', binData['binCode'] as String? ?? 'N/A'),
                   _buildDetailRow('Trạng thái:', binData['status'] as String? ?? 'Hoạt động'),
-                  _buildDetailRow('Loại kệ:', binData['zoneName'] as String? ?? 'Mặc định'),
+                  _buildDetailRow('Loại kệ:', binData['zoneName'] as String? ?? binData['zoneType'] as String? ?? 'Mặc định'),
                 ],
               ),
             ),
@@ -368,20 +368,62 @@ class _ScanTabScreenState extends ConsumerState<ScanTabScreen> {
               ),
             )
           else
-            ...skuItems.map((item) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.category)),
-                  title: Text(item['skuCode'] as String? ?? 'SKU N/A', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(item['skuName'] as String? ?? ''),
-                  trailing: Text(
-                    'SL: ${item['quantity']}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: skuItems.length,
+              itemBuilder: (context, index) {
+                final item = skuItems[index];
+                final skuCode = item['skuCode'] as String? ?? item['sku'] as String? ?? 'SKU N/A';
+                final qty = item['quantity'] ?? item['quantityOnHand'] ?? 0;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.category)),
+                    title: Text(skuCode, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(item['skuName'] as String? ?? 'Lô: ${item['lotNo'] ?? 'N/A'}'),
+                    trailing: Text(
+                      'SL: $qty',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.push('/wms/count?binCode=${binData['binCode']}');
+                  },
+                  icon: const Icon(Icons.fact_check),
+                  label: const Text('Kiểm kê ô kệ'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
-              );
-            }),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    context.push('/wms/putaway');
+                  },
+                  icon: const Icon(Icons.move_to_inbox),
+                  label: const Text('Cất hàng vào đây'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     }
@@ -389,7 +431,7 @@ class _ScanTabScreenState extends ConsumerState<ScanTabScreen> {
     if (type == QrType.sku) {
       // Đối với SKU: Hiển thị thông tin SKU và danh sách ô kệ đang chứa SKU này
       final skuData = _detailResult as Map<String, dynamic>;
-      final binLocations = skuData['locations'] as List<dynamic>? ?? [];
+      final binLocations = skuData['locations'] as List<dynamic>? ?? skuData['bins'] as List<dynamic>? ?? [];
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,8 +445,8 @@ class _ScanTabScreenState extends ConsumerState<ScanTabScreen> {
                 children: [
                   _buildDetailRow('Mã SKU:', skuData['skuCode'] as String? ?? 'N/A'),
                   _buildDetailRow('Tên sản phẩm:', skuData['name'] as String? ?? 'N/A'),
-                  _buildDetailRow('Mô tả:', skuData['description'] as String? ?? 'Không có'),
-                  _buildDetailRow('Tổng tồn kho:', '${skuData['totalQuantity'] ?? 0}'),
+                  _buildDetailRow('Có sẵn:', '${(skuData['totalQuantity'] ?? skuData['totalOnHand'] ?? 0) - (skuData['totalReserved'] ?? 0)}'),
+                  _buildDetailRow('Tổng tồn kho:', '${skuData['totalQuantity'] ?? skuData['totalOnHand'] ?? 0}'),
                 ],
               ),
             ),
@@ -420,19 +462,62 @@ class _ScanTabScreenState extends ConsumerState<ScanTabScreen> {
               ),
             )
           else
-            ...binLocations.map((loc) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.move_to_inbox)),
-                  title: Text(loc['binCode'] as String? ?? 'BIN N/A', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: Text(
-                    'SL: ${loc['quantity']}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: binLocations.length,
+              itemBuilder: (context, index) {
+                final loc = binLocations[index];
+                final bin = loc['binCode'] as String? ?? 'BIN N/A';
+                final qty = loc['quantity'] ?? loc['quantityOnHand'] ?? 0;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.move_to_inbox)),
+                    title: Text(bin, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('Lô: ${loc['lotNo'] ?? 'N/A'}'),
+                    trailing: Text(
+                      'SL: $qty',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.push('/wms/layout?sku=${skuData['skuCode']}');
+                  },
+                  icon: const Icon(Icons.map),
+                  label: const Text('Xem trên sơ đồ'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
-              );
-            }),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    context.push('/wms/layout?sku=${skuData['skuCode']}');
+                  },
+                  icon: const Icon(Icons.lightbulb),
+                  label: const Text('Tìm ô cất trống'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     }
@@ -460,17 +545,123 @@ class _ScanTabScreenState extends ConsumerState<ScanTabScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.push('/wms/pack');
+                  },
+                  icon: const Icon(Icons.inventory_2),
+                  label: const Text('Đóng gói (Pack)'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    context.push('/wms/pick_execution/$orderId');
+                  },
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Lấy hàng (Pick)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    if (type == QrType.shipment) {
+      // Đối với Lô hàng / Chuyến xe xuất
+      final shipmentData = _detailResult as Map<String, dynamic>;
+      final shipmentId = shipmentData['id'] as String? ?? '';
+      final shipmentNo = shipmentData['shipmentNo'] as String? ?? 'N/A';
+      final status = shipmentData['status'] as String? ?? 'N/A';
+      final carrier = shipmentData['carrier'] as String? ?? 'N/A';
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Thông Tin Lô Hàng / Chuyến Xe', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildDetailRow('Mã chuyến xe:', shipmentNo),
+                  _buildDetailRow('Đơn vị vận chuyển:', carrier),
+                  _buildDetailRow('Trạng thái:', status),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: () {
-              context.push('/wms/pick_execution/$orderId');
+              context.push('/wms/dispatch_execution/$shipmentId');
             },
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('Thực hiện lấy hàng (Pick)'),
+            icon: const Icon(Icons.local_shipping),
+            label: const Text('Bắt đầu xếp xe (Load)'),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.all(16),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (type == QrType.receipt) {
+      // Đối với Đơn nhập kho (Receipt)
+      final receiptData = _detailResult as Map<String, dynamic>;
+      final receiptNo = receiptData['receiptNo'] as String? ?? 'N/A';
+      final status = receiptData['status'] as String? ?? 'N/A';
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Thông Tin Đơn Nhập Kho', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildDetailRow('Mã phiếu nhập:', receiptNo),
+                  _buildDetailRow('Trạng thái:', status),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () {
+              context.push('/wms/receive');
+            },
+            icon: const Icon(Icons.download),
+            label: const Text('Bắt đầu nhận hàng'),
+            style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
