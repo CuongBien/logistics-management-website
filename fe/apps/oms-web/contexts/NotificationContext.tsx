@@ -50,23 +50,33 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [session?.accessToken]);
 
   useEffect(() => {
-    if (connection) {
-      connection
-        .start()
-        .then(() => {
-          console.log("Connected to Notification Hub");
+    let isMounted = true;
 
-          connection.on("ReceiveNotification", (notification: NotificationDto) => {
-            setNotifications((prev) => [notification, ...prev].slice(0, 50));
-          });
-        })
-        .catch((e) => console.log("Connection failed: ", e));
+    if (connection) {
+      const startConnection = async () => {
+        try {
+          await connection.start();
+          if (isMounted) {
+            console.log("Connected to Notification Hub");
+            connection.on("ReceiveNotification", (notification: NotificationDto) => {
+              setNotifications((prev) => [notification, ...prev].slice(0, 50));
+            });
+          } else {
+            await connection.stop();
+          }
+        } catch (e) {
+          console.log("Connection failed: ", e);
+        }
+      };
+
+      startConnection();
     }
 
     return () => {
+      isMounted = false;
       if (connection) {
         connection.off("ReceiveNotification");
-        connection.stop();
+        connection.stop().catch(e => console.log("Error stopping connection: ", e));
       }
     };
   }, [connection]);

@@ -10,8 +10,8 @@ function SessionErrorWrapper({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (session?.error === "RefreshAccessTokenError") {
-      if (pathname && pathname.startsWith('/portal')) {
-        signOut({ callbackUrl: '/portal/login' })
+      if (pathname && pathname.startsWith('/')) {
+        signOut({ callbackUrl: '/login' })
       } else {
         signOut({ callbackUrl: '/login' })
       }

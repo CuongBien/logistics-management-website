@@ -9,7 +9,7 @@ import { useSession } from 'next-auth/react';
 import { AuthProvider } from '@/components/auth-provider';
 
 // Pages that do NOT require authentication
-const AUTH_PAGES = ['/portal/login', '/portal/register'];
+const AUTH_PAGES = ['/login', '/register'];
 
 function PortalContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -22,7 +22,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   // FIX: Never call router.replace() during render — use useEffect to avoid React setState-in-render error
   useEffect(() => {
     if (status === 'unauthenticated' && !isAuthPage) {
-      router.replace('/portal/login');
+      router.replace('/login');
     }
   }, [status, isAuthPage, router]);
 

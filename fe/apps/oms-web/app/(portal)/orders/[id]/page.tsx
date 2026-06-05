@@ -181,7 +181,7 @@ export default function OrderDetailPage() {
           Đơn hàng bạn yêu cầu không tồn tại hoặc bạn không có quyền xem.
         </p>
         <Button asChild>
-          <Link href="/portal/orders">
+          <Link href="/orders">
             <ArrowLeft className="size-4 mr-1" />
             Quay lại danh sách
           </Link>
@@ -209,7 +209,7 @@ export default function OrderDetailPage() {
       {/* Back + Refresh */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" className="gap-1.5" asChild>
-          <Link href="/portal/orders">
+          <Link href="/orders">
             <ArrowLeft className="size-4" />
             Quay lại
           </Link>

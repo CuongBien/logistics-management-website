@@ -338,7 +338,7 @@ export default function TrackingPage() {
           {/* Quick link to detail page */}
           <div className="flex justify-end">
             <Button variant="outline" size="sm" asChild className="gap-1.5">
-              <Link href={`/portal/orders/${order.id}`}>
+              <Link href={`/orders/${order.id}`}>
                 Xem chi tiết đầy đủ <ArrowRight className="size-4" />
               </Link>
             </Button>

@@ -89,7 +89,9 @@ public class OrdersController : ControllerBase
         
         var isAdmin = User.IsInRole("Admin");
         var userCustomerId = CurrentUserClaims.GetCustomerId(User);
-        var effectiveConsignorId = isAdmin ? consignorId : (string.IsNullOrWhiteSpace(consignorId) ? userCustomerId : consignorId);
+        
+        // If not an admin, they can ONLY see their own orders.
+        var effectiveConsignorId = isAdmin ? consignorId : userCustomerId;
         
         _logger.LogInformation("GetOrders: page={Page}, pageSize={PageSize}, tenantId={TenantId}, consignorId={ConsignorId}", page, pageSize, effectiveTenantId, effectiveConsignorId);
 

@@ -159,7 +159,7 @@ export default function OrdersPage() {
             Làm mới
           </Button>
           <Button asChild className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 gap-1.5 shadow-sm">
-            <Link href="/portal/orders/create">
+            <Link href="/orders/create">
               <PlusCircle className="size-4" /> Tạo đơn hàng mới
             </Link>
           </Button>
@@ -305,7 +305,7 @@ export default function OrdersPage() {
                           asChild
                           className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Link href={`/portal/orders/${order.id}`}>
+                          <Link href={`/orders/${order.id}`}>
                             <Eye className="size-4" />
                           </Link>
                         </Button>
@@ -392,7 +392,7 @@ export default function OrdersPage() {
                 asChild
                 className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 gap-1.5 shadow-md"
               >
-                <Link href="/portal/orders/create">
+                <Link href="/orders/create">
                   <PlusCircle className="size-4" /> Lên đơn hàng ngay
                 </Link>
               </Button>

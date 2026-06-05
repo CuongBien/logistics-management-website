@@ -59,11 +59,18 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
         // Ignored
       }
 
+      final activeWarehouse = ref.read(warehouseContextProvider);
+      if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+        throw AppException(
+          'Vui lòng chọn kho làm việc trước khi quét nhận hàng!',
+          code: 'Warehouse.Required',
+        );
+      }
+
       final repo = ref.read(inboundRepositoryProvider);
-      final receipt = await repo.getReceiptByOrderId(targetId);
+      final receipt = await repo.getReceiptByOrderId(targetId, warehouseId: activeWarehouse.warehouseId);
 
       // Chặn nếu phiếu nhập thuộc kho khác
-      final activeWarehouse = ref.read(warehouseContextProvider);
       final receiptWarehouseId = receipt['warehouseId']?.toString() ?? receipt['warehouse_id']?.toString() ?? '';
       
       if (activeWarehouse != null && activeWarehouse.warehouseId.isNotEmpty &&
@@ -213,6 +220,84 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
           content: Text('✅ Nhận thành công SKU: $code (Pre-dock: BIN-DOCK-01)'),
           backgroundColor: AppColors.success,
         ));
+      }
+
+      // Xử lý đề xuất cất hàng Putaway / Crossdock
+      if (result.suggestion != null && mounted) {
+        final sugg = result.suggestion!;
+        if (sugg.type == 'PUTAWAY') {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.inventory, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text('Đề xuất Cất Hàng (Putaway)'),
+                ],
+              ),
+              content: Text('Hệ thống đề xuất cất sản phẩm này vào ô kệ:\n\n👉 ${sugg.suggestedBinCode}\n\nBạn có muốn thực hiện cất hàng ngay bây giờ không?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Làm sau (Hàng đợi)'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Cất hàng ngay'),
+                ),
+              ],
+            ),
+          );
+
+          if (confirm == true && mounted) {
+            context.push(
+              Uri(
+                path: '/wms/putaway_execution',
+                queryParameters: {
+                  'taskId': sugg.taskId ?? '',
+                  'targetBin': sugg.suggestedBinCode ?? '',
+                },
+              ).toString(),
+            );
+          }
+        } else if (sugg.type == 'CROSSDOCK') {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Đề xuất Cross-Docking!'),
+                ],
+              ),
+              content: Text('Sản phẩm này cần được đưa ra cửa xuất bến ngay lập tức để chuyển đi:\n\n👉 ${sugg.suggestedBinCode}\n\nThực hiện Cross-Dock ngay chứ?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Thực hiện ngay'),
+                ),
+              ],
+            ),
+          );
+
+          if (confirm == true && mounted) {
+            context.push(
+              Uri(
+                path: '/wms/crossdock',
+                queryParameters: {
+                  'taskId': sugg.taskId ?? '',
+                  'targetBin': sugg.suggestedBinCode ?? '',
+                },
+              ).toString(),
+            );
+          }
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);

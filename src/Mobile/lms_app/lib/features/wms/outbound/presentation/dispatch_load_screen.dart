@@ -15,7 +15,8 @@ import '../../../../../core/error/app_exception.dart';
 import '../../../../../core/error/error_handler.dart';
 
 class DispatchLoadScreen extends ConsumerStatefulWidget {
-  const DispatchLoadScreen({super.key});
+  final String? shipmentId;
+  const DispatchLoadScreen({super.key, this.shipmentId});
 
   @override
   ConsumerState<DispatchLoadScreen> createState() => _DispatchLoadScreenState();
@@ -37,6 +38,9 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
   void initState() {
     super.initState();
     _scannerHelper = ScannerHelper(onCodeScanned: _handleScan);
+    if (widget.shipmentId != null && widget.shipmentId!.isNotEmpty) {
+      Future.microtask(() => _loadShipment(widget.shipmentId!));
+    }
   }
 
   void _handleScan(String code) async {

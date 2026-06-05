@@ -10,6 +10,7 @@ import {
   PlusCircle,
   Wallet,
   MapPin,
+  BookUser,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -24,11 +25,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/portal/dashboard', icon: LayoutDashboard },
-  { label: 'Đơn hàng', href: '/portal/orders', icon: Package },
-  { label: 'Tạo đơn mới', href: '/portal/orders/create', icon: PlusCircle },
-  { label: 'Theo dõi đơn', href: '/portal/tracking', icon: MapPin },
-  { label: 'Đối soát', href: '/portal/reconciliation', icon: Wallet },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Đơn hàng', href: '/orders', icon: Package },
+  { label: 'Tạo đơn mới', href: '/orders/create', icon: PlusCircle },
+  { label: 'Theo dõi đơn', href: '/tracking', icon: MapPin },
+  { label: 'Sổ địa chỉ', href: '/contacts', icon: BookUser },
+  { label: 'Đối soát', href: '/reconciliation', icon: Wallet },
 ]
 
 interface PortalSidebarProps {
@@ -53,7 +55,7 @@ export function PortalSidebar({ isOpen, onClose }: PortalSidebarProps) {
   const email = session?.user?.email || 'user@shiphub.vn'
 
   function isActive(href: string) {
-    if (href === '/portal/dashboard') return pathname === href
+    if (href === '/dashboard') return pathname === href
     return pathname.startsWith(href)
   }
 
@@ -75,7 +77,7 @@ export function PortalSidebar({ isOpen, onClose }: PortalSidebarProps) {
       >
         {/* Branding */}
         <div className="flex h-16 items-center justify-between px-6 shrink-0">
-          <Link href="/portal/dashboard" className="flex items-center gap-2.5">
+          <Link href="/dashboard" className="flex items-center gap-2.5">
             <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 shadow-md shadow-blue-500/20">
               <Package className="size-5 text-white" />
             </div>
@@ -123,11 +125,11 @@ export function PortalSidebar({ isOpen, onClose }: PortalSidebarProps) {
         {/* User info */}
         <div className="p-4 shrink-0">
           <Link
-            href="/portal/profile"
+            href="/profile"
             onClick={onClose}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-muted/70',
-              pathname === '/portal/profile' ? 'bg-muted border-l-2 border-blue-600' : 'bg-muted/40'
+              pathname === '/profile' ? 'bg-muted border-l-2 border-blue-600' : 'bg-muted/40'
             )}
           >
             {/* Avatar placeholder */}

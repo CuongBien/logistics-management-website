@@ -10,6 +10,7 @@ import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
 import '../../../../../core/error/app_exception.dart';
 import '../../../../../core/error/error_handler.dart';
+import '../../../../../core/constants/app_config.dart';
 
 class TransitReceiveScreen extends ConsumerStatefulWidget {
   const TransitReceiveScreen({super.key});
@@ -31,7 +32,6 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
   
   final Map<String, int> _scannedItems = {};
   
-  final String _defaultWarehouseId = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'; // Kho HCM
   final String _defaultBinCode = 'BIN-TRANSIT-01';
 
   TransitReceiveResponse? _lastResponse;
@@ -144,11 +144,22 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
 
     final isOffline = ref.read(isOnlineProvider).value == false;
 
+    final activeWarehouse = ref.read(warehouseContextProvider);
+    if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ Vui lòng chọn kho làm việc trước khi thực hiện!'),
+        backgroundColor: AppColors.error,
+      ));
+      setState(() => _isLoading = false);
+      return;
+    }
+    final warehouseId = activeWarehouse.warehouseId;
+
     if (isOffline) {
       final actionId = DateTime.now().microsecondsSinceEpoch.toString();
       final body = {
         'scannedOrder': _orderId,
-        'warehouseId': _defaultWarehouseId,
+        'warehouseId': warehouseId,
         'scannedBin': _defaultBinCode,
         'receivedItems': itemsToReceive,
       };
@@ -190,7 +201,7 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
       final qrActionService = ref.read(qrActionServiceProvider);
       final response = await qrActionService.transitReceive(
         scannedOrder: _orderId,
-        warehouseId: _defaultWarehouseId,
+        warehouseId: warehouseId,
         scannedBin: _defaultBinCode,
         receivedItems: itemsToReceive,
       );

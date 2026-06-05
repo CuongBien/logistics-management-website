@@ -6,6 +6,8 @@ import '../../../../core/network/connectivity_service.dart';
 import '../../../../core/network/offline_queue.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/error/error_handler.dart';
+import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class ProfileTabScreen extends ConsumerStatefulWidget {
@@ -347,6 +349,22 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
               ),
             ),
             const SizedBox(height: 24),
+
+            if (kDebugMode) ...[
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.push('/developer_tools');
+                },
+                icon: const Icon(Icons.bug_report, color: AppColors.primary),
+                label: const Text('Developer & E2E Testing Tools', style: TextStyle(fontSize: 16)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Nút Đăng xuất
             ElevatedButton.icon(

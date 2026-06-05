@@ -61,7 +61,7 @@ export default function RegisterPage() {
       } else {
         setSuccess(true)
         setTimeout(() => {
-          router.push('/portal/login')
+          router.push('/login')
         }, 3000)
       }
     } catch (err) {
@@ -97,7 +97,7 @@ export default function RegisterPage() {
 
       <div className="w-full max-w-lg z-10 space-y-4">
         <div className="flex items-center justify-between px-2">
-          <Link href="/portal/login" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/login" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="size-4" /> Quay lại Đăng nhập
           </Link>
         </div>
@@ -171,7 +171,7 @@ export default function RegisterPage() {
           <CardFooter className="flex justify-center pb-8">
             <div className="text-sm text-muted-foreground">
               Đã có tài khoản?{' '}
-              <Link href="/portal/login" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+              <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
                 Đăng nhập
               </Link>
             </div>

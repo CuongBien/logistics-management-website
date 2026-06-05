@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Building, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, Save, User, MapPin, Phone } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,21 +22,21 @@ import {
 import { Input } from '@repo/ui/components/input';
 import { toast } from 'sonner';
 
-const partnerSchema = z.object({
-  name: z.string().min(2, 'Tên đối tác phải có ít nhất 2 ký tự'),
+const contactSchema = z.object({
+  name: z.string().min(2, 'Họ và tên phải có ít nhất 2 ký tự'),
   phone: z.string().min(10, 'Số điện thoại không hợp lệ').optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
   city: z.string().optional().or(z.literal('')),
 });
 
-type PartnerFormValues = z.infer<typeof partnerSchema>;
+type ContactFormValues = z.infer<typeof contactSchema>;
 
-export default function CreatePartnerPage() {
+export default function CreateContactPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
-  const form = useForm<PartnerFormValues>({
-    resolver: zodResolver(partnerSchema),
+  const form = useForm<ContactFormValues>({
+    resolver: zodResolver(contactSchema),
     defaultValues: {
       name: '',
       phone: '',
@@ -45,7 +45,7 @@ export default function CreatePartnerPage() {
     },
   });
 
-  async function onSubmit(data: PartnerFormValues) {
+  async function onSubmit(data: ContactFormValues) {
     try {
       setSubmitting(true);
       const res = await fetchApi<{ isSuccess: boolean }>('masterdata', '/partners', {
@@ -61,8 +61,8 @@ export default function CreatePartnerPage() {
       });
 
       if (res && res.isSuccess) {
-        toast.success('Đã lưu đối tác mới thành công');
-        router.push('/portal/partners');
+        toast.success('Đã lưu địa chỉ mới thành công');
+        router.push('/contacts');
         router.refresh();
       } else {
         toast.error('Có lỗi xảy ra, vui lòng thử lại');
@@ -79,22 +79,22 @@ export default function CreatePartnerPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex flex-col gap-4">
         <Button variant="ghost" size="sm" className="w-fit gap-1.5" asChild>
-          <Link href="/portal/partners">
+          <Link href="/contacts">
             <ArrowLeft className="size-4" />
             Quay lại
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Thêm đối tác mới</h1>
-          <p className="text-muted-foreground">Tạo thông tin người gửi/nhận hàng vào sổ địa chỉ</p>
+          <h1 className="text-2xl font-bold tracking-tight">Thêm địa chỉ liên hệ mới</h1>
+          <p className="text-muted-foreground">Lưu thông tin người gửi/nhận hàng vào sổ địa chỉ để sử dụng nhanh chóng</p>
         </div>
       </div>
 
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Building className="size-4 text-emerald-600" />
-            Thông tin chi tiết
+            <User className="size-4 text-blue-600" />
+            Thông tin liên hệ
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -106,9 +106,9 @@ export default function CreatePartnerPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel>Tên đối tác (Công ty / Cá nhân) <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>Họ và tên (hoặc Tên công ty) <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Nhập tên đối tác..." {...field} />
+                        <Input placeholder="Ví dụ: Nguyễn Văn A" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -166,7 +166,7 @@ export default function CreatePartnerPage() {
 
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button variant="outline" type="button" asChild>
-                  <Link href="/portal/partners">Hủy</Link>
+                  <Link href="/contacts">Hủy</Link>
                 </Button>
                 <Button 
                   type="submit" 

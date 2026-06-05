@@ -129,7 +129,7 @@ export default function ProfilePage() {
 
   function handleLogout() {
     toast.success('Đang đăng xuất...')
-    signOut({ callbackUrl: '/portal/login', basePath: '/api/auth/oms' })
+    signOut({ callbackUrl: '/login' })
   }
 
   if (!profile) return null

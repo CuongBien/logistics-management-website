@@ -26,7 +26,7 @@ export default function PortalLoginPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/portal/dashboard')
+      router.replace('/dashboard')
     }
   }, [status, router])
 
@@ -57,14 +57,13 @@ export default function PortalLoginPage() {
         redirect: false,
         username,
         password,
-        callbackUrl: '/portal/dashboard',
-        basePath: '/api/auth/oms',
+        callbackUrl: '/dashboard',
       })
 
       if (res?.error) {
         setError('Tên đăng nhập hoặc mật khẩu không chính xác.')
       } else if (res?.url) {
-        window.location.href = '/portal/dashboard'
+        window.location.href = '/dashboard'
       }
     } catch (err) {
       setError('Đã có lỗi xảy ra. Vui lòng thử lại.')
@@ -165,7 +164,7 @@ export default function PortalLoginPage() {
           <CardFooter className="flex flex-col gap-3 justify-center pb-8 border-t border-muted/50 pt-5 mt-2 bg-muted/10">
             <div className="text-sm text-muted-foreground">
               Chưa có tài khoản?{' '}
-              <Link href="/portal/register" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+              <Link href="/register" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
                 Đăng ký ngay
               </Link>
             </div>

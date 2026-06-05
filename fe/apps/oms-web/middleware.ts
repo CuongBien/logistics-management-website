@@ -6,20 +6,20 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // 1. Check if it's a Portal (OMS) route
-  if (pathname.startsWith('/portal')) {
+  if (pathname.startsWith('/')) {
     // Auth pages (login, register) are public
-    const isPortalAuthPage = pathname === '/portal/login' || pathname === '/portal/register'
+    const isPortalAuthPage = pathname === '/login' || pathname === '/register'
     if (isPortalAuthPage) {
       return NextResponse.next()
     }
 
     const isPortalProtectedRoute =
-      pathname.startsWith('/portal/dashboard') ||
-      pathname.startsWith('/portal/orders') ||
-      pathname.startsWith('/portal/tracking') ||
-      pathname.startsWith('/portal/partners') ||
-      pathname.startsWith('/portal/reconciliation') ||
-      pathname.startsWith('/portal/profile')
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/orders') ||
+      pathname.startsWith('/tracking') ||
+      pathname.startsWith('/contacts') ||
+      pathname.startsWith('/reconciliation') ||
+      pathname.startsWith('/profile')
 
     if (isPortalProtectedRoute) {
       const token = await getToken({
@@ -29,7 +29,7 @@ export async function middleware(req: NextRequest) {
       })
 
       if (!token) {
-        const loginUrl = new URL('/portal/login', req.url)
+        const loginUrl = new URL('/login', req.url)
         loginUrl.searchParams.set('callbackUrl', pathname)
         return NextResponse.redirect(loginUrl)
       }
@@ -72,13 +72,13 @@ export const config = {
     "/tasks/:path*",
     "/warehouse/:path*",
     "/wms/:path*",
-    "/portal/login",
-    "/portal/register",
-    "/portal/dashboard/:path*",
-    "/portal/orders/:path*",
-    "/portal/tracking/:path*",
-    "/portal/partners/:path*",
-    "/portal/reconciliation/:path*",
-    "/portal/profile/:path*",
+    "/login",
+    "/register",
+    "/dashboard/:path*",
+    "/orders/:path*",
+    "/tracking/:path*",
+    "/contacts/:path*",
+    "/reconciliation/:path*",
+    "/profile/:path*",
   ]
 }

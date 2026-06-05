@@ -39,7 +39,7 @@ export function PortalTopbar({ onMenuClick }: PortalTopbarProps) {
   }
 
   function handleLogout() {
-    signOut({ callbackUrl: '/portal/login', basePath: '/api/auth/oms' })
+    signOut({ callbackUrl: '/login' })
   }
 
   return (
@@ -106,12 +106,12 @@ export function PortalTopbar({ onMenuClick }: PortalTopbarProps) {
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/portal/profile" className="flex items-center gap-2">
+              <Link href="/profile" className="flex items-center gap-2">
                 <User className="size-4" /> Hồ sơ cá nhân
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/portal/profile" className="flex items-center gap-2">
+              <Link href="/profile" className="flex items-center gap-2">
                 <Settings className="size-4" /> Cài đặt cửa hàng
               </Link>
             </DropdownMenuItem>

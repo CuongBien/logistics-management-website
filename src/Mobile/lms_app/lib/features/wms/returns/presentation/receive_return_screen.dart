@@ -5,6 +5,7 @@ import '../providers/returns_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/error/error_handler.dart';
+import '../../../../../core/constants/app_config.dart';
 
 class ReceiveReturnScreen extends ConsumerStatefulWidget {
   const ReceiveReturnScreen({super.key});
@@ -126,12 +127,22 @@ class _ReceiveReturnScreenState extends ConsumerState<ReceiveReturnScreen> {
       return;
     }
 
+    final activeWarehouse = ref.read(warehouseContextProvider);
+    if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ Vui lòng chọn kho làm việc trước khi thực hiện nhận hàng hoàn!'),
+        backgroundColor: AppColors.warning,
+      ));
+      return;
+    }
+    final warehouseId = activeWarehouse.warehouseId;
+
     setState(() => _isLoading = true);
 
     try {
       final repo = ref.read(returnsRepositoryProvider);
       final success = await repo.processReturnDisposition(
-        warehouseId: 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', // HCM Mega Hub
+        warehouseId: warehouseId,
         sku: sku,
         quantity: qty,
         condition: int.parse(_selectedCondition),
@@ -178,6 +189,8 @@ class _ReceiveReturnScreenState extends ConsumerState<ReceiveReturnScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activeWarehouse = ref.watch(warehouseContextProvider);
+
     return KeyboardListener(
       focusNode: _scannerHelper.focusNode,
       onKeyEvent: _scannerHelper.handleKeyEvent,
@@ -195,15 +208,15 @@ class _ReceiveReturnScreenState extends ConsumerState<ReceiveReturnScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
-                    children: const [
+                    children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.assignment_return, color: AppColors.primary, size: 28),
-                          SizedBox(width: 8),
+                          const Icon(Icons.assignment_return, color: AppColors.primary, size: 28),
+                          const SizedBox(width: 8),
                           Text(
-                            'Xử lý hàng trả (RMA) - Kho HCM',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            'Xử lý hàng trả (RMA): ${activeWarehouse?.warehouseName ?? "Chưa chọn kho"}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           )
                         ],
                       ),

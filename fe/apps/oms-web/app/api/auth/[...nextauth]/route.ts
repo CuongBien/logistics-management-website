@@ -190,7 +190,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/portal/login',
+    signIn: '/login',
   },
 }
 

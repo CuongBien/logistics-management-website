@@ -309,7 +309,7 @@ export default function DashboardPage() {
           <CardTitle className="text-base">Đơn hàng gần đây</CardTitle>
           {orders.length > 0 && (
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/portal/orders" className="gap-1 text-sm text-muted-foreground hover:text-foreground">
+              <Link href="/orders" className="gap-1 text-sm text-muted-foreground hover:text-foreground">
                 Xem tất cả <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon-sm" asChild>
-                        <Link href={`/portal/orders/${order.id}`}>
+                        <Link href={`/orders/${order.id}`}>
                           <Eye className="size-4" />
                         </Link>
                       </Button>
@@ -361,7 +361,7 @@ export default function DashboardPage() {
                 Tài khoản mới của bạn chưa có bất kỳ hoạt động gửi hàng nào. Hãy lên đơn hàng đầu tiên ngay!
               </p>
               <Button asChild className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 gap-1.5 shadow-sm">
-                <Link href="/portal/orders/create">
+                <Link href="/orders/create">
                   <PlusCircle className="size-4" /> Tạo đơn hàng ngay
                 </Link>
               </Button>

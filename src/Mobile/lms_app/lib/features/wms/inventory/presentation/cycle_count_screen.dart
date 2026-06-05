@@ -5,6 +5,7 @@ import '../providers/inventory_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/error/error_handler.dart';
+import '../../../../../core/constants/app_config.dart';
 
 class CycleCountScreen extends ConsumerStatefulWidget {
   const CycleCountScreen({super.key});
@@ -20,7 +21,6 @@ class _CycleCountScreenState extends ConsumerState<CycleCountScreen> {
   
   late final ScannerHelper _scannerHelper;
   bool _isLoading = false;
-  final String _warehouseId = 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'; // HCM Mega Hub
 
   @override
   void initState() {
@@ -97,6 +97,16 @@ class _CycleCountScreenState extends ConsumerState<CycleCountScreen> {
       return;
     }
     
+    final activeWarehouse = ref.read(warehouseContextProvider);
+    if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ Vui lòng chọn kho làm việc trước khi thực hiện kiểm kê!'),
+        backgroundColor: AppColors.error,
+      ));
+      return;
+    }
+    final warehouseId = activeWarehouse.warehouseId;
+    
     final qty = int.tryParse(qtyStr);
     if (qty == null || qty < 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -111,7 +121,7 @@ class _CycleCountScreenState extends ConsumerState<CycleCountScreen> {
     try {
       final repo = ref.read(inventoryRepositoryProvider);
       await repo.reconcileCycleCount(
-        warehouseId: _warehouseId,
+        warehouseId: warehouseId,
         sku: sku,
         binCode: bin,
         countedQuantity: qty,
@@ -146,6 +156,8 @@ class _CycleCountScreenState extends ConsumerState<CycleCountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activeWarehouse = ref.watch(warehouseContextProvider);
+
     return KeyboardListener(
       focusNode: _scannerHelper.focusNode,
       onKeyEvent: _scannerHelper.handleKeyEvent,
@@ -163,15 +175,15 @@ class _CycleCountScreenState extends ConsumerState<CycleCountScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
-                    children: const [
+                    children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.inventory, color: AppColors.primary, size: 28),
-                          SizedBox(width: 8),
+                          const Icon(Icons.inventory, color: AppColors.primary, size: 28),
+                          const SizedBox(width: 8),
                           Text(
-                            'Kiểm kê trực tiếp - Kho HCM Mega Hub',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            'Kiểm kê: ${activeWarehouse?.warehouseName ?? "Chưa chọn kho"}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           )
                         ],
                       ),

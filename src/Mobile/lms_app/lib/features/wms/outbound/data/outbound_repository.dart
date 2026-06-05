@@ -181,4 +181,34 @@ class OutboundRepository {
       throw Exception(e.response?.data['Message'] ?? 'Lỗi hệ thống khi chia chọn (Sort)');
     }
   }
+
+  Future<List<dynamic>> getWaves(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/outbound/waves',
+        queryParameters: {'warehouseId': warehouseId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy danh sách Wave lấy hàng');
+    }
+  }
+
+  Future<List<dynamic>> getShipments(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/outbound/shipments',
+        queryParameters: {'warehouseId': warehouseId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy danh sách chuyến xe (Shipments)');
+    }
+  }
 }

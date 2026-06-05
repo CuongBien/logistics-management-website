@@ -754,7 +754,7 @@ export default function CreateOrderPage() {
 
         form.reset();
         setCurrentStep(0);
-        router.push('/portal/orders');
+        router.push('/orders');
       } else {
         toast.error('Có lỗi xảy ra khi tạo đơn hàng');
       }

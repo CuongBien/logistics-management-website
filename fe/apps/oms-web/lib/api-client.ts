@@ -18,7 +18,7 @@ function getBaseUrl(service: ServiceTarget): string {
 }
 
 async function getToken(): Promise<string | null> {
-  const isPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
+  const isPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/');
   const session = await getSession();
   console.log("api-client [DEBUG]: isPortal =", isPortal, "session =", session, "accessToken =", (session as any)?.accessToken ? "PRESENT (length " + (session as any).accessToken.length + ")" : "MISSING");
   return (session as any)?.accessToken || null;
@@ -88,10 +88,9 @@ export async function fetchApi<T = unknown>(
     if (response.status === 401) {
       if (typeof window !== 'undefined') {
         const { signOut } = require('next-auth/react');
-        const isPortal = window.location.pathname.startsWith('/portal');
+        const isPortal = window.location.pathname.startsWith('/');
         signOut({ 
-          callbackUrl: isPortal ? '/portal/login' : '/login',
-          basePath: isPortal ? '/api/auth/oms' : '/api/auth'
+          callbackUrl: isPortal ? '/login' : '/login'
         });
         // Prevent throwing so the page doesn't crash while redirecting
         return new Promise(() => {}) as Promise<T>;

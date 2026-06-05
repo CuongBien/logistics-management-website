@@ -18,6 +18,10 @@ import '../../features/wms/inbound/presentation/transit_receive_screen.dart';
 import '../../features/wms/outbound/presentation/sort_screen.dart';
 import '../../features/wms/returns/presentation/receive_return_screen.dart';
 import '../../features/wms/notification/presentation/notification_list_screen.dart';
+import '../../features/wms/putaway/presentation/putaway_tasks_list_screen.dart';
+import '../../features/wms/outbound/presentation/picking_waves_list_screen.dart';
+import '../../features/wms/outbound/presentation/shipments_list_screen.dart';
+import '../../features/home/presentation/developer_tools_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -104,7 +108,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/wms/pick',
-        builder: (context, state) => const PickTaskListScreen(),
+        builder: (context, state) => const PickingWavesListScreen(),
+      ),
+      GoRoute(
+        path: '/wms/pick_tasks/:waveId',
+        builder: (context, state) {
+          final waveId = state.pathParameters['waveId'];
+          return PickTaskListScreen(waveId: waveId);
+        },
       ),
       GoRoute(
         path: '/wms/pick_execution/:waveId',
@@ -115,6 +126,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/wms/putaway',
+        builder: (context, state) => const PutawayTasksListScreen(),
+      ),
+      GoRoute(
+        path: '/wms/putaway_execution',
         builder: (context, state) {
           final taskId = state.uri.queryParameters['taskId'] ?? 'N/A';
           final targetBin = state.uri.queryParameters['targetBin'] ?? 'N/A';
@@ -135,7 +150,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/wms/dispatch',
-        builder: (context, state) => const DispatchLoadScreen(),
+        builder: (context, state) => const ShipmentsListScreen(),
+      ),
+      GoRoute(
+        path: '/wms/dispatch_execution/:shipmentId',
+        builder: (context, state) {
+          final shipmentId = state.pathParameters['shipmentId'];
+          return DispatchLoadScreen(shipmentId: shipmentId);
+        },
+      ),
+      GoRoute(
+        path: '/developer_tools',
+        builder: (context, state) => const DeveloperToolsScreen(),
       ),
       GoRoute(
         path: '/wms/returns',
