@@ -496,6 +496,20 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
     );
   }
 
+  bool _coordinateMatch(String? a, String? b) {
+    if (a == null || b == null) return false;
+    final cleanA = a.trim().toUpperCase();
+    final cleanB = b.trim().toUpperCase();
+    if (cleanA == cleanB) return true;
+    
+    final intA = int.tryParse(cleanA);
+    final intB = int.tryParse(cleanB);
+    if (intA != null && intB != null && intA == intB) {
+      return true;
+    }
+    return false;
+  }
+
   Widget _buildGridMap() {
     // Tìm các Rack và Shelf thực tế có trong dãy đang chọn để vẽ lưới động
     final aisleBins = _allRealBins.where((b) => b['aisle'] == _selectedAisle).toList();
@@ -524,7 +538,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
         // Header hiển thị mã Rack (Cột dọc)
         Row(
           children: [
-            const SizedBox(width: 45), // Cột tiêu đề Tầng
+            const SizedBox(width: 60), // Cột tiêu đề Tầng (tăng độ rộng lên 60 tránh rớt dòng)
             ...rackList.map((rackStr) {
               return Expanded(
                 child: Center(
@@ -544,25 +558,30 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: reversedShelves.map((shelfStr) {
+                // Bỏ số 0 ở đầu nhãn tầng để hiển thị gọn gàng (Tầng 1, Tầng 2, ..., Tầng 10)
+                final displayShelf = int.tryParse(shelfStr)?.toString() ?? shelfStr;
+
                 return Container(
                   height: 56, // Chiều cao cố định thoải mái cho mỗi tầng trên màn hình PDA
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
-                      // Nhãn tầng ở đầu hàng
+                      // Nhãn tầng ở đầu hàng (tăng độ rộng lên 60 để không bị rớt dòng Tầng 10)
                       SizedBox(
-                        width: 45,
+                        width: 60,
                         child: Text(
-                          'Tầng $shelfStr',
+                          'Tầng $displayShelf',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.textSecondary),
                         ),
                       ),
                       
                       // Các ô kệ (1 ô kệ duy nhất trên mỗi giao điểm Rack-Shelf)
                       ...rackList.map((rackStr) {
-                        // Tìm ô kệ thực tế tương ứng từ danh sách nạp từ API
+                        // Tìm ô kệ thực tế tương ứng từ danh sách nạp từ API (sử dụng _coordinateMatch thông minh)
                         final matchBin = _allRealBins.firstWhere(
-                          (b) => b['aisle'] == _selectedAisle && b['rack'] == rackStr && b['shelf'] == shelfStr,
+                          (b) => b['aisle'] == _selectedAisle && 
+                                 _coordinateMatch(b['rack'], rackStr) && 
+                                 _coordinateMatch(b['shelf'], shelfStr),
                           orElse: () => <String, dynamic>{},
                         );
 
@@ -614,7 +633,8 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
     }
 
     if (isHighlighted) {
-      bgColor = Colors.green.shade100;
+      bgColor = Colors.green.shade600; // Xanh lá cây đậm nổi bật
+      textColor = Colors.white;       // Chữ màu trắng dễ đọc trên nền xanh
     } else if (isSuggestedEmpty) {
       bgColor = Colors.blue.shade100;
     }
@@ -631,7 +651,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
           color: bgColor,
           borderRadius: BorderRadius.circular(6),
           border: isHighlighted
-              ? Border.all(color: Colors.green, width: 2.5)
+              ? Border.all(color: Colors.green.shade800, width: 2.5)
               : isSuggestedEmpty
                   ? Border.all(color: AppColors.primary, width: 2.5)
                   : Border.all(color: Colors.grey.shade300, width: 0.8),
@@ -646,12 +666,12 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
                 children: [
                   Text(
                     labelText,
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   if (skuQty != null)
                     Text(
                       '$skuQty',
-                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                 ],
               )
