@@ -104,11 +104,11 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
           aisle = aisle.toUpperCase().trim();
           rack = rack.trim();
           shelf = shelf.trim();
-          
           if (binCode.isNotEmpty) {
+            final normalizedBinCode = binCode.toUpperCase().trim();
             final Map<String, dynamic> binInfo = {
               'id': bin['id'] ?? bin['Id'],
-              'binCode': binCode,
+              'binCode': normalizedBinCode,
               'status': status.toUpperCase(),
               'aisle': aisle.toUpperCase(),
               'rack': _normalizeCoordinate(rack),
@@ -116,7 +116,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
             };
             
             _allRealBins.add(binInfo);
-            _realBinStates[binCode] = status.toUpperCase();
+            _realBinStates[normalizedBinCode] = status.toUpperCase();
             
             if (aisle.isNotEmpty && !_availableAisles.contains(aisle.toUpperCase())) {
               _availableAisles.add(aisle.toUpperCase());
@@ -290,6 +290,15 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
             ),
         ],
       ),
+      floatingActionButton: _searchedSku.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _resetSearch,
+              icon: const Icon(Icons.clear),
+              label: const Text('Tắt định vị SKU'),
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+            )
+          : null,
       body: hierarchyAsync.when(
         data: (hierarchyData) {
           if (hierarchyData.isEmpty) {
@@ -335,7 +344,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
                           decoration: InputDecoration(
                             hintText: 'Nhập mã SKU để định vị...',
                             prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-                            suffixIcon: _searchController.text.isNotEmpty
+                            suffixIcon: _searchController.text.isNotEmpty || _searchedSku.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear),
                                     onPressed: () {
@@ -418,7 +427,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
                     _buildLegendItem(Colors.grey.shade300, 'Trống (Sẵn sàng)'),
                     _buildLegendItem(AppColors.primary.withOpacity(0.25), 'Có hàng'),
                     _buildLegendItem(Colors.amber.withOpacity(0.35), 'Đầy'),
-                    _buildLegendItem(Colors.green.shade400, 'Chứa SKU', isBorder: true),
+                    _buildLegendItem(Colors.green.shade600, 'Chứa SKU'),
                   ],
                 ),
               ),
@@ -613,12 +622,13 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
   }
 
   Widget _buildBinWidget(String binId, String binCode, String rack, String shelf) {
-    final isHighlighted = _highlightedBins.contains(binCode);
-    final skuQty = _skuQuantitiesInBins[binCode];
-    final isSuggestedEmpty = _showEmptySuggestions && _suggestedEmptyBins.contains(binCode);
+    final normalizedCode = binCode.toUpperCase().trim();
+    final isHighlighted = _highlightedBins.contains(normalizedCode);
+    final skuQty = _skuQuantitiesInBins[normalizedCode];
+    final isSuggestedEmpty = _showEmptySuggestions && _suggestedEmptyBins.contains(normalizedCode);
 
     // Trạng thái lấp đầy thật sự nạp từ API (AVAILABLE/OCCUPIED/FULL)
-    final fillState = _realBinStates[binCode] ?? 'EMPTY';
+    final fillState = _realBinStates[normalizedCode] ?? 'EMPTY';
 
     Color bgColor = Colors.grey.shade200;
     Color textColor = AppColors.textPrimary;
@@ -664,13 +674,20 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    labelText,
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.pin_drop, size: 10, color: Colors.white),
+                      const SizedBox(width: 2),
+                      Text(
+                        labelText,
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
                   ),
                   if (skuQty != null)
                     Text(
-                      '$skuQty',
+                      'SL: $skuQty',
                       style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                 ],
