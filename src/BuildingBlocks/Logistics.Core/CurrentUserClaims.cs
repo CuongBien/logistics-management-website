@@ -6,8 +6,9 @@ public static class CurrentUserClaims
 {
     public static string? GetTenantId(ClaimsPrincipal user)
     {
-        return user.FindFirst("tenant_id")?.Value
+        var val = user.FindFirst("tenant_id")?.Value
             ?? user.FindFirst("tenant")?.Value;
+        return string.IsNullOrEmpty(val) ? "default-tenant" : val;
     }
 
     public static string? GetCustomerId(ClaimsPrincipal user)

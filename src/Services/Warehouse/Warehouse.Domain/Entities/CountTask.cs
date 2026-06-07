@@ -23,6 +23,8 @@ public class CountTask : Entity<Guid>, ISoftDelete
     public CountTaskStatus Status { get; private set; }
     public string? AssignedTo { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public DateTime? StartedAt { get; private set; }
+    public DateTime? CompletedAt { get; private set; }
     
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
@@ -49,6 +51,7 @@ public class CountTask : Entity<Guid>, ISoftDelete
     public void Assign(string operatorId)
     {
         AssignedTo = operatorId;
+        StartedAt = DateTime.UtcNow;
     }
 
     public void SubmitCount(int countedQty)
@@ -58,6 +61,11 @@ public class CountTask : Entity<Guid>, ISoftDelete
             
         CountedQty = countedQty;
         Status = CountTaskStatus.Counted;
+        CompletedAt = DateTime.UtcNow;
+        if (StartedAt == null)
+        {
+            StartedAt = CreatedAt;
+        }
     }
 
     public void MarkAdjusted()

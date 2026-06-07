@@ -95,6 +95,19 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
             _logger.LogInformation("Order {OrderId} is partially picked", order.Id);
         }
 
+        var activityLog = new OperatorActivityLog(
+            order.TenantId,
+            order.WarehouseId,
+            request.OperatorId,
+            "Pick",
+            pickTask.Id,
+            pickTask.OutboundOrderLine.Sku,
+            actualPickedQty,
+            pickTask.StartedAt ?? pickTask.CreatedAt,
+            pickTask.PickedAt ?? DateTime.UtcNow
+        );
+        _context.OperatorActivityLogs.Add(activityLog);
+
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("PickTask {TaskId} completed by {Operator}", pickTask.Id, request.OperatorId);
 

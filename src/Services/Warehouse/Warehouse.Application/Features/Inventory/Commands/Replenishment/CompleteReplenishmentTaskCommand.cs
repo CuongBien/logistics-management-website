@@ -59,6 +59,19 @@ public sealed class CompleteReplenishmentTaskCommandHandler : IRequestHandler<Co
 
         task.Complete();
         task.Assign(request.OperatorId);
+
+        var activityLog = new OperatorActivityLog(
+            task.TenantId,
+            task.WarehouseId,
+            request.OperatorId,
+            "Replenish",
+            task.Id,
+            task.Sku,
+            task.RequestedQty,
+            task.StartedAt ?? task.CreatedAt,
+            task.CompletedAt ?? DateTime.UtcNow
+        );
+        _context.OperatorActivityLogs.Add(activityLog);
         
         await _context.SaveChangesAsync(cancellationToken);
 

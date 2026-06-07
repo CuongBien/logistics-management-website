@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Warehouse.Application.Common.Interfaces;
+using Warehouse.Domain.Entities;
 using Warehouse.Domain.Enums;
 using Warehouse.Domain.Errors;
 
@@ -97,6 +98,19 @@ public class CompletePutawayTaskCommandHandler : IRequestHandler<CompletePutaway
 
         // 6. Complete the task
         task.Complete(destBin.Id, request.OperatorId);
+
+        var activityLog = new OperatorActivityLog(
+            task.TenantId,
+            task.WarehouseId,
+            request.OperatorId,
+            "Putaway",
+            task.Id,
+            task.Sku,
+            task.Quantity,
+            task.StartedAt ?? task.CreatedAt,
+            task.CompletedAt ?? DateTime.UtcNow
+        );
+        _context.OperatorActivityLogs.Add(activityLog);
         
         await _context.SaveChangesAsync(cancellationToken);
 

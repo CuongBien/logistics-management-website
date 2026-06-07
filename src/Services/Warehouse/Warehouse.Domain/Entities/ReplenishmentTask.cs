@@ -21,6 +21,8 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
     public ReplenishmentTaskStatus Status { get; private set; }
     public string? AssignedTo { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public DateTime? StartedAt { get; private set; }
+    public DateTime? CompletedAt { get; private set; }
     
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
@@ -55,6 +57,7 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
             throw new InvalidOperationException("Can only start pending tasks.");
             
         Status = ReplenishmentTaskStatus.InProgress;
+        StartedAt = DateTime.UtcNow;
     }
 
     public void Complete()
@@ -63,6 +66,11 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
             throw new InvalidOperationException("Can only complete in-progress tasks.");
             
         Status = ReplenishmentTaskStatus.Completed;
+        CompletedAt = DateTime.UtcNow;
+        if (StartedAt == null)
+        {
+            StartedAt = CreatedAt;
+        }
     }
 
     public void Cancel()

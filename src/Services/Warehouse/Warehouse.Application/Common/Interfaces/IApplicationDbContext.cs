@@ -46,6 +46,7 @@ public interface IApplicationDbContext
     DbSet<PutawayTask> PutawayTasks { get; }
     DbSet<PackVerification> PackVerifications { get; }
     DbSet<Notification> Notifications { get; }
+    DbSet<OperatorActivityLog> OperatorActivityLogs { get; }
     
     Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

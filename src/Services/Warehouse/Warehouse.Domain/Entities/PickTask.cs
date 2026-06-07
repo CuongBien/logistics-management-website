@@ -21,6 +21,7 @@ public class PickTask : Entity<Guid>
     public string? WaveId { get; private set; }
     public DateTime? PickedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public DateTime? StartedAt { get; private set; }
     
     // Put-To-Wall
     public string? TargetCubbyBinCode { get; private set; }
@@ -58,6 +59,7 @@ public class PickTask : Entity<Guid>
 
         Status = PickTaskStatus.InProgress;
         AssignedOperatorId = operatorId;
+        StartedAt = DateTime.UtcNow;
     }
 
     public void Complete(string operatorId)
@@ -68,6 +70,10 @@ public class PickTask : Entity<Guid>
         Status = PickTaskStatus.Completed;
         AssignedOperatorId = operatorId;
         PickedAt = DateTime.UtcNow;
+        if (StartedAt == null)
+        {
+            StartedAt = CreatedAt;
+        }
     }
 
     public void Cancel()

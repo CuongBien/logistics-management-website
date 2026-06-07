@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Warehouse.Application.Common.Interfaces;
+using Warehouse.Domain.Entities;
 using Warehouse.Domain.Errors;
 
 namespace Warehouse.Application.Features.Inventory.Commands.CycleCount;
@@ -41,6 +42,19 @@ public sealed class SubmitCountResultCommandHandler : IRequestHandler<SubmitCoun
 
         task.SubmitCount(request.CountedQty);
         task.Assign(request.OperatorId);
+
+        var activityLog = new OperatorActivityLog(
+            task.TenantId,
+            task.WarehouseId,
+            request.OperatorId,
+            "Count",
+            task.Id,
+            task.Sku,
+            request.CountedQty,
+            task.StartedAt ?? task.CreatedAt,
+            task.CompletedAt ?? DateTime.UtcNow
+        );
+        _context.OperatorActivityLogs.Add(activityLog);
         
         await _context.SaveChangesAsync(cancellationToken);
 

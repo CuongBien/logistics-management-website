@@ -49,6 +49,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<PutawayTask> PutawayTasks { get; set; } = default!;
     public DbSet<PackVerification> PackVerifications => Set<PackVerification>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<OperatorActivityLog> OperatorActivityLogs => Set<OperatorActivityLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

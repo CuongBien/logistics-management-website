@@ -24,6 +24,7 @@ public class Wave : Entity<Guid>, IAggregateRoot
     public int OrderCount { get; private set; }
     public WaveStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public string? AssignedOperatorId { get; private set; }
 
     private Wave() { }
 
@@ -41,6 +42,11 @@ public class Wave : Entity<Guid>, IAggregateRoot
     public static Wave Create(string waveNo, Guid warehouseId, WaveType type, int orderCount)
     {
         return new Wave(waveNo, warehouseId, type, orderCount);
+    }
+
+    public void Assign(string operatorId)
+    {
+        AssignedOperatorId = operatorId;
     }
 
     public void StartPicking()

@@ -19,6 +19,7 @@ public class PutawayTask : Entity<Guid>, IAggregateRoot
     public PutawayTaskStatus Status { get; private set; }
     public string? OperatorId { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public DateTime? StartedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
 
     // Navigation properties
@@ -51,6 +52,11 @@ public class PutawayTask : Entity<Guid>, IAggregateRoot
         CreatedAt = DateTime.UtcNow;
     }
 
+    public void Assign(string operatorId)
+    {
+        OperatorId = operatorId;
+    }
+
     public void Complete(Guid actualBinId, string operatorId)
     {
         if (Status != PutawayTaskStatus.Pending)
@@ -60,6 +66,7 @@ public class PutawayTask : Entity<Guid>, IAggregateRoot
         OperatorId = operatorId;
         Status = PutawayTaskStatus.Completed;
         CompletedAt = DateTime.UtcNow;
+        StartedAt = CreatedAt;
     }
 
     public void Cancel()
