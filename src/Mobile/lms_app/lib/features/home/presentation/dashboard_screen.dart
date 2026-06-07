@@ -399,8 +399,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -481,8 +481,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
     
     final pickTasks = task['pickTasks'] as List<dynamic>? ?? [];
 
@@ -601,8 +601,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -673,8 +673,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
