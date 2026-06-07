@@ -152,9 +152,8 @@ export default function OrdersPage() {
 
   // Fetch orders status summary KPIs dynamically
   const fetchSummary = useCallback(async () => {
-    if (!activeWarehouseId) return;
     try {
-      const res = await orderingService.getOrderStatusSummary(activeWarehouseId)
+      const res = await orderingService.getOrderStatusSummary()
       if (res.isSuccess && res.value) {
         const val = res.value
         const total = val.pending + val.dispatched + val.delivered + val.failed + val.cancelled
@@ -167,10 +166,9 @@ export default function OrdersPage() {
 
   // Fetch orders from mock API service
   const fetchOrders = useCallback(async () => {
-    if (!activeWarehouseId) return;
     setIsLoading(true)
     try {
-      const res = await orderingService.searchOrders(searchQuery, statusFilter, page, pageSize, activeWarehouseId)
+      const res = await orderingService.searchOrders(searchQuery, statusFilter, page, pageSize)
       if (res.isSuccess && res.value) {
         setOrders(res.value.orders)
         setTotalCount(res.value.totalCount)
@@ -181,13 +179,11 @@ export default function OrdersPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [searchQuery, statusFilter, page, pageSize, activeWarehouseId, fetchSummary])
+  }, [searchQuery, statusFilter, page, pageSize, fetchSummary])
 
   useEffect(() => {
-    if (activeWarehouseId) {
-      fetchOrders()
-    }
-  }, [fetchOrders, activeWarehouseId])
+    fetchOrders()
+  }, [fetchOrders])
 
   // Open Order detail Drawer panel and fetch metadata
   const handleViewDetails = async (order: Order) => {

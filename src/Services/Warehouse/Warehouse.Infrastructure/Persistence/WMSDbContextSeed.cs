@@ -34,6 +34,14 @@ public static class WMSDbContextSeed
                 await context.SaveChangesAsync();
             }
 
+            if (!await context.Roles.AnyAsync(r => r.Code == "WMS_SYSTEM_WH_ADMIN"))
+            {
+                logger.LogInformation("Seeding WMS_SYSTEM_WH_ADMIN Role...");
+                var systemWhAdminRole = new Role("WMS_SYSTEM_WH_ADMIN", "System Warehouse Administrator");
+                context.Roles.Add(systemWhAdminRole);
+                await context.SaveChangesAsync();
+            }
+
             // Link permissions to standard roles if missing
             var allPermissions = await context.Permissions.ToListAsync();
             
@@ -43,6 +51,16 @@ public static class WMSDbContextSeed
                 foreach (var perm in allPermissions)
                 {
                     adminRoleEntity.AddPermission(perm);
+                }
+            }
+
+            var systemWhAdminRoleEntity = await context.Roles.Include(r => r.RolePermissions).FirstOrDefaultAsync(r => r.Code == "WMS_SYSTEM_WH_ADMIN");
+            if (systemWhAdminRoleEntity != null)
+            {
+                var whManagePerm = allPermissions.FirstOrDefault(p => p.Code == "warehouse:manage");
+                if (whManagePerm != null)
+                {
+                    systemWhAdminRoleEntity.AddPermission(whManagePerm);
                 }
             }
 

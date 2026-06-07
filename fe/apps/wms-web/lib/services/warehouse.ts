@@ -44,3 +44,9 @@ export async function createBin(zoneId: string, data: {
     body: data,
   });
 }
+
+export async function deleteWarehouse(id: string): Promise<boolean> {
+  return fetchApi<boolean>('wms', `/Warehouse/${id}`, {
+    method: 'DELETE',
+  });
+}

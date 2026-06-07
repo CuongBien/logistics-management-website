@@ -40,6 +40,7 @@ export default function ReconciliationPage() {
   const [selectedSession, setSelectedSession] = useState<ReconciliationSession | null>(null)
   
   const [sessions, setSessions] = useState<ReconciliationSession[]>([])
+  const [allOrders, setAllOrders] = useState<OrderSummaryDto[]>([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ totalCod: 0, paidCod: 0, pendingCod: 0, totalFee: 0 })
 
@@ -54,6 +55,7 @@ export default function ReconciliationPage() {
         
         if (res && res.isSuccess && res.value) {
           const list = res.value.items || []
+          setAllOrders(list)
           
           // Compute overall stats
           const deliveredOrders = list.filter(o => o.status === 'Delivered' || o.status === 'Completed')
@@ -63,27 +65,66 @@ export default function ReconciliationPage() {
           const pendingCod = pendingOrders.reduce((sum, o) => sum + (o.codAmount || 0), 0)
           const totalCod = paidCod + pendingCod
           
-          const totalFee = list.reduce((sum, o) => sum + ((o.weight || 0) * 5000 + 15000), 0)
-          const paidFee = deliveredOrders.reduce((sum, o) => sum + ((o.weight || 0) * 5000 + 15000), 0)
+          const totalFee = list.reduce((sum, o) => sum + (o.shippingFee || (o.weight || 0) * 5000 + 15000), 0)
+          const paidFee = deliveredOrders.reduce((sum, o) => sum + (o.shippingFee || (o.weight || 0) * 5000 + 15000), 0)
           
           setStats({ totalCod, paidCod, pendingCod, totalFee })
           
-          // Generate simulated sessions based on real data
-          if (list.length > 0) {
-             const session1: ReconciliationSession = {
-                id: 'RC-REAL-1',
-                sessionNo: `RC${new Date().toISOString().slice(2,10).replace(/-/g, '')}01`,
-                createdAt: new Date().toISOString(),
-                period: 'Tháng này',
-                orderCount: deliveredOrders.length,
-                totalCod: paidCod,
-                totalFee: paidFee,
-                netAmount: paidCod - paidFee,
-                status: paidCod > 0 ? 'Processing' : 'Pending',
-                paymentMethod: 'Chuyển khoản Ngân hàng (VCB)'
-             }
-             setSessions([session1])
+          // Group delivered orders by Month-Year
+          const sessionsMap = new Map<string, OrderSummaryDto[]>()
+          list.forEach(o => {
+            if (o.status === 'Delivered' || o.status === 'Completed') {
+              const date = new Date(o.createdAt)
+              const monthYear = `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`
+              if (!sessionsMap.has(monthYear)) {
+                sessionsMap.set(monthYear, [])
+              }
+              sessionsMap.get(monthYear)!.push(o)
+            }
+          })
+
+          const generatedSessions: ReconciliationSession[] = []
+          let idx = 1
+          sessionsMap.forEach((ordersInMonth, period) => {
+            const periodCod = ordersInMonth.reduce((sum, o) => sum + (o.codAmount || 0), 0)
+            const periodFee = ordersInMonth.reduce((sum, o) => sum + (o.shippingFee || (o.weight || 0) * 5000 + 15000), 0)
+            const sessionNo = `RC${period.replace('/', '')}${String(idx).padStart(2, '0')}`
+            generatedSessions.push({
+              id: `RC-${period}`,
+              sessionNo,
+              createdAt: ordersInMonth[0]?.createdAt || new Date().toISOString(),
+              period: `Kỳ ${period}`,
+              orderCount: ordersInMonth.length,
+              totalCod: periodCod,
+              totalFee: periodFee,
+              netAmount: periodCod - periodFee,
+              status: 'Paid',
+              paymentMethod: 'Chuyển khoản Ngân hàng (VCB)'
+            })
+            idx++
+          })
+
+          // Add a pending/processing session for the current month's active/pending orders if any
+          if (pendingOrders.length > 0) {
+            const activeCod = pendingOrders.reduce((sum, o) => sum + (o.codAmount || 0), 0)
+            const activeFee = pendingOrders.reduce((sum, o) => sum + (o.shippingFee || (o.weight || 0) * 5000 + 15000), 0)
+            const currentPeriod = `${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`
+            
+            generatedSessions.unshift({
+              id: 'RC-PENDING',
+              sessionNo: `RC${currentPeriod.replace('/', '')}PEND`,
+              createdAt: new Date().toISOString(),
+              period: `Kỳ ${currentPeriod} (Hiện tại)`,
+              orderCount: pendingOrders.length,
+              totalCod: activeCod,
+              totalFee: activeFee,
+              netAmount: activeCod - activeFee,
+              status: 'Processing',
+              paymentMethod: 'Chờ đối soát định kỳ'
+            })
           }
+
+          setSessions(generatedSessions)
         }
       } catch (err) {
         console.error('Failed to load orders for reconciliation', err)
@@ -356,30 +397,42 @@ export default function ReconciliationPage() {
                 </div>
               </div>
 
-              {/* Sample Detail Order lines */}
+              {/* Dynamic Detail Order lines */}
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold">Danh sách đơn hàng trong phiên</h3>
-                <div className="max-h-48 overflow-y-auto border rounded-lg p-2 bg-muted/20 space-y-1.5">
-                  {[1, 2, 3].map((idx) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center text-xs p-2 rounded hover:bg-card border border-transparent hover:border-border"
-                    >
-                      <div className="space-y-0.5">
-                        <span className="font-mono font-medium text-foreground">
-                          SH24060100{idx}
-                        </span>
-                        <p className="text-[10px] text-muted-foreground">Người nhận: Nguyễn Văn {idx}</p>
+                <div className="max-h-48 overflow-y-auto border rounded-lg p-2 bg-muted/20 space-y-1.5 custom-scrollbar">
+                  {(() => {
+                    const sessionOrders = selectedSession.id === 'RC-PENDING'
+                      ? allOrders.filter(o => !['Delivered', 'Completed', 'Cancelled', 'Failed'].includes(o.status))
+                      : allOrders.filter(o => {
+                          if (o.status !== 'Delivered' && o.status !== 'Completed') return false;
+                          const date = new Date(o.createdAt);
+                          const monthYear = `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+                          return `RC-${monthYear}` === selectedSession.id;
+                        });
+                    
+                    if (sessionOrders.length === 0) {
+                      return <p className="text-center text-xs text-muted-foreground py-4">Không có đơn hàng nào trong phiên này.</p>;
+                    }
+
+                    return sessionOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="flex justify-between items-center text-xs p-2 rounded hover:bg-card border border-transparent hover:border-border"
+                      >
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-medium text-foreground">
+                            {order.waybillCode}
+                          </span>
+                          <p className="text-[10px] text-muted-foreground">Người nhận: {order.consigneeName}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-medium text-blue-600">COD: {formatVND(order.codAmount || 0)}</span>
+                          <p className="text-[10px] text-rose-500">Phí: -{formatVND(order.shippingFee || (order.weight || 0) * 5000 + 15000)}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="font-medium text-blue-600">COD: {formatVND(1200000 * idx)}</span>
-                        <p className="text-[10px] text-rose-500">Phí: -35.000₫</p>
-                      </div>
-                    </div>
-                  ))}
-                  <p className="text-center text-[10px] text-muted-foreground pt-1">
-                    ... và {selectedSession.orderCount - 3} đơn hàng khác
-                  </p>
+                    ));
+                  })()}
                 </div>
               </div>
 

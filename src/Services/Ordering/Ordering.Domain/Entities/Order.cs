@@ -110,6 +110,12 @@ public class Order : Entity<Guid>, IAggregateRoot
         return Result<Order>.Success(order);
     }
 
+    public void SetInboundWarehouses(string? sourceWarehouseId, string? destinationWarehouseId)
+    {
+        WarehouseId = sourceWarehouseId;
+        DestinationWarehouseId = destinationWarehouseId;
+    }
+
     public Result SetInWarehouseDirectly()
     {
         if (Status != OrderStatus.New)

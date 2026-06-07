@@ -33,6 +33,7 @@ export interface OrderSummaryDto {
   shippingFee: number;
   weight: number;
   createdAt: string;         // ISO datetime
+  warehouseId?: string;
   destinationWarehouseId?: string;
   consigneeName: string;     // Mapped từ Consignee.FullName
   consigneePhone: string;    // Mapped từ Consignee.Phone

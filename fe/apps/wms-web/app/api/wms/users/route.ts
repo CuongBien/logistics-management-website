@@ -315,14 +315,86 @@ export async function DELETE(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const deleteUser = searchParams.get('deleteUser') === 'true'
 
     if (!id) {
-      return NextResponse.json({ error: "Missing assignment ID parameter" }, { status: 400 })
+      return NextResponse.json({ error: "Missing ID parameter" }, { status: 400 })
     }
 
-    const apiUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment/${id}`
+    if (deleteUser) {
+      // 1. Get Admin Token for Keycloak
+      const adminUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/realms/master/protocol/openid-connect/token`
+      const adminRes = await fetch(adminUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: 'admin-cli',
+          username: process.env.KEYCLOAK_ADMIN || 'admin',
+          password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
+          grant_type: 'password',
+        }),
+        signal: AbortSignal.timeout(3000)
+      })
 
-    try {
+      if (!adminRes.ok) {
+        const errText = await adminRes.text()
+        console.error('Failed to get admin token from Keycloak during user deletion:', errText)
+        return NextResponse.json({ error: "Failed to authenticate with Keycloak", details: errText }, { status: adminRes.status })
+      }
+
+      const adminData = await adminRes.json()
+      const adminToken = adminData.access_token
+      const targetRealm = 'logistics_realm'
+
+      // 2. Delete User in Keycloak
+      const deleteUserUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users/${id}`
+      const kcDeleteRes = await fetch(deleteUserUrl, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+        signal: AbortSignal.timeout(3000)
+      })
+
+      if (!kcDeleteRes.ok && kcDeleteRes.status !== 404) {
+        const errText = await kcDeleteRes.text()
+        console.error('Failed to delete user in Keycloak:', errText)
+        return NextResponse.json({ error: "Failed to delete user in Keycloak Identity Provider", details: errText }, { status: kcDeleteRes.status })
+      }
+
+      // 3. Clear all WMS role assignments for this user
+      const rolesUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment`
+      const rolesRes = await fetch(rolesUrl, {
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`
+        },
+        signal: AbortSignal.timeout(3000)
+      })
+
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json()
+        if (rolesData.isSuccess) {
+          const assignments = rolesData.value || []
+          const userAssignments = assignments.filter((r: any) => r.operatorSub === id)
+          for (const assignment of userAssignments) {
+            await fetch(`${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment/${assignment.id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${session.accessToken}`
+              },
+              signal: AbortSignal.timeout(3000)
+            })
+          }
+        }
+      }
+
+      return NextResponse.json({ isSuccess: true, message: "User account and all WMS roles deleted successfully" })
+    } else {
+      // Standard flow: delete single role assignment
+      const apiUrl = `${process.env.WAREHOUSE_API_URL || 'http://127.0.0.1:5051'}/api/RoleAssignment/${id}`
+
       const res = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
@@ -339,12 +411,101 @@ export async function DELETE(req: Request) {
 
       const data = await res.json()
       return NextResponse.json(data)
-    } catch (fetchError: any) {
-      console.error(`Failed to connect to WMS backend for deleting role assignment ${id}:`, fetchError)
-      return NextResponse.json({ error: "WMS backend connection failed during deletion", details: fetchError.message }, { status: 500 })
     }
   } catch (error: any) {
-    console.error('Delete Role Global Error:', error)
+    console.error('Delete User/Role Global Error:', error)
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { operatorSub, email, firstName, lastName, password } = await req.json()
+
+    if (!operatorSub || !email || !firstName || !lastName) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // 1. Get Keycloak Admin Token
+    const adminUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/realms/master/protocol/openid-connect/token`
+    const adminRes = await fetch(adminUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: 'admin-cli',
+        username: process.env.KEYCLOAK_ADMIN || 'admin',
+        password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
+        grant_type: 'password',
+      }),
+      signal: AbortSignal.timeout(3000)
+    })
+
+    if (!adminRes.ok) {
+      const errText = await adminRes.text()
+      console.error('Failed to get Keycloak admin token during profile update:', errText)
+      return NextResponse.json({ error: "Failed to authenticate with Keycloak", details: errText }, { status: adminRes.status })
+    }
+
+    const adminData = await adminRes.json()
+    const adminToken = adminData.access_token
+    const targetRealm = 'logistics_realm'
+
+    // 2. Update user info in Keycloak
+    const updateUserUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users/${operatorSub}`
+    const updateRes = await fetch(updateUserUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        firstName,
+        lastName,
+      }),
+      signal: AbortSignal.timeout(3000)
+    })
+
+    if (!updateRes.ok) {
+      const errText = await updateRes.text()
+      console.error('Failed to update Keycloak user:', errText)
+      return NextResponse.json({ error: "Failed to update user profile in Keycloak", details: errText }, { status: updateRes.status })
+    }
+
+    // 3. Reset password if provided
+    if (password && password.trim().length >= 6) {
+      const resetPasswordUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users/${operatorSub}/reset-password`
+      const resetRes = await fetch(resetPasswordUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: "password",
+          value: password,
+          temporary: false
+        }),
+        signal: AbortSignal.timeout(3000)
+      })
+
+      if (!resetRes.ok) {
+        const errText = await resetRes.text()
+        console.error('Failed to reset user password in Keycloak:', errText)
+        return NextResponse.json({ error: "Failed to update user password in Keycloak", details: errText }, { status: resetRes.status })
+      }
+    }
+
+    return NextResponse.json({ isSuccess: true, message: "User profile updated successfully" })
+  } catch (error: any) {
+    console.error('Update User Global Error:', error)
     return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }

@@ -106,6 +106,7 @@ export default function OrdersPage() {
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: PAGE_SIZE.toString(),
+        type: 'Parcel',
       });
       if (debouncedSearch) params.append('searchTerm', debouncedSearch);
       const effectiveStatus = statusFilter === ('__all' as any) ? '' : statusFilter;

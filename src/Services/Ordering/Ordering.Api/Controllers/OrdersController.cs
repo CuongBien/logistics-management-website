@@ -59,7 +59,11 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<Result<Guid>>> CreateInboundRequest([FromBody] CreateInboundRequestCommand command)
     {
         var userId = CurrentUserClaims.GetCustomerId(User) ?? "Anonymous";
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var tenantId = CurrentUserClaims.GetTenantId(User);
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            tenantId = "default-tenant";
+        }
 
         var finalCommand = command with 
         { 

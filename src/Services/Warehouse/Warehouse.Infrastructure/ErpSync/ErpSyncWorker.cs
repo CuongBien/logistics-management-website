@@ -70,7 +70,7 @@ public class ErpSyncWorker : BackgroundService
         foreach (var sku in page.Items)
         {
             var existing = await dbContext.ErpSkuMirrors
-                .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ErpSkuId == sku.ErpSkuId, cancellationToken);
+                .FirstOrDefaultAsync(x => x.TenantId == tenantId && (x.ErpSkuId == sku.ErpSkuId || x.SkuCode == sku.SkuCode), cancellationToken);
 
             if (existing is null)
             {
@@ -86,7 +86,7 @@ public class ErpSyncWorker : BackgroundService
             }
             else if (sku.UpdatedAtErp >= existing.UpdatedAtErp)
             {
-                existing.ApplySync(sku.Name, sku.UnitOfMeasure, sku.Status, sku.UpdatedAtErp, syncedAt);
+                existing.ApplySync(sku.Name, sku.UnitOfMeasure, sku.Status, sku.UpdatedAtErp, syncedAt, sku.ErpSkuId);
             }
         }
 

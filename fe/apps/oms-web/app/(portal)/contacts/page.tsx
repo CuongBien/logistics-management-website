@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, PlusCircle, MapPin, Phone, User, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { fetchApi } from '@/lib/api-client';
+import { useSession } from 'next-auth/react';
 
 import type { PartnerDto } from '@/types/masterdata';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@repo/ui/components/card';
@@ -19,17 +20,19 @@ import {
 } from '@repo/ui/components/dropdown-menu';
 
 export default function ContactsPage() {
+  const { data: session } = useSession();
   const [contacts, setContacts] = useState<PartnerDto[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   const fetchContacts = async () => {
+    if (!session?.user?.id) return;
     try {
       setLoading(true);
       const res = await fetchApi<{
         isSuccess: boolean;
         value: { items: PartnerDto[] };
-      }>('masterdata', '/partners?page=1&pageSize=50');
+      }>('masterdata', `/partners?tenantId=${session.user.id}&page=1&pageSize=50`);
 
       if (res && res.isSuccess && res.value) {
         setContacts(res.value.items || []);
@@ -43,8 +46,10 @@ export default function ContactsPage() {
   };
 
   useEffect(() => {
-    fetchContacts();
-  }, []);
+    if (session?.user?.id) {
+      fetchContacts();
+    }
+  }, [session]);
 
   const filtered = contacts.filter((c) => {
     if (!search) return true;
@@ -135,7 +140,16 @@ export default function ContactsPage() {
                     <MapPin className="size-4 mt-0.5 shrink-0 text-slate-400" />
                     <div className="flex flex-col gap-1">
                       <span className="line-clamp-2 leading-relaxed" title={contact.address}>
-                        {contact.address || 'Chưa cập nhật địa chỉ'}
+                        {(() => {
+                          const addr = contact.address;
+                          if (addr && addr.startsWith('{')) {
+                            try {
+                              const parsed = JSON.parse(addr);
+                              return parsed.street || addr;
+                            } catch (e) {}
+                          }
+                          return addr || 'Chưa cập nhật địa chỉ';
+                        })()}
                       </span>
                       {contact.city && (
                         <span className="text-xs font-medium text-slate-500 bg-slate-100 w-fit px-2 py-0.5 rounded-md">
@@ -146,9 +160,19 @@ export default function ContactsPage() {
                   </div>
                   
                   <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <Badge variant="outline" className={contact.isActive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"}>
-                      {contact.isActive ? "Sẵn sàng" : "Đã ẩn"}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className={contact.isActive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"}>
+                        {contact.isActive ? "Sẵn sàng" : "Đã ẩn"}
+                      </Badge>
+                      {(() => {
+                        const isSender = contact.type === 0 || String(contact.type) === '0' || contact.type === 'Consignor';
+                        return (
+                          <Badge variant="secondary" className={isSender ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}>
+                            {isSender ? "Người gửi" : "Người nhận"}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

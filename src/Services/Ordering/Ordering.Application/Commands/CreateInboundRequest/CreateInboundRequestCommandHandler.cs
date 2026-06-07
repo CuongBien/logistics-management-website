@@ -26,26 +26,49 @@ public class CreateInboundRequestCommandHandler : IRequestHandler<CreateInboundR
         // 1. Validate SkuCodes
         var skuCodes = request.Items.Select(x => x.SkuCode).ToList();
         var skuMirrors = await _context.ErpSkuMirrors
-            .Where(x => x.TenantId == request.TenantId && x.Status == "active" && skuCodes.Contains(x.SkuCode))
+            .Where(x => (x.TenantId == request.TenantId || x.TenantId == "default-tenant") && x.Status == "active" && skuCodes.Contains(x.SkuCode))
             .ToListAsync(cancellationToken);
 
         var missingSkuCodes = skuCodes.Except(skuMirrors.Select(x => x.SkuCode)).ToArray();
+        // Register missing custom SKUs inline to support free-text inputs
         if (missingSkuCodes.Length > 0)
         {
-            return Result<Guid>.Failure(new Error(
-                "ErpSkuMirror.MissingMapping",
-                $"Cannot create inbound request because SKU mappings are missing for tenant '{request.TenantId}': {string.Join(", ", missingSkuCodes)}"));
+            foreach (var missingSkuCode in missingSkuCodes)
+            {
+                var newSku = ErpSkuMirror.Create(
+                    request.TenantId,
+                    $"custom-{Guid.NewGuid()}",
+                    missingSkuCode,
+                    missingSkuCode,
+                    "PCS",
+                    "active",
+                    DateTime.UtcNow,
+                    DateTime.UtcNow
+                );
+                _context.ErpSkuMirrors.Add(newSku);
+                skuMirrors.Add(newSku);
+            }
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // 2. Validate Destination Warehouse
         var warehouseMirror = await _context.ErpWarehouseMirrors
-            .FirstOrDefaultAsync(x => x.TenantId == request.TenantId && x.WarehouseCode == request.DestinationWarehouseCode && x.Status == "active", cancellationToken);
+            .FirstOrDefaultAsync(x => (x.TenantId == request.TenantId || x.TenantId == "default-tenant") && x.WarehouseCode == request.DestinationWarehouseCode && x.Status == "active", cancellationToken);
 
         if (warehouseMirror == null)
         {
-            return Result<Guid>.Failure(new Error(
-                "ErpWarehouseMirror.NotFound",
-                $"Destination warehouse with code '{request.DestinationWarehouseCode}' was not found or is inactive."));
+            // Register warehouse mirror dynamically to support newly created warehouses
+            warehouseMirror = ErpWarehouseMirror.Create(
+                request.TenantId,
+                $"custom-{Guid.NewGuid()}",
+                request.DestinationWarehouseCode,
+                $"Warehouse {request.DestinationWarehouseCode}",
+                "active",
+                DateTime.UtcNow,
+                DateTime.UtcNow
+            );
+            _context.ErpWarehouseMirrors.Add(warehouseMirror);
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // 3. Create Consignee (which points to the destination warehouse)
@@ -76,6 +99,7 @@ public class CreateInboundRequestCommandHandler : IRequestHandler<CreateInboundR
         }
 
         var order = orderResult.Value!;
+        order.SetInboundWarehouses(request.SourceWarehouseCode ?? request.DestinationWarehouseCode, request.DestinationWarehouseCode);
 
         // Add OrderItems
         foreach (var item in request.Items)

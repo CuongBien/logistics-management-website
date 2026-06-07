@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { fetchApi } from '@/lib/api-client';
+import { useSession } from 'next-auth/react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/ui/components/card';
 import { Button } from '@repo/ui/components/button';
@@ -32,6 +33,7 @@ const contactSchema = z.object({
 type ContactFormValues = z.infer<typeof contactSchema>;
 
 export default function CreateContactPage() {
+  const { data: session } = useSession();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
@@ -51,6 +53,8 @@ export default function CreateContactPage() {
       const res = await fetchApi<{ isSuccess: boolean }>('masterdata', '/partners', {
         method: 'POST',
         body: {
+          tenantId: session?.user?.id || null,
+          code: `ADDR-${Date.now()}`,
           name: data.name,
           phone: data.phone || null,
           address: data.address || null,

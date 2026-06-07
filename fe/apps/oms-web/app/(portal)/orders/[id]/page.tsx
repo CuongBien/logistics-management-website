@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft,
   Package,
@@ -108,13 +109,21 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+
+  const getWarehouseName = (idOrCode?: string) => {
+    if (!idOrCode) return '—';
+    const found = warehouses.find(w => w.id === idOrCode || w.code === idOrCode);
+    return found ? `${found.name} (${found.code})` : idOrCode;
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [orderRes, historyRes] = await Promise.all([
+      const [orderRes, historyRes, whRes] = await Promise.all([
         fetchApi<{ isSuccess: boolean; value: OrderDto }>('oms', `/orders/${id}`),
         fetchApi<{ isSuccess: boolean; value: OrderStatusHistoryDto[] }>('oms', `/orders/${id}/status-history`),
+        fetchApi<any>('wms', '/Warehouse?all=true'),
       ]);
 
       if (orderRes?.isSuccess && orderRes.value) {
@@ -122,6 +131,13 @@ export default function OrderDetailPage() {
       }
       if (historyRes?.isSuccess && historyRes.value) {
         setTimelineEvents(historyRes.value);
+      }
+      if (whRes) {
+        if (whRes.isSuccess && Array.isArray(whRes.value)) {
+          setWarehouses(whRes.value);
+        } else if (Array.isArray(whRes)) {
+          setWarehouses(whRes);
+        }
       }
     } catch (error) {
       console.error('Failed to load order details', error);
@@ -262,11 +278,16 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          <div className="text-right space-y-1">
-            <p className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(order.codAmount)}
-            </p>
-            <p className="text-xs text-muted-foreground">Tiền thu hộ (COD)</p>
+          <div className="flex flex-col items-end gap-3 shrink-0">
+            <div className="bg-white p-2 rounded-xl border shadow-sm dark:bg-slate-900">
+              <QRCodeSVG value={order.waybillCode} size={90} level="M" />
+            </div>
+            <div className="text-right space-y-1">
+              <p className="text-2xl font-bold text-emerald-600">
+                {formatCurrency(order.codAmount)}
+              </p>
+              <p className="text-xs text-muted-foreground">Tiền thu hộ (COD)</p>
+            </div>
           </div>
         </div>
 
@@ -283,25 +304,42 @@ export default function OrderDetailPage() {
         {/* Left – Order info */}
         <div className="lg:col-span-3 space-y-5">
 
-          {/* Người nhận */}
-          <Card className="shadow-sm rounded-xl overflow-hidden">
-            <CardHeader className="pb-3">
-              <SectionHeader
-                icon={MapPin}
-                title="Thông tin người nhận"
-                iconBg="bg-emerald-500/10"
-                iconColor="text-emerald-600"
-              />
-            </CardHeader>
-            <CardContent className="space-y-0">
-              <InfoRow icon={User} label="Họ tên" value={order.consignee?.fullName ?? '—'} valueClass="text-base font-semibold" />
-              <InfoRow icon={Phone} label="Số điện thoại" value={order.consignee?.phone ?? '—'} />
-              <InfoRow icon={MapPin} label="Địa chỉ" value={consigneeAddress || '—'} />
-              {order.consignee?.address?.state && (
-                <InfoRow icon={MapPin} label="Tỉnh/Thành phố" value={order.consignee.address.state} />
-              )}
-            </CardContent>
-          </Card>
+          {/* Người nhận / Kho nhận */}
+          {order.type === 'InboundRequest' ? (
+            <Card className="shadow-sm rounded-xl overflow-hidden">
+              <CardHeader className="pb-3">
+                <SectionHeader
+                  icon={MapPin}
+                  title="Thông tin kho điều chuyển"
+                  iconBg="bg-emerald-500/10"
+                  iconColor="text-emerald-600"
+                />
+              </CardHeader>
+              <CardContent className="space-y-0">
+                <InfoRow icon={MapPin} label="Kho nguồn (Source)" value={getWarehouseName(order.warehouseId)} valueClass="text-base font-semibold" />
+                <InfoRow icon={MapPin} label="Kho đích (Destination)" value={getWarehouseName(order.destinationWarehouseId)} valueClass="text-base font-semibold" />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="shadow-sm rounded-xl overflow-hidden">
+              <CardHeader className="pb-3">
+                <SectionHeader
+                  icon={MapPin}
+                  title="Thông tin người nhận"
+                  iconBg="bg-emerald-500/10"
+                  iconColor="text-emerald-600"
+                />
+              </CardHeader>
+              <CardContent className="space-y-0">
+                <InfoRow icon={User} label="Họ tên" value={order.consignee?.fullName ?? '—'} valueClass="text-base font-semibold" />
+                <InfoRow icon={Phone} label="Số điện thoại" value={order.consignee?.phone ?? '—'} />
+                <InfoRow icon={MapPin} label="Địa chỉ" value={consigneeAddress || '—'} />
+                {order.consignee?.address?.state && (
+                  <InfoRow icon={MapPin} label="Tỉnh/Thành phố" value={order.consignee.address.state} />
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Thông tin kiện hàng */}
           <Card className="shadow-sm rounded-xl overflow-hidden">
@@ -369,10 +407,10 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent className="space-y-0">
                 {order.warehouseId && (
-                  <InfoRow icon={MapPin} label="Kho xử lý" value={order.warehouseId} />
+                  <InfoRow icon={MapPin} label={order.type === 'InboundRequest' ? "Kho nguồn (Source)" : "Kho xử lý"} value={getWarehouseName(order.warehouseId)} />
                 )}
                 {order.destinationWarehouseId && (
-                  <InfoRow icon={MapPin} label="Kho đích" value={order.destinationWarehouseId} />
+                  <InfoRow icon={MapPin} label={order.type === 'InboundRequest' ? "Kho đích (Destination)" : "Kho đích"} value={getWarehouseName(order.destinationWarehouseId)} />
                 )}
                 {order.pickupDriverId && (
                   <InfoRow icon={User} label="Tài xế lấy hàng" value={order.pickupDriverId} />

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { 
   Scan, Search, QrCode, ClipboardList, Package, MapPin, Truck, RefreshCw, 
-  AlertCircle, CheckCircle2, XCircle, ArrowRight, Play, Database, History, 
+  AlertCircle, CheckCircle2, XCircle, ArrowRight, Database, History, 
   Volume2, VolumeX, Eye, Download, Info, Tag, Calendar, AlertTriangle, Layers
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/components/card"
@@ -510,38 +510,7 @@ export default function QrScannerPage() {
     setScanHistory(prev => [newLog, ...prev.slice(0, 19)])
   }
 
-  // Simulate scanning from the simulator panel
-  const simulateScan = (code: string) => {
-    setInputValue(code)
-    playBeep("success")
-    // Trigger submission asynchronously to mimic typing
-    setTimeout(() => {
-      setInputValue(code)
-      // Call handleSubmit with value
-      executeScanSimulated(code)
-    }, 150)
-  }
 
-  const executeScanSimulated = async (value: string) => {
-    setInputValue("")
-    setIsLoading(true)
-    try {
-      if (activeTab === "lookup") {
-        await executeLookup(value)
-      } else {
-        await executeAction(value)
-      }
-    } catch (err: any) {
-      console.error(err)
-      playBeep("error")
-      const errMsg = err.body?.message || err.message || "Đã xảy ra lỗi khi quét."
-      toast.error(errMsg)
-      addHistoryLog(value, "UNKNOWN", "error", errMsg)
-    } finally {
-      setIsLoading(false)
-      focusInput()
-    }
-  }
 
   // Load Printable QR Code
   const loadPrintQr = async (type: any, id: string, title: string) => {
@@ -1240,55 +1209,7 @@ export default function QrScannerPage() {
         </div>
       </div>
 
-      {/* Floating Scan Simulator Panel (Right-Side Collapsible Drawer helper for devs) */}
-      <div className="border-t border-border bg-card/90 backdrop-blur px-6 py-4 shrink-0">
-        <div className="flex items-center gap-1.5 mb-3 text-xs uppercase font-extrabold text-[#C41E3A] tracking-wider">
-          <Play className="h-4 w-4" />
-          Scan Simulator Panel (Hỗ trợ chạy thử nhanh cho Lập trình viên)
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-          
-          {/* Section: Bins */}
-          <div className="space-y-2 bg-muted/50 p-2.5 rounded-lg border border-border">
-            <span className="text-muted-foreground font-bold block text-[9px] uppercase tracking-wider mb-1">Mã ô kệ (Bin Code)</span>
-            <div className="flex gap-1.5 flex-wrap">
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("BIN:BIN-DOCK-01")}>BIN-DOCK-01</Button>
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("BIN:BIN-A01-01")}>BIN-A01-01</Button>
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("BIN:BIN-STAGING-OUT-01")}>STG-OUT-01</Button>
-            </div>
-          </div>
 
-          {/* Section: Products */}
-          <div className="space-y-2 bg-muted/50 p-2.5 rounded-lg border border-border">
-            <span className="text-muted-foreground font-bold block text-[9px] uppercase tracking-wider mb-1">Mã Sản Phẩm (SKU)</span>
-            <div className="flex gap-1.5 flex-wrap">
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("SKU:SKU-RED-TSHIRT")}>RED-TSHIRT</Button>
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("SKU:SKU-BLUE-JEANS")}>BLUE-JEANS</Button>
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("SKU:A0-001")}>A0-001</Button>
-            </div>
-          </div>
-
-          {/* Section: Orders */}
-          <div className="space-y-2 bg-muted/50 p-2.5 rounded-lg border border-border">
-            <span className="text-muted-foreground font-bold block text-[9px] uppercase tracking-wider mb-1">Mã Đơn / Carton</span>
-            <div className="flex gap-1.5 flex-wrap">
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("ORD:LMS20260001")}>ORD:LMS2026</Button>
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("OB:OUT-2026-0001")}>OB:OUT-2026</Button>
-            </div>
-          </div>
-
-          {/* Section: Pallet & Others */}
-          <div className="space-y-2 bg-muted/50 p-2.5 rounded-lg border border-border">
-            <span className="text-muted-foreground font-bold block text-[9px] uppercase tracking-wider mb-1">Mã Lô & Phiếu / Lỗi</span>
-            <div className="flex gap-1.5 flex-wrap">
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("SHP:SHP-2026-0001")}>SHP-2026</Button>
-              <Button size="sm" variant="secondary" className="h-7 text-[10px] font-mono bg-background hover:bg-muted border border-border text-foreground font-bold px-2.5" onClick={() => simulateScan("RCV:REC-2026-0001")}>REC-2026</Button>
-              <Button size="sm" variant="destructive" className="h-7 text-[10px] font-mono border border-rose-900 text-white font-bold px-2.5" onClick={() => simulateScan("INVALID:PAYLOAD:123")}>ERR_TEST</Button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Printable QR Code Dialog */}
       {printQrUrl && (

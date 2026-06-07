@@ -24,16 +24,29 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
         var skuMirrors = await _context.ErpSkuMirrors
-            .Where(x => x.TenantId == request.TenantId && x.Status == "active" && request.SkuCodes.Contains(x.SkuCode))
+            .Where(x => (x.TenantId == request.TenantId || x.TenantId == "default-tenant") && x.Status == "active" && request.SkuCodes.Contains(x.SkuCode))
             .ToListAsync(cancellationToken);
 
         var missingSkuCodes = request.SkuCodes.Except(skuMirrors.Select(x => x.SkuCode)).ToArray();
-
+        // Register missing custom SKUs inline to support free-text inputs
         if (missingSkuCodes.Length > 0)
         {
-            return Result<Guid>.Failure(new Error(
-                "ErpSkuMirror.MissingMapping",
-                $"Cannot create order because SKU mappings are missing for tenant '{request.TenantId}': {string.Join(", ", missingSkuCodes)}"));
+            foreach (var missingSkuCode in missingSkuCodes)
+            {
+                var newSku = ErpSkuMirror.Create(
+                    request.TenantId,
+                    $"custom-{Guid.NewGuid()}",
+                    missingSkuCode,
+                    missingSkuCode, // name is same as code for custom products
+                    "PCS",
+                    "active",
+                    DateTime.UtcNow,
+                    DateTime.UtcNow
+                );
+                _context.ErpSkuMirrors.Add(newSku);
+                skuMirrors.Add(newSku);
+            }
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // 1. Build Consignee Value Object

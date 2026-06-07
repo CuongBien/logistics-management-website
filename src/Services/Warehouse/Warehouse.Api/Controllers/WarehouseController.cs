@@ -4,6 +4,7 @@ using Warehouse.Application.Features.Layout.Commands.CreateBin;
 using Warehouse.Application.Features.Layout.Commands.CreateBlock;
 using Warehouse.Application.Features.Layout.Commands.CreateWarehouse;
 using Warehouse.Application.Features.Layout.Commands.CreateZone;
+using Warehouse.Application.Features.Layout.Commands.DeleteWarehouse;
 using Warehouse.Application.Features.Layout.Commands.UpdateBinStatus;
 using Warehouse.Application.Features.Layout.Queries;
 using Warehouse.Application.Features.Layout.Queries.ScanBinDetail;
@@ -14,6 +15,12 @@ namespace Warehouse.Api.Controllers;
 [Route("api/[controller]")]
 public class WarehouseController : ApiControllerBase
 {
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteWarehouse(Guid id)
+    {
+        var result = await Mediator.Send(new DeleteWarehouseCommand(id));
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+    }
     [HttpGet]
     public async Task<IActionResult> GetWarehouses([FromQuery] bool all = false)
     {

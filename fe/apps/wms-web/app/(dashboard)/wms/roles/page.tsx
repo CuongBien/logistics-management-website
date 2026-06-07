@@ -10,9 +10,11 @@ import { RoleDialog } from './components/RoleDialog';
 import { toast as sonnerToast } from 'sonner';
 import { usePermissions } from '@/components/wms/rbac/usePermissions';
 import { AccessDeniedMessage } from '@/components/wms/rbac/AccessDeniedMessage';
+import { useWarehouseContext } from '@/components/wms/rbac/WarehouseContext';
 
 export default function RolesPage() {
-  const { hasPermissionInAnyWarehouse, loading: authLoading } = usePermissions();
+  const { hasPermission, isSystemAdmin, loading: authLoading } = usePermissions();
+  const { activeWarehouseId } = useWarehouseContext();
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [permissions, setPermissions] = useState<PermissionDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +112,8 @@ export default function RolesPage() {
     }
   };
 
+  const hasAccess = isSystemAdmin || (activeWarehouseId ? hasPermission("role:manage", activeWarehouseId) : false);
+
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -119,7 +123,7 @@ export default function RolesPage() {
     );
   }
 
-  if (!hasPermissionInAnyWarehouse("role:manage")) {
+  if (!hasAccess) {
     return <AccessDeniedMessage />;
   }
 

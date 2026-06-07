@@ -33,10 +33,16 @@ export const getWarehouseHierarchy = async (id: string): Promise<WarehouseHierar
 // ----------------------------------------------------------------------------
 // 3. CREATE WAREHOUSE
 // ----------------------------------------------------------------------------
-export const createWarehouse = async (data: { code: string; name: string }) => {
+export const createWarehouse = async (data: { code: string; name: string; locationText: string }) => {
   return fetchApi<WarehouseDto>('wms', '/warehouse', {
     method: 'POST',
     body: data
+  });
+};
+
+export const deleteWarehouse = async (id: string): Promise<boolean> => {
+  return fetchApi<boolean>('wms', `/warehouse/${id}`, {
+    method: 'DELETE'
   });
 };
 

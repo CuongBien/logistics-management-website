@@ -21,10 +21,12 @@ import {
   QrCode,
   Printer,
   Plus,
-  Trash2
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 import type { CreateOrderFormValues, ProductType } from '@/types/oms';
+import { cn } from '@repo/ui/utils';
 import { OrderStepper } from '@/components/portal/order-stepper';
 import {
   Card,
@@ -220,7 +222,15 @@ const formSchema = z.object({
   width: z.coerce.number().min(0).optional(),
   height: z.coerce.number().min(0).optional(),
   productType: z.enum(['Document', 'Fragile', 'Electronic', 'Food', 'Clothing', 'Other']),
-  items: z.array(z.object({ sku: z.string().min(1, 'Vui lòng nhập SKU') })).min(1, 'Phải có ít nhất 1 sản phẩm'),
+  items: z.array(z.object({
+    sku: z.string().min(1, 'Vui lòng nhập SKU'),
+    quantity: z.coerce.number().min(1, 'Số lượng tối thiểu là 1'),
+    weight: z.coerce.number().min(0).optional(),
+    length: z.coerce.number().min(0).optional(),
+    width: z.coerce.number().min(0).optional(),
+    height: z.coerce.number().min(0).optional(),
+    productType: z.string().optional()
+  })).min(1, 'Phải có ít nhất 1 sản phẩm'),
   codAmount: z.coerce.number().min(0, 'Số tiền COD không hợp lệ'),
   notes: z.string().optional(),
 });
@@ -314,6 +324,7 @@ function AddressFields({
                   if (street && street.startsWith('{')) {
                     try { street = JSON.parse(street).street; } catch {}
                   }
+                  const isSender = (addr.type === 0 || String(addr.type) === '0' || addr.type === 'Consignor');
                   return (
                     <div 
                       key={addr.id} 
@@ -324,7 +335,14 @@ function AddressFields({
                       }}
                     >
                       <div className="font-semibold text-sm flex items-center justify-between">
-                        {addr.name}
+                        <span className="flex items-center gap-2">
+                          {addr.name}
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                            isSender ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {isSender ? 'Người gửi' : 'Người nhận'}
+                          </span>
+                        </span>
                         <span className="text-xs font-mono bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{addr.phone}</span>
                       </div>
                       {street && <div className="text-xs text-muted-foreground mt-1.5 truncate">{street}</div>}
@@ -489,9 +507,11 @@ function AddressFields({
 function ReviewStep({
   v,
   estimatedFee,
+  isSubmitting,
 }: {
   v: FormValues;
   estimatedFee: number;
+  isSubmitting: boolean;
 }) {
   const senderFullAddress = [
     v.senderAddress,
@@ -601,6 +621,35 @@ function ReviewStep({
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmation warning */}
+      <div className="flex items-start gap-2.5 p-3.5 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/40 rounded-xl text-yellow-800 dark:text-yellow-300 text-xs">
+        <AlertTriangle className="size-4 shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400" />
+        <p className="leading-normal">
+          <strong>Lưu ý:</strong> Vui lòng rà soát kỹ các thông tin ở trên. Nhấp nút <strong>"Xác nhận & Tạo đơn hàng"</strong> bên dưới hoặc ở góc phải thanh công cụ để hoàn tất quy trình tạo vận đơn.
+        </p>
+      </div>
+
+      {/* Big Submit Button inside card */}
+      <div className="flex justify-center pt-4">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full sm:w-auto min-w-[280px] h-12 text-base font-semibold gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all rounded-xl"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="size-5 animate-spin" />
+              Đang tạo đơn hàng...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="size-5" />
+              Xác nhận & Tạo đơn hàng
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -622,6 +671,19 @@ export default function CreateOrderPage() {
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<{id: string, waybillCode: string} | null>(null);
   const [availableSkus, setAvailableSkus] = useState<any[]>([]);
+  const [activeSkuSuggestion, setActiveSkuSuggestion] = useState<number | null>(null);
+  const [saveNewSku, setSaveNewSku] = useState(false);
+  const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
+  const [newSkuData, setNewSkuData] = useState({
+    skuCode: '',
+    name: '',
+    weight: '',
+    length: '',
+    width: '',
+    height: '',
+    type: 'Other'
+  });
+  const [isCreatingSku, setIsCreatingSku] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -643,11 +705,44 @@ export default function CreateOrderPage() {
       width: '' as any,
       height: '' as any,
       productType: 'Other',
-      items: [{ sku: '' }],
+      items: [{ sku: '', quantity: 1, weight: '' as any, length: '' as any, width: '' as any, height: '' as any, productType: 'Other' }],
       codAmount: '' as any,
       notes: '',
     },
   });
+
+  const recalculatePackageInfo = (items: any[]) => {
+    let totalWeight = 0;
+    let maxLength = 0;
+    let maxWidth = 0;
+    let totalHeight = 0;
+    let selectedType = 'Other';
+
+    items.forEach(item => {
+      const q = Number(item.quantity) || 1;
+      const w = Number(item.weight) || 0;
+      totalWeight += w * q;
+
+      const l = Number(item.length) || 0;
+      if (l > maxLength) maxLength = l;
+
+      const wd = Number(item.width) || 0;
+      if (wd > maxWidth) maxWidth = wd;
+
+      const h = Number(item.height) || 0;
+      totalHeight += h * q;
+
+      if (item.productType && item.productType !== 'Other') {
+        selectedType = item.productType;
+      }
+    });
+
+    form.setValue('weight', totalWeight > 0 ? Number(totalWeight.toFixed(2)) : '' as any, { shouldValidate: true });
+    form.setValue('length', maxLength > 0 ? maxLength : '' as any, { shouldValidate: true });
+    form.setValue('width', maxWidth > 0 ? maxWidth : '' as any, { shouldValidate: true });
+    form.setValue('height', totalHeight > 0 ? totalHeight : '' as any, { shouldValidate: true });
+    form.setValue('productType', selectedType as any, { shouldValidate: true });
+  };
 
   const watchedValues = form.watch();
   const { fields, append, remove } = useFieldArray({
@@ -669,17 +764,45 @@ export default function CreateOrderPage() {
         setLoadingAddresses(true);
         const res = await fetchApi<any>('masterdata', `/Partners?tenantId=${session.user.id}&pageSize=100`);
         const items = res?.value?.items || res?.items || res || [];
-        const consignees = items.filter((p: any) => p.type === 1 || p.type === 'Consignee');
-        const consignors = items.filter((p: any) => p.type === 0 || p.type === 'Consignor');
+        const consignees = items.filter((p: any) => p.type === 1 || String(p.type) === '1' || p.type === 'Consignee');
+        const consignors = items.filter((p: any) => p.type === 0 || String(p.type) === '0' || p.type === 'Consignor');
         setSavedAddresses(consignees);
         setSavedSenderAddresses(consignors);
 
         try {
           const skuRes = await fetchApi<any>('wms', '/inventory/skus');
-          if (skuRes && skuRes.value) {
-            setAvailableSkus(skuRes.value);
-          } else if (Array.isArray(skuRes)) {
-            setAvailableSkus(skuRes);
+          const rawSkus = skuRes?.value || skuRes || [];
+          if (Array.isArray(rawSkus)) {
+            const mapped = rawSkus.map((item: any) => {
+              let weight: number | undefined;
+              let length: number | undefined;
+              let width: number | undefined;
+              let height: number | undefined;
+              let type: string | undefined;
+              let displayName = item.name || '';
+
+              if (displayName.includes('|')) {
+                const parts = displayName.split('|');
+                displayName = parts[0];
+                if (parts[1]) weight = parseFloat(parts[1]);
+                if (parts[2]) length = parseFloat(parts[2]);
+                if (parts[3]) width = parseFloat(parts[3]);
+                if (parts[4]) height = parseFloat(parts[4]);
+                if (parts[5]) type = parts[5];
+              }
+
+              return {
+                ...item,
+                name: displayName,
+                weight: weight !== undefined ? weight : (item.weight !== undefined && item.weight !== null ? item.weight : 0.5),
+                length: length !== undefined ? length : (item.length !== undefined && item.length !== null ? item.length : 10),
+                width: width !== undefined ? width : (item.width !== undefined && item.width !== null ? item.width : 10),
+                height: height !== undefined ? height : (item.height !== undefined && item.height !== null ? item.height : 10),
+                type: type || item.type || 'Other'
+              };
+            });
+            const unique = Array.from(new Map(mapped.map((item: any) => [item.skuCode, item])).values());
+            setAvailableSkus(unique);
           }
         } catch (skuErr) {
           console.error("Failed to load SKUs:", skuErr);
@@ -693,7 +816,7 @@ export default function CreateOrderPage() {
     loadAddresses();
   }, [session]);
 
-  function handleSelectAddress(addr: any) {
+  function handleSelectAddress(addr: any, targetPrefix?: 'sender' | 'receiver') {
     if (!addr) return;
     
     let street = addr.address || '';
@@ -713,8 +836,8 @@ export default function CreateOrderPage() {
       }
     }
     
-    const isSender = (addr.type === 0 || addr.type === 'Consignor');
-    const prefix = isSender ? 'sender' : 'receiver';
+    const isSender = (addr.type === 0 || String(addr.type) === '0' || addr.type === 'Consignor');
+    const prefix = targetPrefix || (isSender ? 'sender' : 'receiver');
     
     form.setValue(`${prefix}Name` as any, addr.name || '');
     form.setValue(`${prefix}Phone` as any, addr.phone || '');
@@ -729,6 +852,84 @@ export default function CreateOrderPage() {
     
     form.setValue(`${prefix}Address` as any, street);
     toast.success(`Đã tự động điền địa chỉ của ${addr.name}!`);
+  }
+
+  async function handleCreateNewSku() {
+    if (!newSkuData.skuCode || !newSkuData.name) {
+      toast.error('Vui lòng nhập Mã SKU và Tên sản phẩm');
+      return;
+    }
+    try {
+      setIsCreatingSku(true);
+      // Ghép định dạng tên giống với hệ thống cũ: skuCode|weight|length|width|height|productType
+      const skuName = `${newSkuData.name}|${newSkuData.weight || 0}|${newSkuData.length || 0}|${newSkuData.width || 0}|${newSkuData.height || 0}|${newSkuData.type}`;
+      
+      const res = await fetchApi<any>('wms', '/inventory/skus', {
+        method: 'POST',
+        body: {
+          skuCode: newSkuData.skuCode.trim(),
+          name: skuName,
+          unitOfMeasure: 'PCS',
+          status: 'active'
+        }
+      });
+
+      if (res) {
+        toast.success('Khai báo SKU mới thành công!');
+        setIsSkuModalOpen(false);
+        // Reset modal data
+        setNewSkuData({
+          skuCode: '',
+          name: '',
+          weight: '',
+          length: '',
+          width: '',
+          height: '',
+          type: 'Other'
+        });
+
+        // Load lại danh sách SKU để cập nhật state gợi ý
+        const skuRes = await fetchApi<any>('wms', '/inventory/skus');
+        const rawSkus = skuRes?.value || skuRes || [];
+        if (Array.isArray(rawSkus)) {
+          const mapped = rawSkus.map((item: any) => {
+            let weight: number | undefined;
+            let length: number | undefined;
+            let width: number | undefined;
+            let height: number | undefined;
+            let type: string | undefined;
+            let displayName = item.name || '';
+
+            if (displayName.includes('|')) {
+              const parts = displayName.split('|');
+              displayName = parts[0];
+              if (parts[1]) weight = parseFloat(parts[1]);
+              if (parts[2]) length = parseFloat(parts[2]);
+              if (parts[3]) width = parseFloat(parts[3]);
+              if (parts[4]) height = parseFloat(parts[4]);
+              if (parts[5]) type = parts[5];
+            }
+
+            return {
+              ...item,
+              name: displayName,
+              weight: weight || item.weight,
+              length: length || item.length,
+              width: width || item.width,
+              height: height || item.height,
+              type: type || item.type
+            };
+          });
+          const unique = Array.from(new Map(mapped.map((item: any) => [item.skuCode, item])).values());
+          setAvailableSkus(unique);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to create SKU', err);
+      toast.error('Lỗi khi lưu sản phẩm mới');
+    } finally {
+      setIsCreatingSku(false);
+    }
   }
 
   async function handleNext() {
@@ -747,8 +948,16 @@ export default function CreateOrderPage() {
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
     
+    const skuCodes: string[] = [];
+    data.items.forEach(item => {
+      const q = Number(item.quantity) || 1;
+      for (let i = 0; i < q; i++) {
+        skuCodes.push(item.sku);
+      }
+    });
+
     const payload = {
-      skuCodes: data.items.map(i => i.sku),
+      skuCodes,
       consignee: {
         fullName: data.receiverName,
         phone: data.receiverPhone,
@@ -823,6 +1032,34 @@ export default function CreateOrderPage() {
           }
         }
 
+        // Save new SKUs to WMS if enabled
+        if (saveNewSku) {
+          const newItemsToSave = data.items.filter(item => {
+            const exists = availableSkus.some(s => s.skuCode?.toLowerCase() === item.sku.trim().toLowerCase());
+            return !exists;
+          });
+
+          for (const item of newItemsToSave) {
+            try {
+              const skuName = `${item.sku.trim()}|${item.weight || 0.5}|${item.length || 10}|${item.width || 10}|${item.height || 10}|${item.productType || 'Other'}`;
+              await fetchApi('wms', '/inventory/skus', {
+                method: 'POST',
+                body: {
+                  skuCode: item.sku.trim(),
+                  name: skuName,
+                  unitOfMeasure: 'PCS',
+                  status: 'active'
+                }
+              });
+            } catch (skuErr) {
+              console.error("Failed to save SKU to WMS:", item.sku, skuErr);
+            }
+          }
+          if (newItemsToSave.length > 0) {
+            toast.success('Đã lưu các sản phẩm mới vào danh mục SKU hệ thống!');
+          }
+        }
+
         try {
           const detailRes = await fetchApi<any>('oms', `/orders/${res.value}`);
           if (detailRes && detailRes.isSuccess && detailRes.value) {
@@ -866,8 +1103,8 @@ export default function CreateOrderPage() {
             prefix="sender"
             districtList={senderDistrictList}
             wardList={senderWardList}
-            savedAddresses={savedSenderAddresses}
-            onSelectAddress={handleSelectAddress}
+            savedAddresses={[...savedSenderAddresses, ...savedAddresses]}
+            onSelectAddress={(addr) => handleSelectAddress(addr, 'sender')}
             saveToContacts={saveSenderToContacts}
             onSaveToContactsChange={setSaveSenderToContacts}
           />
@@ -879,8 +1116,8 @@ export default function CreateOrderPage() {
             prefix="receiver"
             districtList={receiverDistrictList}
             wardList={receiverWardList}
-            savedAddresses={savedAddresses}
-            onSelectAddress={handleSelectAddress}
+            savedAddresses={[...savedSenderAddresses, ...savedAddresses]}
+            onSelectAddress={(addr) => handleSelectAddress(addr, 'receiver')}
             saveToContacts={saveToContacts}
             onSaveToContactsChange={setSaveToContacts}
           />
@@ -891,130 +1128,334 @@ export default function CreateOrderPage() {
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <FormLabel className="text-base">Danh sách sản phẩm (SKUs)</FormLabel>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ sku: '' })} className="h-8">
-                  <Plus className="size-3.5 mr-1.5" /> Thêm sản phẩm
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => append({ sku: '', quantity: 1, weight: '' as any, length: '' as any, width: '' as any, height: '' as any, productType: 'Other' })} className="h-8">
+                    <Plus className="size-3.5 mr-1.5" /> Thêm sản phẩm
+                  </Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setIsSkuModalOpen(true)} className="h-8 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60">
+                    <Plus className="size-3.5 mr-1.5" /> Khai báo sản phẩm mới
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-3">
+
+              {/* Modal Khai báo SKU mới */}
+              <Dialog open={isSkuModalOpen} onOpenChange={setIsSkuModalOpen}>
+                <DialogContent className="sm:max-w-[480px] rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Khai báo SKU sản phẩm mới</DialogTitle>
+                    <DialogDescription>
+                      Khai báo sản phẩm mới vào danh mục hệ thống để sử dụng lâu dài.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Mã SKU <span className="text-red-500">*</span></label>
+                        <Input
+                          placeholder="Mã SKU (vd: SP001)"
+                          value={newSkuData.skuCode}
+                          onChange={(e) => setNewSkuData({ ...newSkuData, skuCode: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Tên sản phẩm <span className="text-red-500">*</span></label>
+                        <Input
+                          placeholder="Tên sản phẩm (vd: Laptop Lenovo)"
+                          value={newSkuData.name}
+                          onChange={(e) => setNewSkuData({ ...newSkuData, name: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Trọng lượng (kg)</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.5"
+                          value={newSkuData.weight}
+                          onChange={(e) => setNewSkuData({ ...newSkuData, weight: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Loại hàng hóa</label>
+                        <Select
+                          value={newSkuData.type}
+                          onValueChange={(val) => setNewSkuData({ ...newSkuData, type: val })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn loại hàng" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Document">Tài liệu</SelectItem>
+                            <SelectItem value="Fragile">Hàng dễ vỡ</SelectItem>
+                            <SelectItem value="Electronic">Điện tử</SelectItem>
+                            <SelectItem value="Food">Thực phẩm</SelectItem>
+                            <SelectItem value="Clothing">Quần áo</SelectItem>
+                            <SelectItem value="Other">Khác</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Chiều dài (cm)</label>
+                        <Input
+                          type="number"
+                          placeholder="Dài"
+                          value={newSkuData.length}
+                          onChange={(e) => setNewSkuData({ ...newSkuData, length: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Chiều rộng (cm)</label>
+                        <Input
+                          type="number"
+                          placeholder="Rộng"
+                          value={newSkuData.width}
+                          onChange={(e) => setNewSkuData({ ...newSkuData, width: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Chiều cao (cm)</label>
+                        <Input
+                          type="number"
+                          placeholder="Cao"
+                          value={newSkuData.height}
+                          onChange={(e) => setNewSkuData({ ...newSkuData, height: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setIsSkuModalOpen(false)}>
+                      Hủy
+                    </Button>
+                    <Button
+                      onClick={handleCreateNewSku}
+                      disabled={isCreatingSku}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      {isCreatingSku ? 'Đang tạo...' : 'Xác nhận'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <div className="space-y-4">
                 {fields.map((field, index) => (
-                  <div key={field.id} className="flex items-start gap-3 animate-in fade-in duration-200">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.sku`}
-                      render={({ field: inputField }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <Select value={inputField.value} onValueChange={inputField.onChange}>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Chọn sản phẩm (SKU)" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableSkus.length > 0 ? (
-                                  availableSkus.map(sku => (
-                                    <SelectItem key={sku.id || sku.skuCode} value={sku.skuCode}>
-                                      {sku.name || sku.skuCode} ({sku.skuCode})
-                                    </SelectItem>
-                                  ))
-                                ) : (
-                                  <div className="p-2 text-sm text-muted-foreground text-center">Không có sản phẩm nào</div>
+                  <Card 
+                    key={field.id} 
+                    className={cn(
+                      "p-4 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl space-y-3 animate-in fade-in duration-200",
+                      activeSkuSuggestion === index ? "relative z-20" : "relative z-10"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.sku`}
+                        render={({ field: inputField }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel className="text-xs font-semibold">Mã sản phẩm (SKU) <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <div className="relative w-full">
+                                <Input
+                                  placeholder="Nhập SKU sản phẩm hoặc chọn..."
+                                  {...inputField}
+                                  onFocus={() => setActiveSkuSuggestion(index)}
+                                  onBlur={() => setTimeout(() => setActiveSkuSuggestion(null), 250)}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    inputField.onChange(val);
+
+                                    const selectedSku = availableSkus.find(s =>
+                                      s.skuCode?.toLowerCase() === val.trim().toLowerCase() ||
+                                      s.name?.toLowerCase() === val.trim().toLowerCase()
+                                    );
+                                    if (selectedSku) {
+                                      if (selectedSku.name?.toLowerCase() === val.trim().toLowerCase()) {
+                                        form.setValue(`items.${index}.sku` as any, selectedSku.skuCode, { shouldValidate: true, shouldDirty: true });
+                                      }
+                                      form.setValue(`items.${index}.weight` as any, selectedSku.weight ?? 0.5, { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.length` as any, selectedSku.length ?? 10, { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.width` as any, selectedSku.width ?? 10, { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.height` as any, selectedSku.height ?? 10, { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.productType` as any, selectedSku.type ?? 'Other', { shouldValidate: true, shouldDirty: true });
+                                    } else {
+                                      form.setValue(`items.${index}.weight` as any, '', { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.length` as any, '', { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.width` as any, '', { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.height` as any, '', { shouldValidate: true, shouldDirty: true });
+                                      form.setValue(`items.${index}.productType` as any, 'Other', { shouldValidate: true, shouldDirty: true });
+                                    }
+                                    setTimeout(() => {
+                                      recalculatePackageInfo(form.getValues().items);
+                                    }, 50);
+                                  }}
+                                />
+                                {activeSkuSuggestion === index && (
+                                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in duration-100">
+                                    {availableSkus
+                                      .filter(s => 
+                                        !inputField.value ||
+                                        s.skuCode?.toLowerCase().includes(inputField.value.toLowerCase()) ||
+                                        s.name?.toLowerCase().includes(inputField.value.toLowerCase())
+                                      )
+                                      .map((sku) => (
+                                        <div
+                                          key={sku.skuCode}
+                                          className="px-4 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer text-sm flex flex-col border-b last:border-0 border-slate-100 dark:border-slate-800/50"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            form.setValue(`items.${index}.sku` as any, sku.skuCode, { shouldValidate: true, shouldDirty: true });
+                                            form.setValue(`items.${index}.weight` as any, sku.weight ?? 0.5, { shouldValidate: true, shouldDirty: true });
+                                            form.setValue(`items.${index}.length` as any, sku.length ?? 10, { shouldValidate: true, shouldDirty: true });
+                                            form.setValue(`items.${index}.width` as any, sku.width ?? 10, { shouldValidate: true, shouldDirty: true });
+                                            form.setValue(`items.${index}.height` as any, sku.height ?? 10, { shouldValidate: true, shouldDirty: true });
+                                            form.setValue(`items.${index}.productType` as any, sku.type ?? 'Other', { shouldValidate: true, shouldDirty: true });
+                                            setTimeout(() => {
+                                              recalculatePackageInfo(form.getValues().items);
+                                            }, 50);
+                                            setActiveSkuSuggestion(null);
+                                          }}
+                                        >
+                                          <span className="font-semibold text-slate-800 dark:text-slate-200">{sku.name}</span>
+                                          <span className="text-xs text-muted-foreground font-mono">{sku.skuCode}</span>
+                                        </div>
+                                      ))}
+                                  </div>
                                 )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      {fields.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg mt-6" onClick={() => {
+                          remove(index);
+                          setTimeout(() => recalculatePackageInfo(form.getValues().items), 50);
+                        }}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-2 w-full pt-1">
+                      {/* Quantity */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field: qField }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-medium text-muted-foreground">Số lượng</FormLabel>
+                            <FormControl>
+                              <Input type="number" min="1" className="h-8 text-xs" {...qField} onChange={(e) => {
+                                qField.onChange(e.target.value);
+                                setTimeout(() => recalculatePackageInfo(form.getValues().items), 50);
+                              }} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      {/* Weight */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.weight`}
+                        render={({ field: wField }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-medium text-muted-foreground">Nặng (kg)</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" min="0" className="h-8 text-xs" {...wField} onChange={(e) => {
+                                wField.onChange(e.target.value);
+                                setTimeout(() => recalculatePackageInfo(form.getValues().items), 50);
+                              }} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      {/* Length */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.length`}
+                        render={({ field: lField }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-medium text-muted-foreground">Dài (cm)</FormLabel>
+                            <FormControl>
+                              <Input type="number" min="0" className="h-8 text-xs" {...lField} onChange={(e) => {
+                                lField.onChange(e.target.value);
+                                setTimeout(() => recalculatePackageInfo(form.getValues().items), 50);
+                              }} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      {/* Width */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.width`}
+                        render={({ field: wdField }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-medium text-muted-foreground">Rộng (cm)</FormLabel>
+                            <FormControl>
+                              <Input type="number" min="0" className="h-8 text-xs" {...wdField} onChange={(e) => {
+                                wdField.onChange(e.target.value);
+                                setTimeout(() => recalculatePackageInfo(form.getValues().items), 50);
+                              }} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      {/* Height */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.height`}
+                        render={({ field: hField }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-medium text-muted-foreground">Cao (cm)</FormLabel>
+                            <FormControl>
+                              <Input type="number" min="0" className="h-8 text-xs" {...hField} onChange={(e) => {
+                                hField.onChange(e.target.value);
+                                setTimeout(() => recalculatePackageInfo(form.getValues().items), 50);
+                              }} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      {/* Product Type */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.productType`}
+                        render={({ field: tField }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-medium text-muted-foreground">Loại hàng</FormLabel>
+                            <Select value={tField.value} onValueChange={(val) => {
+                              tField.onChange(val);
+                              setTimeout(() => recalculatePackageInfo(form.getValues().items), 50);
+                            }}>
+                              <FormControl>
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Chọn" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Document">Tài liệu</SelectItem>
+                                <SelectItem value="Fragile">Dễ vỡ</SelectItem>
+                                <SelectItem value="Electronic">Điện tử</SelectItem>
+                                <SelectItem value="Food">Thực phẩm</SelectItem>
+                                <SelectItem value="Clothing">Quần áo</SelectItem>
+                                <SelectItem value="Other">Khác</SelectItem>
                               </SelectContent>
                             </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {fields.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" className="text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => remove(index)}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
-                  </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </Card>
                 ))}
               </div>
             </div>
             <Separator className="md:col-span-2 my-2" />
-            <FormField
-              control={form.control}
-              name="weight"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Trọng lượng (kg)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.1" min="0" placeholder="0.5" {...field} value={field.value ?? ''} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="productType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Loại hàng hóa</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Chọn loại hàng" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {(Object.keys(productTypeLabels) as ProductType[]).map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {productTypeLabels[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Dimensions */}
-            <div className="md:col-span-2">
-              <p className="text-sm font-medium mb-2">Kích thước (cm) <span className="text-muted-foreground font-normal">- tùy chọn</span></p>
-              <div className="grid grid-cols-3 gap-3">
-                <FormField
-                  control={form.control}
-                  name="length"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input type="number" min="0" placeholder="Dài" {...field} value={field.value ?? ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="width"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input type="number" min="0" placeholder="Rộng" {...field} value={field.value ?? ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="height"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input type="number" min="0" placeholder="Cao" {...field} value={field.value ?? ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
 
             <FormField
               control={form.control}
@@ -1045,10 +1486,24 @@ export default function CreateOrderPage() {
                 </FormItem>
               )}
             />
+
+            {/* Save new SKU checkbox */}
+            <div className="md:col-span-2 flex items-center space-x-2 pt-2 border-t border-muted/50 mt-2">
+              <input
+                type="checkbox"
+                id="saveNewSku"
+                className="size-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                checked={saveNewSku}
+                onChange={(e) => setSaveNewSku(e.target.checked)}
+              />
+              <label htmlFor="saveNewSku" className="text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer select-none">
+                Lưu sản phẩm mới này vào danh sách SKU hệ thống (để sử dụng lần sau)
+              </label>
+            </div>
           </div>
         );
       case 3:
-        return <ReviewStep v={watchedValues} estimatedFee={estimatedFee} />;
+        return <ReviewStep v={watchedValues} estimatedFee={estimatedFee} isSubmitting={isSubmitting} />;
       case 4:
         if (!createdOrder) return null;
         return (
@@ -1139,9 +1594,9 @@ export default function CreateOrderPage() {
         <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-blue-500" />
         <CardContent className="pt-8 px-6 sm:px-10">
           {/* Stepper */}
-          <OrderStepper steps={steps} currentStep={currentStep} onStepClick={(s) => {
+          <OrderStepper steps={steps} currentStep={currentStep + 1} onStepClick={(s) => {
             // Only allow clicking back, not forward (validation required)
-            if (s < currentStep) setCurrentStep(s);
+            if (s - 1 < currentStep) setCurrentStep(s - 1);
           }} />
 
           <Separator className="my-6" />
@@ -1176,25 +1631,7 @@ export default function CreateOrderPage() {
                     Tiếp tục
                     <ArrowRight className="size-4" />
                   </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="gap-1.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white shadow-md hover:shadow-lg transition-all"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin" />
-                        Đang tạo...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="size-4" />
-                        Tạo đơn hàng
-                      </>
-                    )}
-                  </Button>
-                )}
+                ) : null}
               </div>
             </form>
           </Form>

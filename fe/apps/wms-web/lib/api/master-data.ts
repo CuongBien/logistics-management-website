@@ -183,3 +183,10 @@ export async function togglePartnerStatus(id: string): Promise<PartnerDto> {
     createdAt: new Date().toISOString()
   };
 }
+
+export async function deleteItem(skuCode: string): Promise<boolean> {
+  const res = await fetchApi<any>('wms', `/inventory/skus/${skuCode}`, {
+    method: 'DELETE'
+  });
+  return res?.isSuccess || res === true;
+}

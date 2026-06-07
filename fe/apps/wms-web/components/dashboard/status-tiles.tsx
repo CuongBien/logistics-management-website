@@ -1,6 +1,9 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Clock, Loader2, CheckCircle, AlertTriangle } from "lucide-react"
+import { getWorkloads, getDiscrepancies } from "@/lib/api/reports"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 interface StatusTileProps {
   title: string
@@ -11,65 +14,87 @@ interface StatusTileProps {
 }
 
 const colorClasses = {
-  blue: "bg-[#2563EB] text-white",
-  yellow: "bg-[#EAB308] text-black",
-  green: "bg-[#16A34A] text-white",
-  red: "bg-[#DC2626] text-white",
+  blue: "from-blue-600 to-indigo-700 text-white shadow-blue-500/10 hover:shadow-blue-500/20",
+  yellow: "from-amber-500 to-amber-600 text-white shadow-amber-500/10 hover:shadow-amber-500/20",
+  green: "from-emerald-600 to-teal-700 text-white shadow-emerald-500/10 hover:shadow-emerald-500/20",
+  red: "from-rose-600 to-red-700 text-white shadow-rose-500/10 hover:shadow-rose-500/20",
 }
 
 function StatusTile({ title, count, subtext, color, icon }: StatusTileProps) {
   return (
-    <div className={`${colorClasses[color]} p-3 flex flex-col justify-between h-full min-h-[90px]`}>
+    <div className={`bg-gradient-to-br ${colorClasses[color]} p-4 flex flex-col justify-between h-full min-h-[100px] transition-all duration-300 hover:-translate-y-0.5 shadow-md hover:shadow-lg rounded-lg border border-white/10`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide opacity-90">{title}</span>
-        <span className="opacity-80">{icon}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">{title}</span>
+        <span className="bg-white/10 p-1.5 rounded-md backdrop-blur-sm">{icon}</span>
       </div>
-      <div>
-        <div className="text-3xl font-bold">{count}</div>
-        <div className="text-xs opacity-80">{subtext}</div>
+      <div className="mt-3">
+        <div className="text-3xl font-extrabold tracking-tight">{count}</div>
+        <div className="text-[11px] opacity-85 mt-0.5 truncate">{subtext}</div>
       </div>
     </div>
   )
 }
 
 export function StatusTiles() {
+  const { activeWarehouseId } = useWarehouseContext()
+  const [data, setData] = useState({
+    pendingInbound: 0,
+    pendingOutbound: 0,
+    workInProgress: 0,
+    discrepancies: 0
+  })
+
+  useEffect(() => {
+    if (activeWarehouseId) {
+      Promise.all([
+        getWorkloads(activeWarehouseId),
+        getDiscrepancies(activeWarehouseId)
+      ]).then(([workloads, disc]) => {
+        setData({
+          pendingInbound: workloads.pendingInboundReceipts || 0,
+          pendingOutbound: workloads.pendingOutboundWaves || 0,
+          workInProgress: (workloads.pendingPutawayTasks || 0) + (workloads.pendingCrossDockTasks || 0),
+          discrepancies: (disc.unresolvedInboundDiscrepancies || 0) + (disc.unresolvedTransitDiscrepancies || 0)
+        })
+      }).catch(console.error)
+    }
+  }, [activeWarehouseId])
+
   const tiles: StatusTileProps[] = [
     {
-      title: "Orders Waiting",
-      count: 0,
-      subtext: "0 urgent, 0 standard",
+      title: "Inbound Waiting",
+      count: data.pendingInbound,
+      subtext: "Inbound receipts to process",
       color: "blue",
-      icon: <Clock className="h-5 w-5" />,
+      icon: <Clock className="h-4 w-4" />,
     },
     {
       title: "Work in Progress",
-      count: 0,
-      subtext: "0 picking, 0 packing",
+      count: data.workInProgress,
+      subtext: "Putaway & Cross-dock active",
       color: "yellow",
-      icon: <Loader2 className="h-5 w-5" />,
+      icon: <Loader2 className="h-4 w-4 animate-spin" />,
     },
     {
-      title: "Orders Finished",
-      count: 0,
-      subtext: "Today: +0 completed",
+      title: "Outbound Waiting",
+      count: data.pendingOutbound,
+      subtext: "Waves pending fulfillment",
       color: "green",
-      icon: <CheckCircle className="h-5 w-5" />,
+      icon: <CheckCircle className="h-4 w-4" />,
     },
     {
-      title: "Problems",
-      count: 0,
-      subtext: "0 stock issues, 0 delays",
+      title: "Problems & Discrepancies",
+      count: data.discrepancies,
+      subtext: "Unresolved inventory issues",
       color: "red",
-      icon: <AlertTriangle className="h-5 w-5" />,
+      icon: <AlertTriangle className="h-4 w-4" />,
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 border border-border">
-      {tiles.map((tile, index) => (
-        <div key={tile.title} className={index < tiles.length - 1 ? "border-r border-border/30" : ""}>
-          <StatusTile {...tile} />
-        </div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {tiles.map((tile) => (
+        <StatusTile key={tile.title} {...tile} />
       ))}
     </div>
   )

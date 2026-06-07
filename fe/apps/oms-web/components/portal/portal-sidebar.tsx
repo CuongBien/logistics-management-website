@@ -12,6 +12,7 @@ import {
   MapPin,
   BookUser,
   X,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -28,7 +29,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Đơn hàng', href: '/orders', icon: Package },
   { label: 'Tạo đơn mới', href: '/orders/create', icon: PlusCircle },
-  { label: 'Theo dõi đơn', href: '/tracking', icon: MapPin },
+  { label: 'Yêu cầu nhập kho', href: '/inbound-requests', icon: Warehouse },
   { label: 'Sổ địa chỉ', href: '/contacts', icon: BookUser },
   { label: 'Đối soát', href: '/reconciliation', icon: Wallet },
 ]

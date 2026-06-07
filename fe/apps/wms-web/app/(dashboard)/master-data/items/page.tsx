@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getItems, toggleActiveStatus } from "@/lib/api/master-data"
+import { getItems, toggleActiveStatus, deleteItem } from "@/lib/api/master-data"
 import { ItemDto } from "@/types/master-data"
 import { ItemMasterForm } from "@/components/wms/masterdata/ItemMasterForm"
 import { Button } from "@repo/ui/components/button"
@@ -33,7 +33,8 @@ import {
   CheckCircle2,
   XCircle,
   Database,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from "lucide-react"
 import { toast } from "sonner"
 import { Skeleton } from "@repo/ui/components/skeleton"
@@ -78,6 +79,24 @@ export default function ItemMasterPage() {
       }
     } catch (e: any) {
       toast.error(e.message || "Không thể chuyển đổi trạng thái hoạt động")
+    } finally {
+      setTogglingRows((prev) => ({ ...prev, [item.id]: false }))
+    }
+  }
+
+  const handleDeleteSku = async (item: ItemDto) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm SKU "${item.sku}"?`)) return;
+    try {
+      setTogglingRows((prev) => ({ ...prev, [item.id]: true }))
+      const success = await deleteItem(item.sku);
+      if (success) {
+        toast.success(`Đã xóa thành công sản phẩm SKU: ${item.sku}`);
+        fetchItemData();
+      } else {
+        toast.error("Không thể xóa sản phẩm SKU này");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Lỗi khi xóa sản phẩm SKU");
     } finally {
       setTogglingRows((prev) => ({ ...prev, [item.id]: false }))
     }
@@ -367,6 +386,18 @@ export default function ItemMasterPage() {
                           ) : (
                             <Unlock className="h-3.5 w-3.5" />
                           )}
+                        </Button>
+
+                        {/* Delete Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={togglingRows[item.id]}
+                          onClick={() => handleDeleteSku(item)}
+                          className="h-7 w-7 rounded-md hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-500 hover:text-rose-600 transition-colors"
+                          title="Xóa SKU khỏi Master Data"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>

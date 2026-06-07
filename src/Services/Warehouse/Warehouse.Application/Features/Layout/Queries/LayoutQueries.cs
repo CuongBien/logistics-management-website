@@ -23,7 +23,7 @@ public class LayoutQueryHandlers :
 
     public async Task<Result<List<WarehouseDto>>> Handle(GetWarehousesQuery request, CancellationToken cancellationToken)
     {
-        IQueryable<Warehouse.Domain.Entities.Warehouse> query = _context.Warehouses;
+        IQueryable<Warehouse.Domain.Entities.Warehouse> query = _context.Warehouses.Where(w => !w.IsDeleted);
 
         if (!string.IsNullOrEmpty(request.OperatorSub))
         {

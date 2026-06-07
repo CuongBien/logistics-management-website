@@ -31,12 +31,18 @@ public class GetSkusQueryHandler : IRequestHandler<GetSkusQuery, List<SkuDto>>
 
         if (!string.IsNullOrEmpty(request.TenantId))
         {
-            query = query.Where(i => i.TenantId == request.TenantId);
+            query = query.Where(i => i.TenantId == request.TenantId || i.TenantId == "default-tenant");
         }
 
         var items = await query.ToListAsync(cancellationToken);
 
-        return items.Select(i => new SkuDto(
+        // Deduplicate by SkuCode (case-insensitive), favoring the request.TenantId if there's a duplicate
+        var deduplicated = items
+            .GroupBy(i => i.SkuCode.ToUpperInvariant())
+            .Select(g => g.OrderByDescending(i => i.TenantId == request.TenantId).First())
+            .ToList();
+
+        return deduplicated.Select(i => new SkuDto(
             i.Id,
             i.TenantId,
             i.SkuCode,

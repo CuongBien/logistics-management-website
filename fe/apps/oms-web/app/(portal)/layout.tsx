@@ -19,6 +19,34 @@ function PortalContent({ children }: { children: React.ReactNode }) {
 
   const isAuthPage = AUTH_PAGES.includes(pathname);
 
+  // 1. Decode Keycloak access token to check if WMS staff
+  let isWmsStaff = false;
+  if (status === 'authenticated' && session?.accessToken) {
+    try {
+      const base64Url = session.accessToken.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const decoded = JSON.parse(jsonPayload);
+      const realmRoles = decoded.realm_access?.roles || [];
+      const resourceRoles = decoded.resource_access?.['wms-client']?.roles || [];
+      
+      isWmsStaff =
+        realmRoles.some((r: string) => r.startsWith('WMS_') || r === 'admin') ||
+        resourceRoles.some((r: string) => r.startsWith('WMS_')) ||
+        decoded.preferred_username === 'admin' ||
+        decoded.preferred_username?.startsWith('wms_') ||
+        decoded.email?.startsWith('admin@') ||
+        decoded.email?.startsWith('wms_');
+    } catch (e) {
+      console.error('Failed to decode token in OMS PortalContent', e);
+    }
+  }
+
   // FIX: Never call router.replace() during render — use useEffect to avoid React setState-in-render error
   useEffect(() => {
     if (status === 'unauthenticated' && !isAuthPage) {
@@ -35,6 +63,43 @@ function PortalContent({ children }: { children: React.ReactNode }) {
           <p className="text-sm text-muted-foreground font-medium animate-pulse">
             Đang xác thực thông tin...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Block WMS staff from entering OMS
+  if (status === 'authenticated' && isWmsStaff && !isAuthPage) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-900 text-white px-6">
+        <div className="max-w-md w-full bg-slate-800 rounded-2xl p-8 border border-slate-700 shadow-2xl text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="size-16 rounded-full bg-red-500/10 flex items-center justify-center border-2 border-red-500/20">
+              <span className="text-3xl">🚫</span>
+            </div>
+          </div>
+          <h2 className="text-xl font-bold text-red-500 uppercase tracking-wide">Truy Cập Bị Từ Chối</h2>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            Tài khoản <strong className="text-white">{session?.user?.name || 'nhân sự'}</strong> là nhân viên vận hành kho (WMS).
+            <br/>
+            Bạn không có quyền truy cập vào <strong>Cổng Khách Hàng (OMS)</strong>.
+          </p>
+          <div className="flex flex-col gap-3 pt-4">
+            <a 
+              href="http://localhost:3000" 
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/20 text-center"
+            >
+              Đi tới Cổng Vận Hành (WMS)
+            </a>
+            <button 
+              onClick={() => {
+                import('next-auth/react').then(m => m.signOut({ callbackUrl: '/login' }));
+              }}
+              className="w-full py-3 px-4 rounded-xl border border-slate-700 hover:bg-slate-700/50 text-sm font-semibold transition-colors"
+            >
+              Đăng xuất tài khoản
+            </button>
+          </div>
         </div>
       </div>
     );

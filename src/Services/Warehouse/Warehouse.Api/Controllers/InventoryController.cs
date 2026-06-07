@@ -83,7 +83,7 @@ public class InventoryController : ControllerBase
     [HttpGet("skus")]
     public async Task<IActionResult> GetSkus()
     {
-        var tenantId = CurrentUserClaims.GetTenantId(User);
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? CurrentUserClaims.GetCustomerId(User);
         var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Queries.GetSkus.GetSkusQuery(tenantId));
         return Ok(result);
     }
@@ -91,12 +91,21 @@ public class InventoryController : ControllerBase
     [HttpPost("skus")]
     public async Task<IActionResult> CreateSku([FromBody] Warehouse.Application.Features.Inventory.Commands.CreateSku.CreateSkuCommand command)
     {
-        var tokenTenant = CurrentUserClaims.GetTenantId(User);
+        var tokenTenant = CurrentUserClaims.GetTenantId(User) ?? CurrentUserClaims.GetCustomerId(User);
         if (!string.IsNullOrEmpty(tokenTenant))
         {
             command.TenantId = tokenTenant;
         }
         var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("skus/{skuCode}")]
+    public async Task<IActionResult> DeleteSku(string skuCode)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? CurrentUserClaims.GetCustomerId(User) ?? "tenant-1";
+        
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Commands.DeleteSku.DeleteSkuCommand(skuCode, tenantId));
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 

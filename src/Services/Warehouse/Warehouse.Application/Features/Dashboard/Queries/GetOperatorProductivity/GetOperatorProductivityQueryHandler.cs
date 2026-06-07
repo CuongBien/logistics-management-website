@@ -35,6 +35,8 @@ public class GetOperatorProductivityQueryHandler : IRequestHandler<GetOperatorPr
             .Where(id => !string.IsNullOrEmpty(id))
             .Distinct();
 
+        var profiles = await _context.OperatorProfiles.AsNoTracking().ToListAsync(cancellationToken);
+
         var list = new List<OperatorProductivityDto>();
 
         foreach (var operatorId in allOperatorIds)
@@ -48,7 +50,10 @@ public class GetOperatorProductivityQueryHandler : IRequestHandler<GetOperatorPr
             pending += putaways.Count(p => p.OperatorId == operatorId && p.Status != PutawayTaskStatus.Completed);
             completedToday += putaways.Count(p => p.OperatorId == operatorId && p.Status == PutawayTaskStatus.Completed && p.CompletedAt.HasValue && p.CompletedAt.Value.Date == today); 
 
-            list.Add(new OperatorProductivityDto(operatorId!, pending, completedToday));
+            var profile = profiles.FirstOrDefault(p => p.OperatorSub == operatorId || p.Id.ToString() == operatorId);
+            string displayName = profile != null ? profile.DisplayName : operatorId!;
+
+            list.Add(new OperatorProductivityDto(displayName, pending, completedToday));
         }
 
         return Result<List<OperatorProductivityDto>>.Success(list.OrderByDescending(x => x.CompletedTasksToday).ToList());

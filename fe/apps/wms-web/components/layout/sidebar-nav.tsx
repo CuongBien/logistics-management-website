@@ -32,6 +32,13 @@ import { useSession } from "next-auth/react"
 import { usePermissions } from "@/components/wms/rbac/usePermissions"
 import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 import { useRouter } from "next/navigation"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from "@repo/ui/components/dropdown-menu"
 
 interface NavSubItem {
   label: string
@@ -50,7 +57,7 @@ const navGroups: NavGroup[] = [
     groupLabel: "Tổng Quan",
     icon: <LayoutDashboard className="h-4 w-4" />,
     items: [
-      { label: "Dashboard", href: "/", icon: <LayoutDashboard className="h-4 w-4" /> },
+      { label: "Dashboard", href: "/wms", icon: <LayoutDashboard className="h-4 w-4" /> },
       { label: "Orders (OMS)", href: "/orders", icon: <ShoppingCart className="h-4 w-4" /> },
       { label: "Scanner (QR)", href: "/wms/scanner", icon: <QrCode className="h-4 w-4" /> },
       { label: "Reports", href: "/reports", icon: <BarChart3 className="h-4 w-4" /> },
@@ -114,7 +121,7 @@ export function SidebarNav() {
   // This means they want the menu to ONLY expand on hover. We'll enforce a thin sidebar.
   const [collapsed, setCollapsed] = useState(true)
   const { data: session } = useSession()
-  const { hasPermissionInAnyWarehouse, hasWmsAccess } = usePermissions()
+  const { hasPermission, hasPermissionInAnyWarehouse, hasWmsAccess } = usePermissions()
   const { activeWarehouseId } = useWarehouseContext()
   const router = useRouter()
 
@@ -215,7 +222,7 @@ export function SidebarNav() {
             // Filter out items based on user role manage permissions
             const visibleItems = group.items.filter(item => {
               if (item.href === "/wms/staff" || item.href === "/wms/roles") {
-                return hasPermissionInAnyWarehouse("role:manage")
+                return activeWarehouseId ? hasPermission("role:manage", activeWarehouseId) : false
               }
               return true
             })
@@ -228,45 +235,52 @@ export function SidebarNav() {
             if (collapsed) {
               const hasActiveChild = visibleItems.some(item => isActive(item.href))
               return (
-                <div key={group.groupLabel} className="relative group flex justify-center py-1">
-                  <div
-                    className={cn(
-                      "flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-150 cursor-pointer",
-                      hasActiveChild
-                        ? "bg-[#C41E3A] text-white shadow-sm shadow-[#C41E3A]/30"
-                        : "text-white/60 hover:text-white hover:bg-white/5"
-                    )}
-                  >
-                    {group.icon}
-                  </div>
-
-                  {/* Flyout popup */}
-                  <div className="hidden group-hover:flex absolute left-11 top-0 ml-1.5 w-48 bg-[#1e1e30] border border-[#2b2b40] rounded-xl shadow-2xl py-2 flex-col z-50 animate-in fade-in slide-in-from-left-2 duration-150">
-                    <div className="px-3 py-1 text-[10px] font-bold text-white/35 uppercase border-b border-white/5 mb-1.5 select-none">
-                      {group.groupLabel}
+                <DropdownMenu key={group.groupLabel}>
+                  <DropdownMenuTrigger asChild>
+                    <div className="relative flex justify-center py-1">
+                      <button
+                        className={cn(
+                          "flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-150 cursor-pointer focus:outline-none",
+                          hasActiveChild
+                            ? "bg-[#C41E3A] text-white shadow-sm shadow-[#C41E3A]/30"
+                            : "text-white/60 hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        {group.icon}
+                      </button>
                     </div>
-                    <div className="space-y-0.5 max-h-[300px] overflow-y-auto custom-scrollbar px-1">
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent 
+                    side="right" 
+                    align="start" 
+                    className="w-48 bg-[#1e1e30] border border-[#2b2b40] rounded-xl shadow-2xl py-2 flex flex-col z-50 text-white animate-in fade-in slide-in-from-left-2 duration-150"
+                  >
+                    <DropdownMenuLabel className="px-3 py-1 text-[10px] font-bold text-white/35 uppercase border-b border-white/5 mb-1.5 select-none">
+                      {group.groupLabel}
+                    </DropdownMenuLabel>
+                    <div className="space-y-0.5 px-1 max-h-[300px] overflow-y-auto custom-scrollbar">
                       {visibleItems.map((item) => {
                         const active = isActive(item.href)
                         return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            className={cn(
-                              "flex items-center gap-2.5 px-2.5 py-1.5 text-[11px] font-medium transition-all duration-150 rounded",
-                              active
-                                ? "bg-[#C41E3A]/15 text-[#ff4d6d] font-semibold"
-                                : "text-white/70 hover:text-white hover:bg-white/5"
-                            )}
-                          >
-                            <span className="shrink-0 scale-90">{item.icon}</span>
-                            <span className="truncate">{item.label}</span>
-                          </Link>
+                          <DropdownMenuItem key={item.href} asChild className="p-0 hover:bg-transparent focus:bg-transparent cursor-pointer">
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                "flex items-center gap-2.5 px-2.5 py-1.5 text-[11px] font-medium transition-all duration-150 rounded w-full",
+                                active
+                                  ? "bg-[#C41E3A]/15 text-[#ff4d6d] font-semibold"
+                                  : "text-white/70 hover:text-white hover:bg-white/5"
+                              )}
+                            >
+                              <span className="shrink-0 scale-90">{item.icon}</span>
+                              <span className="truncate">{item.label}</span>
+                            </Link>
+                          </DropdownMenuItem>
                         )
                       })}
                     </div>
-                  </div>
-                </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )
             }
 

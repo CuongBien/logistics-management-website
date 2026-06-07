@@ -15,9 +15,11 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '@/components/wms/rbac/usePermissions';
 import { AccessDeniedMessage } from '@/components/wms/rbac/AccessDeniedMessage';
+import { useWarehouseContext } from '@/components/wms/rbac/WarehouseContext';
 
 export default function StaffPage() {
-  const { hasPermissionInAnyWarehouse, loading: authLoading } = usePermissions();
+  const { hasPermission, isSystemAdmin, loading: authLoading, warehousePermissions } = usePermissions();
+  const { activeWarehouseId } = useWarehouseContext();
   const [operators, setOperators] = useState<OperatorDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,15 +47,38 @@ export default function StaffPage() {
     loadOperators();
   }, []);
 
-  // Derived stats
-  const totalStaff = operators.length;
-  const assignedStaff = operators.filter(op => op.roles.length > 0).length;
+  // Filter based on warehouses where current user has role:manage permission (if not system admin)
+  const adminWarehouseIds = useMemo(() => {
+    if (isSystemAdmin) return [];
+    return warehousePermissions
+      .filter(p => p.permissionCode === "role:manage")
+      .map(p => p.warehouseId);
+  }, [warehousePermissions, isSystemAdmin]);
+
+  const visibleOperators = useMemo(() => {
+    if (isSystemAdmin) return operators;
+    return operators.filter(op => 
+      op.roles.length === 0 || 
+      op.roles.some(r => adminWarehouseIds.includes(r.warehouseId))
+    );
+  }, [operators, isSystemAdmin, adminWarehouseIds]);
+
+  // Derived stats from visible operators
+  const totalStaff = visibleOperators.length;
+  const assignedStaff = visibleOperators.filter(op => op.roles.length > 0).length;
   const unassignedStaff = totalStaff - assignedStaff;
-  const totalRoleAssignments = operators.reduce((sum, op) => sum + op.roles.length, 0);
+  const totalRoleAssignments = visibleOperators.reduce((sum, op) => sum + op.roles.length, 0);
 
   // Filtered data
   const filteredOperators = useMemo(() => {
-    let result = operators;
+    let result = visibleOperators;
+
+    // Filter by active warehouse (if activeWarehouseId is set, except when filtering by unassigned status)
+    if (activeWarehouseId && filterStatus !== 'unassigned') {
+      result = result.filter(op =>
+        op.roles.some(r => r.warehouseId === activeWarehouseId)
+      );
+    }
 
     // Filter by assignment status
     if (filterStatus === 'assigned') {
@@ -73,7 +98,9 @@ export default function StaffPage() {
     }
 
     return result;
-  }, [operators, searchQuery, filterStatus]);
+  }, [visibleOperators, activeWarehouseId, filterStatus, searchQuery]);
+
+  const hasAccess = isSystemAdmin || (activeWarehouseId ? hasPermission("role:manage", activeWarehouseId) : false);
 
   if (authLoading) {
     return (
@@ -84,7 +111,7 @@ export default function StaffPage() {
     );
   }
 
-  if (!hasPermissionInAnyWarehouse("role:manage")) {
+  if (!hasAccess) {
     return <AccessDeniedMessage />;
   }
 

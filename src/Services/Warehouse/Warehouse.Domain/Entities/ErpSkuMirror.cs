@@ -46,12 +46,17 @@ public class ErpSkuMirror : Entity<Guid>
         string unitOfMeasure,
         string status,
         DateTime updatedAtErp,
-        DateTime syncedAt)
+        DateTime syncedAt,
+        string? erpSkuId = null)
     {
         Name = name;
         UnitOfMeasure = unitOfMeasure;
         Status = status;
         UpdatedAtErp = updatedAtErp;
         SyncedAt = syncedAt;
+        if (erpSkuId != null)
+        {
+            ErpSkuId = erpSkuId;
+        }
     }
 }

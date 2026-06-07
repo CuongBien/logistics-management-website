@@ -38,8 +38,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // 2. WMS internal routes
-  const isWmsAuthPage = pathname === '/login'
-  if (isWmsAuthPage) {
+  const isWmsPublicRoute = pathname === '/' || pathname === '/login'
+  if (isWmsPublicRoute) {
     return NextResponse.next()
   }
 

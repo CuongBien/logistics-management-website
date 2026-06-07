@@ -21,8 +21,10 @@ import {
   TooltipTrigger,
 } from '@repo/ui/components/tooltip';
 import {
-  ShieldPlus, ShieldCheck, ShieldAlert, Warehouse, Crown, Package, ScanLine, ClipboardList, UserCog
+  ShieldPlus, ShieldCheck, ShieldAlert, Warehouse, Crown, Package, ScanLine, ClipboardList, UserCog, Edit2, Trash2
 } from 'lucide-react';
+import { EditStaffDialog } from './EditStaffDialog';
+import { toast as sonnerToast } from 'sonner';
 
 interface OperatorDataTableProps {
   data: OperatorDto[];
@@ -98,6 +100,28 @@ function getRoleStyle(roleName: string) {
 
 export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTableProps) {
   const [selectedOperator, setSelectedOperator] = useState<OperatorDto | null>(null);
+  const [editingOperator, setEditingOperator] = useState<OperatorDto | null>(null);
+
+  const handleDeleteUser = async (id: string, name: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${name}" khỏi toàn hệ thống (bao gồm tài khoản Identity Keycloak)? Hành động này không thể hoàn tác.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/wms/users?id=${id}&deleteUser=true`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        sonnerToast.success(`Xóa nhân viên "${name}" thành công.`);
+        onRoleAssigned();
+      } else {
+        const err = await res.json();
+        sonnerToast.error(err.details || err.error || "Không thể xóa nhân viên.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      sonnerToast.error(`Lỗi hệ thống: ${e.message}`);
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -108,7 +132,7 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
               <TableHead className="font-bold w-[280px]">Nhân viên</TableHead>
               <TableHead className="font-bold">Email</TableHead>
               <TableHead className="font-bold">Phân quyền hiện tại</TableHead>
-              <TableHead className="font-bold text-right w-[140px]">Hành động</TableHead>
+              <TableHead className="font-bold text-right w-[260px]">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -189,15 +213,35 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
 
                   {/* Actions */}
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedOperator(op)}
-                      className="h-8 text-primary hover:bg-primary/10 font-medium opacity-70 group-hover:opacity-100 transition-opacity"
-                    >
-                      <ShieldPlus className="h-3.5 w-3.5 mr-1.5" />
-                      Phân quyền
-                    </Button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedOperator(op)}
+                        className="h-8 text-primary hover:bg-primary/10 font-medium opacity-70 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                      >
+                        <ShieldPlus className="h-3.5 w-3.5" />
+                        Phân quyền
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingOperator(op)}
+                        className="h-8 text-amber-600 hover:bg-amber-600/10 font-medium opacity-70 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                        Sửa
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteUser(op.operatorSub, op.fullName)}
+                        className="h-8 text-rose-600 hover:bg-rose-600/10 font-medium opacity-70 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Xóa
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -212,6 +256,18 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
             onOpenChange={(open) => !open && setSelectedOperator(null)}
             onSuccess={() => {
               setSelectedOperator(null);
+              onRoleAssigned();
+            }}
+          />
+        )}
+
+        {editingOperator && (
+          <EditStaffDialog
+            operator={editingOperator}
+            open={!!editingOperator}
+            onOpenChange={(open) => !open && setEditingOperator(null)}
+            onSuccess={() => {
+              setEditingOperator(null);
               onRoleAssigned();
             }}
           />

@@ -20,6 +20,7 @@ import { toast as sonnerToast } from 'sonner';
 import {
   UserPlus, Warehouse, UserCog, Loader2, Key, User, Mail
 } from 'lucide-react';
+import { usePermissions } from '@/components/wms/rbac/usePermissions';
 
 interface CreateStaffDialogProps {
   open: boolean;
@@ -28,6 +29,7 @@ interface CreateStaffDialogProps {
 }
 
 export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaffDialogProps) {
+  const { isSystemAdmin } = usePermissions();
   const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -295,14 +297,16 @@ export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaff
                   <SelectValue placeholder="Chọn vai trò..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.code} value={r.code}>
-                      <div className="flex items-center gap-2">
-                        <UserCog className="h-3.5 w-3.5 text-muted-foreground" />
-                        {r.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {roles
+                    .filter(r => isSystemAdmin || r.code !== "WMS_SYSTEM_WH_ADMIN")
+                    .map((r) => (
+                      <SelectItem key={r.code} value={r.code}>
+                        <div className="flex items-center gap-2">
+                          <UserCog className="h-3.5 w-3.5 text-muted-foreground" />
+                          {r.name}
+                        </div>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

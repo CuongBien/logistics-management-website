@@ -29,6 +29,7 @@ public record OrderSummaryDto(
     decimal ShippingFee,
     decimal Weight,
     DateTime CreatedAt,
+    string? WarehouseId,
     string? DestinationWarehouseId,
     string ConsigneeName,
     string ConsigneePhone
@@ -120,6 +121,7 @@ public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, Result<Pagi
                 x.ShippingFee,
                 x.Weight,
                 x.CreatedAt,
+                x.WarehouseId,
                 x.DestinationWarehouseId,
                 x.Consignee.FullName,
                 x.Consignee.Phone

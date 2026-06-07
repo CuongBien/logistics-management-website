@@ -30,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 
 import * as masterdataService from "@/lib/services/masterdata"
-import { getItems, toggleActiveStatus } from "@/lib/api/master-data"
+import { getItems, toggleActiveStatus, deleteItem } from "@/lib/api/master-data"
 import { ItemMasterForm } from "@/components/wms/masterdata/ItemMasterForm"
 import type { Partner } from "@/lib/types"
 import type { ItemDto } from "@/types/master-data"
@@ -166,6 +166,24 @@ export default function MasterDataHubPage() {
   const handleOpenEditItem = (item: ItemDto) => {
     setSelectedItem(item)
     setIsItemFormOpen(true)
+  }
+
+  const handleDeleteSku = async (item: ItemDto) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm SKU "${item.sku}"?`)) return;
+    try {
+      setTogglingRows((prev) => ({ ...prev, [item.id]: true }))
+      const success = await deleteItem(item.sku);
+      if (success) {
+        toast.success(`Đã xóa thành công sản phẩm SKU: ${item.sku}`);
+        loadItems();
+      } else {
+        toast.error("Không thể xóa sản phẩm SKU này");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Lỗi khi xóa sản phẩm SKU");
+    } finally {
+      setTogglingRows((prev) => ({ ...prev, [item.id]: false }))
+    }
   }
 
   // Client-side items filtering
@@ -634,6 +652,16 @@ export default function MasterDataHubPage() {
                               title={item.isActive ? "Ngừng hoạt động (Khóa SKU)" : "Kích hoạt hoạt động"}
                             >
                               {item.isActive ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={togglingRows[item.id]}
+                              onClick={() => handleDeleteSku(item)}
+                              className="h-7 w-7 rounded-md hover:bg-rose-50 dark:hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition-colors"
+                              title="Xóa SKU"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
