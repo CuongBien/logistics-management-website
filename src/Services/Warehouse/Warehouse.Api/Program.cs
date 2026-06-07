@@ -29,6 +29,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -122,7 +123,8 @@ builder.Services.AddAuthentication("Bearer")
                 "http://192.168.1.6:8080/realms/logistics_realm",
                 "http://192.168.1.6:18080/realms/logistics_realm",
                 "http://192.168.88.214:8080/realms/logistics_realm",
-                "http://192.168.88.214:18080/realms/logistics_realm"
+                "http://192.168.88.214:18080/realms/logistics_realm",
+                "http://192.168.88.144:18080/realms/logistics_realm"
             },
             ValidateAudience = false
         };

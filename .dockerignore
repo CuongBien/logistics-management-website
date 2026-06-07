@@ -1,8 +1,8 @@
 # Ignore frontend dependency and build output
-fe/node_modules
-fe/.next
-fe/out
-fe/build
+**/node_modules/
+**/.next/
+**/out/
+**/build/
 
 # Ignore C# build artifacts and dependencies
 **/bin/
@@ -19,6 +19,7 @@ fe/build
 *.log
 scratch/
 .gemini/
+brain/
 seq_logs.json
 
 # Ignore Git directory
