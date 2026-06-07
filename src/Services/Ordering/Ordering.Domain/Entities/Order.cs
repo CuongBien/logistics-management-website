@@ -125,6 +125,7 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result Confirm()
     {
+        if (Status == OrderStatus.AwaitingPickup) return Result.Success();
         if (Status != OrderStatus.New)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.AwaitingPickup)));
 
@@ -138,7 +139,8 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkPickedUp(string pickupDriverId)
     {
-        if (Status != OrderStatus.AwaitingPickup)
+        if (Status == OrderStatus.PickedUp) return Result.Success();
+        if (Status != OrderStatus.AwaitingPickup && Status != OrderStatus.New)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.PickedUp)));
 
         PickupDriverId = pickupDriverId;
@@ -154,8 +156,9 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkInWarehouse(string warehouseId, string receivedBy)
     {
-        // Allow multi-hop: AwaitingDispatch → InWarehouse when shipment arrives at destination warehouse
-        if (Status != OrderStatus.PickedUp && Status != OrderStatus.AwaitingInbound && Status != OrderStatus.AwaitingDispatch)
+        if (Status == OrderStatus.InWarehouse) return Result.Success();
+        // Allow multi-hop: PickedUp, AwaitingInbound, AwaitingDispatch, or New (for drop-off) -> InWarehouse
+        if (Status != OrderStatus.PickedUp && Status != OrderStatus.AwaitingInbound && Status != OrderStatus.AwaitingDispatch && Status != OrderStatus.New)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
 
         WarehouseId = warehouseId;
@@ -171,6 +174,7 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkSorted(string destinationWarehouseId)
     {
+        if (Status == OrderStatus.AwaitingDispatch) return Result.Success();
         if (Status != OrderStatus.InWarehouse)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.AwaitingDispatch)));
 
@@ -187,7 +191,8 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkDispatched(string driverId, string routeId)
     {
-        if (Status != OrderStatus.AwaitingDispatch)
+        if (Status == OrderStatus.Dispatched) return Result.Success();
+        if (Status != OrderStatus.AwaitingDispatch && Status != OrderStatus.Failed)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.Dispatched)));
 
         DeliveryDriverId = driverId;
@@ -204,6 +209,7 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkDelivered(string proofOfDeliveryUrl)
     {
+        if (Status == OrderStatus.Delivered) return Result.Success();
         if (Status != OrderStatus.Dispatched && Status != OrderStatus.Delivering)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.Delivered)));
 
@@ -221,6 +227,7 @@ public class Order : Entity<Guid>, IAggregateRoot
     /// </summary>
     public Result MarkFailed(string reason)
     {
+        if (Status == OrderStatus.Failed) return Result.Success();
         if (Status != OrderStatus.Dispatched && Status != OrderStatus.Delivering)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.Failed)));
 

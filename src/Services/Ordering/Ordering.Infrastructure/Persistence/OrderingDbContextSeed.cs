@@ -17,6 +17,13 @@ public static class OrderingDbContextSeed
         {
             logger.LogInformation("Seeding Ordering database...");
 
+            // Check if data already exists to avoid truncating and re-seeding
+            if (await context.Orders.AnyAsync())
+            {
+                logger.LogInformation("Orders already exist in Ordering database. Skipping truncation and re-seeding.");
+                return;
+            }
+
             // Clean Ordering transactional tables on every startup for fresh seed
             try
             {

@@ -32,6 +32,23 @@ public class OrderStatusChangedConsumer :
 
     public async Task Consume(ConsumeContext<OrderCreatedIntegrationEvent> context)
     {
+        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == context.Message.OrderId, context.CancellationToken);
+        if (order != null)
+        {
+            if (context.Message.FulfillmentMode == 1) // Pickup
+            {
+                order.Confirm();
+            }
+            else if (context.Message.FulfillmentMode == 2) // Dropoff
+            {
+                order.SetInWarehouseDirectly();
+            }
+            
+            // Prevent event-loop: this sync is triggered by an integration event
+            order.ClearDomainEvents();
+            await _context.SaveChangesAsync(context.CancellationToken);
+        }
+
         var consignorId = context.Message.ConsignorId;
         if (string.IsNullOrEmpty(consignorId)) return;
 
