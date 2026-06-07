@@ -35,7 +35,7 @@ public class OrdersController : ControllerBase
         var tenantId = CurrentUserClaims.GetTenantId(User);
         if (string.IsNullOrWhiteSpace(tenantId))
         {
-            tenantId = "tenant-1";
+            tenantId = "default-tenant";
         }
         
         _logger.LogInformation("Creating order... userId={UserId}, tenantId={TenantId}", userId, tenantId);
@@ -80,19 +80,26 @@ public class OrdersController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
         [FromQuery] string? fulfillment = null,
-        [FromQuery] string? searchTerm = null)
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] string? warehouseId = null)
     {
         // Default to user's tenant if not explicitly requesting another (or if no permission to query others)
         var userTenantId = CurrentUserClaims.GetTenantId(User);
-        var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) ? userTenantId : tenantId;
+        if (string.IsNullOrWhiteSpace(userTenantId))
+        {
+            userTenantId = "default-tenant";
+        }
+        var effectiveTenantId = userTenantId;
         
         var isAdmin = User.IsInRole("Admin");
         var userCustomerId = CurrentUserClaims.GetCustomerId(User);
-        var effectiveConsignorId = isAdmin ? consignorId : (string.IsNullOrWhiteSpace(consignorId) ? userCustomerId : consignorId);
+        
+        // If not an admin, they can ONLY see their own orders.
+        var effectiveConsignorId = isAdmin ? consignorId : userCustomerId;
         
         _logger.LogInformation("GetOrders: page={Page}, pageSize={PageSize}, tenantId={TenantId}, consignorId={ConsignorId}", page, pageSize, effectiveTenantId, effectiveConsignorId);
 
-        var query = new GetOrdersQuery(page, pageSize, effectiveTenantId, effectiveConsignorId, status, type, fulfillment, searchTerm);
+        var query = new GetOrdersQuery(page, pageSize, effectiveTenantId, effectiveConsignorId, status, type, fulfillment, searchTerm, warehouseId);
         var result = await _mediator.Send(query);
         
         if (result.IsSuccess) 

@@ -18,12 +18,12 @@ public class PutawayTasksController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetPutawayTasks()
+    public async Task<IActionResult> GetPutawayTasks([FromQuery] Guid? warehouseId)
     {
         var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         Console.WriteLine($"[PutawayTasksController] GetPutawayTasks called. Sub: '{operatorSub}'");
         
-        var query = new Warehouse.Application.Features.Inbound.Queries.GetPutawayTasksList.GetPutawayTasksListQuery(operatorSub);
+        var query = new Warehouse.Application.Features.Inbound.Queries.GetPutawayTasksList.GetPutawayTasksListQuery(operatorSub, warehouseId);
         var result = await _mediator.Send(query);
         
         if (result.IsSuccess)

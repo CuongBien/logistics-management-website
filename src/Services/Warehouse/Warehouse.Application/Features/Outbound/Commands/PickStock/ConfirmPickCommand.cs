@@ -11,19 +11,26 @@ namespace Warehouse.Application.Features.Outbound.Commands.PickStock;
 
 public record ConfirmPickCommand(
     Guid PickTaskId, 
-    string OperatorId) : IRequest<Result<bool>>;
+    string OperatorId,
+    int? PickedQuantity = null) : IRequest<Result<bool>>;
 
 public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickCommand, Result<bool>>
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<ConfirmPickCommandHandler> _logger;
     private readonly IOperatorAuthorizationService _authService;
+    private readonly INotificationService _notificationService;
 
-    public ConfirmPickCommandHandler(IApplicationDbContext context, ILogger<ConfirmPickCommandHandler> logger, IOperatorAuthorizationService authService)
+    public ConfirmPickCommandHandler(
+        IApplicationDbContext context, 
+        ILogger<ConfirmPickCommandHandler> logger, 
+        IOperatorAuthorizationService authService,
+        INotificationService notificationService)
     {
         _context = context;
         _logger = logger;
         _authService = authService;
+        _notificationService = notificationService;
     }
 
     public async Task<Result<bool>> Handle(ConfirmPickCommand request, CancellationToken cancellationToken)
@@ -57,7 +64,19 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
 
         // Update Line
         var line = pickTask.OutboundOrderLine;
-        line.UpdatePicked(line.PickedQty + pickTask.Quantity);
+        var actualPickedQty = request.PickedQuantity ?? pickTask.Quantity;
+        line.UpdatePicked(line.PickedQty + actualPickedQty);
+
+        if (actualPickedQty < pickTask.Quantity)
+        {
+            await _notificationService.NotifyAsync(
+                "Thiếu Hàng Khi Pick (Short Pick)",
+                $"Task Pick {pickTask.Id} chỉ lấy được {actualPickedQty}/{pickTask.Quantity} sản phẩm {line.Sku}.",
+                Domain.Entities.NotificationType.Error,
+                Domain.Entities.NotificationCategory.ShortPick,
+                order.WarehouseId,
+                cancellationToken: cancellationToken);
+        }
 
         // Check if all lines are fully picked
         

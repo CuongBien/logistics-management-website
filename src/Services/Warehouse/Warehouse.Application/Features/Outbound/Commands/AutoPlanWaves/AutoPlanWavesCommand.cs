@@ -108,7 +108,7 @@ public sealed class AutoPlanWavesCommandHandler : IRequestHandler<AutoPlanWavesC
             string waveNo = $"WAVE-SGL-{nowTimestamp}-{sglIndex:D2}";
             var wave = Wave.Create(waveNo, request.WarehouseId, WaveType.SingleItem, chunk.Length);
             
-            if (ProcessChunk(chunk, allReservations, waveNo))
+            if (ProcessChunk(chunk, allReservations, wave.Id.ToString()))
             {
                 _context.Waves.Add(wave);
                 createdWaves.Add(waveNo);
@@ -125,7 +125,7 @@ public sealed class AutoPlanWavesCommandHandler : IRequestHandler<AutoPlanWavesC
             string waveNo = $"WAVE-MUL-{nowTimestamp}-{mulIndex:D2}";
             var wave = Wave.Create(waveNo, request.WarehouseId, WaveType.MultiItem, chunk.Length);
             
-            if (ProcessChunk(chunk, allReservations, waveNo))
+            if (ProcessChunk(chunk, allReservations, wave.Id.ToString()))
             {
                 _context.Waves.Add(wave);
                 createdWaves.Add(waveNo);

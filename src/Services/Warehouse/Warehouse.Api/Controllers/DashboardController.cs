@@ -24,44 +24,44 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("capacity")]
-    public async Task<ActionResult<Result<WarehouseCapacityDto>>> GetCapacity()
+    public async Task<ActionResult<Result<WarehouseCapacityDto>>> GetCapacity([FromQuery] Guid? warehouseId)
     {
-        var result = await _mediator.Send(new GetWarehouseCapacityQuery());
+        var result = await _mediator.Send(new GetWarehouseCapacityQuery(warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 
     [HttpGet("inventory")]
-    public async Task<ActionResult<Result<InventoryStatsDto>>> GetInventoryStats()
+    public async Task<ActionResult<Result<InventoryStatsDto>>> GetInventoryStats([FromQuery] Guid? warehouseId)
     {
-        var result = await _mediator.Send(new GetInventoryStatsQuery());
+        var result = await _mediator.Send(new GetInventoryStatsQuery(warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 
     [HttpGet("workloads")]
-    public async Task<ActionResult<Result<PendingWorkloadsDto>>> GetWorkloads()
+    public async Task<ActionResult<Result<PendingWorkloadsDto>>> GetWorkloads([FromQuery] Guid? warehouseId)
     {
-        var result = await _mediator.Send(new GetPendingWorkloadsQuery());
+        var result = await _mediator.Send(new GetPendingWorkloadsQuery(warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 
     [HttpGet("discrepancies")]
-    public async Task<ActionResult<Result<DiscrepanciesStatsDto>>> GetDiscrepancies()
+    public async Task<ActionResult<Result<DiscrepanciesStatsDto>>> GetDiscrepancies([FromQuery] Guid? warehouseId)
     {
-        var result = await _mediator.Send(new GetDiscrepanciesStatsQuery());
+        var result = await _mediator.Send(new GetDiscrepanciesStatsQuery(warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 
     [HttpGet("operator-productivity")]
-    public async Task<ActionResult<Result<List<OperatorProductivityDto>>>> GetOperatorProductivity()
+    public async Task<ActionResult<Result<List<OperatorProductivityDto>>>> GetOperatorProductivity([FromQuery] Guid? warehouseId)
     {
-        var result = await _mediator.Send(new GetOperatorProductivityQuery());
+        var result = await _mediator.Send(new GetOperatorProductivityQuery(warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 
     [HttpGet("top-skus")]
-    public async Task<ActionResult<Result<List<TopMovingSkuDto>>>> GetTopMovingSkus()
+    public async Task<ActionResult<Result<List<TopMovingSkuDto>>>> GetTopMovingSkus([FromQuery] Guid? warehouseId)
     {
-        var result = await _mediator.Send(new GetTopMovingSkusQuery());
+        var result = await _mediator.Send(new GetTopMovingSkusQuery(warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 }

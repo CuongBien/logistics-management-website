@@ -12,6 +12,7 @@ namespace MasterData.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class PartnersController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -25,10 +26,26 @@ public class PartnersController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreatePartnerCommand command)
     {
         // Inject tenantId if available
-        var tenantId = User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
-        if (!string.IsNullOrEmpty(tenantId) && string.IsNullOrEmpty(command.TenantId))
+        var isAdmin = User.IsInRole("Admin");
+        var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
+        var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        // Customers store their address book under their own SUB. Admins store in the TENANT.
+        var effectiveTenantId = isAdmin ? (claimTenant ?? "default-tenant") : (claimSub ?? "default-tenant");
+
+        if (string.IsNullOrEmpty(command.TenantId))
         {
-            command = command with { TenantId = tenantId };
+            command = command with { TenantId = effectiveTenantId };
+        }
+
+        if (string.IsNullOrWhiteSpace(command.Code))
+        {
+            command = command with { Code = $"CUST-{Guid.NewGuid().ToString()[..8].ToUpper()}" };
+        }
+        
+        if (command.Type == 0)
+        {
+            command = command with { Type = MasterData.Domain.Enums.PartnerType.Consignee };
         }
 
         var result = await _mediator.Send(command);
@@ -45,9 +62,13 @@ public class PartnersController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] string? tenantId = null)
     {
-        var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) 
-            ? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value ?? "tenant-1" 
-            : tenantId;
+        var isAdmin = User.IsInRole("Admin");
+        var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
+        var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        var effectiveTenantId = isAdmin 
+            ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
+            : (claimSub ?? "default-tenant");
 
         var query = new GetPartnersQuery(effectiveTenantId, searchTerm, page, pageSize);
         var result = await _mediator.Send(query);
@@ -57,9 +78,13 @@ public class PartnersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Result<PartnerDto>>> GetById(Guid id, [FromQuery] string? tenantId = null)
     {
-        var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) 
-            ? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value ?? "tenant-1" 
-            : tenantId;
+        var isAdmin = User.IsInRole("Admin");
+        var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
+        var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        var effectiveTenantId = isAdmin 
+            ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
+            : (claimSub ?? "default-tenant");
 
         var query = new GetPartnerByIdQuery(id, effectiveTenantId);
         var result = await _mediator.Send(query);
@@ -69,9 +94,13 @@ public class PartnersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<Result>> Update(Guid id, [FromBody] UpdatePartnerRequest request, [FromQuery] string? tenantId = null)
     {
-        var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) 
-            ? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value ?? "tenant-1" 
-            : tenantId;
+        var isAdmin = User.IsInRole("Admin");
+        var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
+        var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        var effectiveTenantId = isAdmin 
+            ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
+            : (claimSub ?? "default-tenant");
 
         var command = new UpdatePartnerCommand(
             id,
@@ -91,9 +120,13 @@ public class PartnersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult<Result>> Deactivate(Guid id, [FromQuery] string? tenantId = null)
     {
-        var effectiveTenantId = string.IsNullOrWhiteSpace(tenantId) 
-            ? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value ?? "tenant-1" 
-            : tenantId;
+        var isAdmin = User.IsInRole("Admin");
+        var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
+        var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        var effectiveTenantId = isAdmin 
+            ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
+            : (claimSub ?? "default-tenant");
 
         var command = new DeactivatePartnerCommand(id, effectiveTenantId);
         var result = await _mediator.Send(command);

@@ -20,17 +20,20 @@ public class CompletePutawayTaskCommandHandler : IRequestHandler<CompletePutaway
     private readonly ILogger<CompletePutawayTaskCommandHandler> _logger;
     private readonly IInventoryService _inventoryService;
     private readonly IOperatorAuthorizationService _authService;
+    private readonly INotificationService _notificationService;
 
     public CompletePutawayTaskCommandHandler(
         IApplicationDbContext context, 
         ILogger<CompletePutawayTaskCommandHandler> logger,
         IInventoryService inventoryService,
-        IOperatorAuthorizationService authService)
+        IOperatorAuthorizationService authService,
+        INotificationService notificationService)
     {
         _context = context;
         _logger = logger;
         _inventoryService = inventoryService;
         _authService = authService;
+        _notificationService = notificationService;
     }
 
     public async Task<Result<bool>> Handle(CompletePutawayTaskCommand request, CancellationToken cancellationToken)
@@ -96,6 +99,14 @@ public class CompletePutawayTaskCommandHandler : IRequestHandler<CompletePutaway
         task.Complete(destBin.Id, request.OperatorId);
         
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _notificationService.NotifyAsync(
+            "Hoàn thành cất hàng",
+            $"Nhân viên {request.OperatorId} đã cất xong lô {task.Sku}.",
+            Domain.Entities.NotificationType.Success,
+            Domain.Entities.NotificationCategory.PutawayCompleted,
+            task.WarehouseId,
+            cancellationToken: cancellationToken);
 
         return Result<bool>.Success(true);
     }

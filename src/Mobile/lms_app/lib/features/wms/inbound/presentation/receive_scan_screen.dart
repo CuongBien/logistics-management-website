@@ -6,6 +6,13 @@ import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/inbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../qr/providers/qr_providers.dart';
+import '../../qr/domain/qr_models.dart';
+import '../../../../../core/network/offline_queue.dart';
+import '../../../../../core/network/connectivity_service.dart';
+import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/error/error_handler.dart';
+import '../../../../../core/constants/app_config.dart';
 
 class ReceiveScanScreen extends ConsumerStatefulWidget {
   const ReceiveScanScreen({super.key});
@@ -26,7 +33,7 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
   bool _isLoading = false;
   String _lastScanned = 'Chưa quét SKU nào';
 
-  Map<String, dynamic>? _lastReceiveResult;
+  ScanReceiveResponse? _lastReceiveResult;
 
   @override
   void initState() {
@@ -42,11 +49,40 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
     });
 
     try {
+      String targetId = orderId;
+      try {
+        final parsed = await ref.read(qrLookupServiceProvider).parse(rawValue: orderId);
+        if (parsed.type == QrType.order || parsed.type == QrType.receipt || parsed.type == QrType.outboundOrder) {
+          targetId = parsed.entityId ?? parsed.data?['waybillCode'] ?? orderId;
+        }
+      } catch (_) {
+        // Ignored
+      }
+
+      final activeWarehouse = ref.read(warehouseContextProvider);
+      if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+        throw AppException(
+          'Vui lòng chọn kho làm việc trước khi quét nhận hàng!',
+          code: 'Warehouse.Required',
+        );
+      }
+
       final repo = ref.read(inboundRepositoryProvider);
-      final receipt = await repo.getReceiptByOrderId(orderId);
+      final receipt = await repo.getReceiptByOrderId(targetId, warehouseId: activeWarehouse.warehouseId);
+
+      // Chặn nếu phiếu nhập thuộc kho khác
+      final receiptWarehouseId = receipt['warehouseId']?.toString() ?? receipt['warehouse_id']?.toString() ?? '';
+      
+      if (activeWarehouse != null && activeWarehouse.warehouseId.isNotEmpty &&
+          receiptWarehouseId.isNotEmpty && receiptWarehouseId != activeWarehouse.warehouseId) {
+        throw AppException(
+          'Phiếu nhập này thuộc kho khác (${receipt['warehouseName'] ?? receiptWarehouseId}).\nBạn đang ở kho: ${activeWarehouse.warehouseName}. Vui lòng chuyển đúng kho làm việc.',
+          code: 'Warehouse.Mismatch',
+        );
+      }
       
       setState(() {
-        _orderId = orderId;
+        _orderId = targetId;
         _receiptId = receipt['id']?.toString() ?? '';
         _receiptNo = receipt['receiptNo']?.toString() ?? 'N/A';
         _status = receipt['status']?.toString() ?? 'Pending';
@@ -60,42 +96,88 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi tải phiếu nhập: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
   void _handleScan(String code) async {
     if (_orderId.isEmpty || _receiptId.isEmpty) {
-      // Nếu chưa có Order ID, thử load Order ID từ mã quét được
-      if (code.length >= 36) {
-        _orderIdController.text = code;
-        _loadReceipt(code);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('⚠️ Vui lòng quét hoặc nhập mã Order ID trước!'),
-          backgroundColor: AppColors.warning,
-        ));
-      }
+      _orderIdController.text = code;
+      _loadReceipt(code);
       return;
     }
 
-    // Nếu đã có Order ID, quét mã SKU để nhận hàng
     setState(() {
       _lastScanned = code;
       _isLoading = true;
     });
 
+    final isOffline = ref.read(isOnlineProvider).value == false;
+
+    if (isOffline) {
+      final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+      final body = {
+        'receiptId': _receiptId,
+        'scannedSku': code,
+        'scannedBin': 'BIN-DOCK-01',
+        'quantity': 1,
+      };
+
+      try {
+        final queue = ref.read(offlineQueueProvider);
+        await queue.enqueue(OfflineAction(
+          id: actionId,
+          actionType: 'scan-receive',
+          endpoint: '/qrcode/actions/scan-receive',
+          method: 'POST',
+          body: body,
+          createdAt: DateTime.now(),
+        ));
+        
+        ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+        setState(() {
+          _isLoading = false;
+          String cleanSku = code;
+          if (code.startsWith('SKU:')) {
+            cleanSku = code.substring(4);
+          }
+          
+          final lines = List<Map<String, dynamic>>.from(
+            _receiptLines.map((e) => Map<String, dynamic>.from(e as Map))
+          );
+          for (var line in lines) {
+            final sku = line['skuCode'] ?? line['sku'] ?? '';
+            if (sku == cleanSku) {
+              final currentReceived = line['receivedQuantity'] ?? line['receivedQty'] ?? 0;
+              line['receivedQuantity'] = currentReceived + 1;
+            }
+          }
+          _receiptLines = lines;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('📥 Đã lưu yêu cầu ngoại tuyến (sẽ đồng bộ khi có mạng)'),
+          backgroundColor: AppColors.warning,
+        ));
+      } catch (e) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Lỗi lưu ngoại tuyến: $e'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+      return;
+    }
+
     try {
-      final repo = ref.read(inboundRepositoryProvider);
-      // Gọi API nhận hàng thực tế
-      final result = await repo.receiveItem(
+      final qrActionService = ref.read(qrActionServiceProvider);
+      final result = await qrActionService.scanReceive(
         receiptId: _receiptId,
-        orderId: _orderId,
-        skuCode: code,
-        binCode: 'BIN-DOCK-01', // HCM pre-dock location
+        scannedSku: code,
+        scannedBin: 'BIN-DOCK-01',
         quantity: 1,
       );
 
@@ -103,19 +185,125 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
         _lastReceiveResult = result;
       });
 
-      // Tải lại phiếu nhập để cập nhật số lượng động
       await _loadReceipt(_orderId);
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('✅ Nhận thành công SKU: $code (Pre-dock: BIN-DOCK-01)'),
-        backgroundColor: AppColors.success,
-      ));
+      if (result.alerts != null && (result.alerts!.isOverage || result.alerts!.isUnknownSku)) {
+        final alert = result.alerts!;
+        String alertMsg = '';
+        if (alert.isOverage) alertMsg += '• Nhận thừa số lượng yêu cầu.\n';
+        if (alert.isUnknownSku) alertMsg += '• SKU không tồn tại trong hệ thống.\n';
+        if (alert.quarantineBin != null) alertMsg += '⚠️ Đề xuất chuyển vào ô cách ly: ${alert.quarantineBin}';
+        
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Cảnh Báo Nhận Hàng'),
+                ],
+              ),
+              content: Text(alertMsg),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Đã hiểu'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Nhận thành công SKU: $code (Pre-dock: BIN-DOCK-01)'),
+          backgroundColor: AppColors.success,
+        ));
+      }
+
+      // Xử lý đề xuất cất hàng Putaway / Crossdock
+      if (result.suggestion != null && mounted) {
+        final sugg = result.suggestion!;
+        if (sugg.type == 'PUTAWAY') {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.inventory, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text('Đề xuất Cất Hàng (Putaway)'),
+                ],
+              ),
+              content: Text('Hệ thống đề xuất cất sản phẩm này vào ô kệ:\n\n👉 ${sugg.suggestedBinCode}\n\nBạn có muốn thực hiện cất hàng ngay bây giờ không?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Làm sau (Hàng đợi)'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Cất hàng ngay'),
+                ),
+              ],
+            ),
+          );
+
+          if (confirm == true && mounted) {
+            context.push(
+              Uri(
+                path: '/wms/putaway_execution',
+                queryParameters: {
+                  'taskId': sugg.taskId ?? '',
+                  'targetBin': sugg.suggestedBinCode ?? '',
+                },
+              ).toString(),
+            );
+          }
+        } else if (sugg.type == 'CROSSDOCK') {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Đề xuất Cross-Docking!'),
+                ],
+              ),
+              content: Text('Sản phẩm này cần được đưa ra cửa xuất bến ngay lập tức để chuyển đi:\n\n👉 ${sugg.suggestedBinCode}\n\nThực hiện Cross-Dock ngay chứ?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Thực hiện ngay'),
+                ),
+              ],
+            ),
+          );
+
+          if (confirm == true && mounted) {
+            context.push(
+              Uri(
+                path: '/wms/crossdock',
+                queryParameters: {
+                  'taskId': sugg.taskId ?? '',
+                  'targetBin': sugg.suggestedBinCode ?? '',
+                },
+              ).toString(),
+            );
+          }
+        }
+      }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi nhận hàng: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -134,10 +322,9 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -244,7 +431,6 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Khu vực tải Order
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -319,46 +505,79 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Gợi ý cất kệ (Putaway) nếu có
-              if (_lastReceiveResult != null && _lastReceiveResult!['isPutawaySuggested'] == true) ...[
+              // Gợi ý cất kệ (Putaway) hoặc Cross-Dock nếu có
+              if (_lastReceiveResult != null && _lastReceiveResult!.suggestion != null) ...[
                 Card(
-                  color: AppColors.success.withOpacity(0.15),
+                  color: _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                      ? Colors.orange.withOpacity(0.15)
+                      : AppColors.success.withOpacity(0.15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppColors.success, width: 2),
+                    side: BorderSide(
+                      color: _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                          ? Colors.orange
+                          : AppColors.success,
+                      width: 2,
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        const Row(
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.move_to_inbox, color: AppColors.success, size: 28),
-                            SizedBox(width: 8),
+                            Icon(
+                              _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                                  ? Icons.shuffle
+                                  : Icons.move_to_inbox,
+                              color: _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                                  ? Colors.orange
+                                  : AppColors.success,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 8),
                             Text(
-                              'GỢI Ý CẤT HÀNG (PUTAWAY)',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.success),
+                              _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                                  ? 'GỢI Ý CHUYỂN THẲNG (CROSS-DOCK)'
+                                  : 'GỢI Ý CẤT HÀNG (PUTAWAY)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                                    ? Colors.orange
+                                    : AppColors.success,
+                              ),
                             )
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Hãy mang SKU này cất vào ô kệ: ${_lastReceiveResult!['suggestedPutawayBinCode'] ?? 'UNKNOWN'}',
+                          _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                              ? 'Đơn hàng này đủ điều kiện Cross-Dock. Hãy mang đến ô kệ OUT: ${_lastReceiveResult!.suggestion!.suggestedBinCode ?? 'UNKNOWN'}'
+                              : 'Hãy mang SKU này cất vào ô kệ: ${_lastReceiveResult!.suggestion!.suggestedBinCode ?? 'UNKNOWN'}',
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed: () {
-                            final taskId = _lastReceiveResult!['putawayTaskId'] ?? '';
-                            final binCode = _lastReceiveResult!['suggestedPutawayBinCode'] ?? 'UNKNOWN';
-                            GoRouter.of(context).push('/wms/putaway?taskId=$taskId&targetBin=$binCode');
+                            final taskId = _lastReceiveResult!.suggestion!.taskId ?? '';
+                            final binCode = _lastReceiveResult!.suggestion!.suggestedBinCode ?? 'UNKNOWN';
+                            if (_lastReceiveResult!.suggestion!.type == 'CROSSDOCK') {
+                              GoRouter.of(context).push('/wms/crossdock?taskId=$taskId&targetBin=$binCode');
+                            } else {
+                              GoRouter.of(context).push('/wms/putaway?taskId=$taskId&targetBin=$binCode');
+                            }
                           },
                           icon: const Icon(Icons.arrow_forward),
-                          label: const Text('TIẾN HÀNH CẤT HÀNG NGAY'),
+                          label: Text(_lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                              ? 'TIẾN HÀNH CROSS-DOCK NGAY'
+                              : 'TIẾN HÀNH CẤT HÀNG NGAY'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
+                            backgroundColor: _lastReceiveResult!.suggestion!.type == 'CROSSDOCK'
+                                ? Colors.orange
+                                : AppColors.success,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                           ),
@@ -370,15 +589,14 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Danh sách sản phẩm
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _receiptLines.isEmpty
-                        ? Center(
+                        ? const Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.qr_code_scanner, size: 64, color: AppColors.textSecondary),
                                 SizedBox(height: 8),
                                 Text(
@@ -450,15 +668,14 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
                           ),
               ),
 
-              // Bàn quét mã SKU
               if (_receiptId.isNotEmpty && _status != 'Closed' && _status != '2') ...[
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                     color: AppColors.primary.withOpacity(0.08),
+                     borderRadius: BorderRadius.circular(8),
+                     border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [

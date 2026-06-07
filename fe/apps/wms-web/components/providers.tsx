@@ -1,0 +1,35 @@
+"use client"
+
+import { SessionProvider, useSession, signOut } from "next-auth/react"
+import { useEffect } from "react"
+import { usePathname } from "next/navigation"
+import { WarehouseProvider } from "@/components/wms/rbac/WarehouseContext"
+
+function SessionErrorWrapper({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    if (session?.error === "RefreshAccessTokenError") {
+      if (pathname && pathname.startsWith('/portal')) {
+        signOut({ callbackUrl: '/portal/login' })
+      } else {
+        signOut({ callbackUrl: '/login' })
+      }
+    }
+  }, [session, pathname])
+
+  return <>{children}</>
+}
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <SessionErrorWrapper>
+        <WarehouseProvider>
+          {children}
+        </WarehouseProvider>
+      </SessionErrorWrapper>
+    </SessionProvider>
+  )
+}

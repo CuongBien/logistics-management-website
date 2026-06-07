@@ -22,7 +22,9 @@ System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeM
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
+builder.Services.AddScoped<INotificationService, Warehouse.Api.Services.NotificationService>();
 
+builder.Services.AddSignalR();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -35,9 +37,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -115,9 +118,26 @@ builder.Services.AddAuthentication("Bearer")
                 "http://localhost:18080/realms/logistics_realm",
                 "http://127.0.0.1:8080/realms/logistics_realm",
                 "http://127.0.0.1:18080/realms/logistics_realm",
-                "http://keycloak:8080/realms/logistics_realm"
+                "http://keycloak:8080/realms/logistics_realm",
+                "http://192.168.1.6:8080/realms/logistics_realm",
+                "http://192.168.1.6:18080/realms/logistics_realm",
+                "http://192.168.88.214:8080/realms/logistics_realm",
+                "http://192.168.88.214:18080/realms/logistics_realm"
             },
-            ValidateAudience = false,
+            ValidateAudience = false
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/api/hubs/notification"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -144,6 +164,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 app.MapGet("/api/health", () => Results.Ok(new { status = "Healthy" }));
 
 app.MapControllers();
+app.MapHub<Warehouse.Api.Hubs.NotificationHub>("/api/hubs/notification");
 
 using (var scope = app.Services.CreateScope())
 {

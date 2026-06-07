@@ -5,7 +5,7 @@ using Warehouse.Application.Common.Interfaces;
 
 namespace Warehouse.Application.Features.Inventory.Queries.GetCycleCountTasksList;
 
-public record GetCycleCountTasksListQuery(string OperatorSub) : IRequest<Result<List<CycleCountTaskDto>>>;
+public record GetCycleCountTasksListQuery(string OperatorSub, Guid? WarehouseId = null) : IRequest<Result<List<CycleCountTaskDto>>>;
 
 public class CycleCountTaskDto
 {
@@ -37,26 +37,33 @@ public class GetCycleCountTasksListQueryHandler : IRequestHandler<GetCycleCountT
             .Include(t => t.Bin)
             .AsQueryable();
 
-        var isAdmin = request.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e" || 
-                      (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "e8426038-ce83-4e21-a754-f1834a77267e"));
-
-        if (isAdmin)
+        if (request.WarehouseId.HasValue)
         {
-            // Admin sees all cycle count tasks
-        }
-        else if (opProfile != null)
-        {
-            var assignedWarehouseIds = await _context.OperatorRoleAssignments
-                .Where(a => a.OperatorProfileId == opProfile.Id)
-                .Select(a => a.WarehouseId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-            
-            query = query.Where(w => assignedWarehouseIds.Contains(w.WarehouseId));
+            query = query.Where(t => t.WarehouseId == request.WarehouseId.Value);
         }
         else
         {
-            return Result<List<CycleCountTaskDto>>.Success(new List<CycleCountTaskDto>());
+            var isAdmin = request.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8" || 
+                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8"));
+
+            if (isAdmin)
+            {
+                // Admin sees all tasks
+            }
+            else if (opProfile != null)
+            {
+                var assignedWarehouseIds = await _context.OperatorRoleAssignments
+                    .Where(a => a.OperatorProfileId == opProfile.Id)
+                    .Select(a => a.WarehouseId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                
+                query = query.Where(w => assignedWarehouseIds.Contains(w.WarehouseId));
+            }
+            else
+            {
+                return Result<List<CycleCountTaskDto>>.Success(new List<CycleCountTaskDto>());
+            }
         }
 
         var tasks = await query

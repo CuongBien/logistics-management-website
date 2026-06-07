@@ -64,6 +64,7 @@ class OutboundRepository {
     required String orderNo,
     required String sku,
     required int quantity,
+    String? warehouseId,
   }) async {
     try {
       final response = await _apiClient.dio.post(
@@ -71,7 +72,7 @@ class OutboundRepository {
         data: {
           'tenantId': 'default-tenant',
           'customerId': 'cust-default',
-          'warehouseId': 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
+          'warehouseId': warehouseId ?? 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
           'orderId': orderId,
           'orderNo': orderNo,
           'destinationAddress': '123 E2E St',
@@ -114,12 +115,12 @@ class OutboundRepository {
     }
   }
 
-  Future<Map<String, dynamic>> autoPlanWaves() async {
+  Future<Map<String, dynamic>> autoPlanWaves({String? warehouseId}) async {
     try {
       final response = await _apiClient.dio.post(
         '/outbound/waves/auto-plan',
         data: {
-          'warehouseId': 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
+          'warehouseId': warehouseId ?? 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
           'maxSingleItemOrdersPerWave': 50,
           'maxMultiItemOrdersPerWave': 20,
         },
@@ -178,6 +179,36 @@ class OutboundRepository {
       return response.statusCode == 200;
     } on DioException catch (e) {
       throw Exception(e.response?.data['Message'] ?? 'Lỗi hệ thống khi chia chọn (Sort)');
+    }
+  }
+
+  Future<List<dynamic>> getWaves(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/outbound/waves',
+        queryParameters: {'warehouseId': warehouseId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy danh sách Wave lấy hàng');
+    }
+  }
+
+  Future<List<dynamic>> getShipments(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/outbound/shipments',
+        queryParameters: {'warehouseId': warehouseId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy danh sách chuyến xe (Shipments)');
     }
   }
 }

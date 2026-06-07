@@ -25,7 +25,9 @@ public sealed class ReleaseWaveCommandHandler : IRequestHandler<ReleaseWaveComma
         _context.Waves.Remove(wave);
         
         // Remove associated pick tasks? For now we just remove the wave.
-        var pickTasks = await _context.PickTasks.Where(pt => pt.WaveId == wave.WaveNo).ToListAsync(cancellationToken);
+        var searchWaveId = wave.Id.ToString();
+        var searchWaveNo = wave.WaveNo;
+        var pickTasks = await _context.PickTasks.Where(pt => pt.WaveId == searchWaveId || pt.WaveId == searchWaveNo).ToListAsync(cancellationToken);
         foreach(var pt in pickTasks)
         {
             _context.PickTasks.Remove(pt);

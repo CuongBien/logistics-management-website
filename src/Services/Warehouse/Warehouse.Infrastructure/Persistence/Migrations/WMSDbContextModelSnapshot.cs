@@ -1033,6 +1033,56 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.ToTable("inventory_reservations", (string)null);
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("TargetRole")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TargetUserId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsRead");
+
+                    b.HasIndex("TargetUserId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("Notifications", (string)null);
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Entities.OperatorProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1555,6 +1605,14 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                             Code = "inbound:putaway",
                             IsActive = true,
                             Resource = "inbound"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000030"),
+                            Action = "manage",
+                            Code = "role:manage",
+                            IsActive = true,
+                            Resource = "role"
                         });
                 });
 

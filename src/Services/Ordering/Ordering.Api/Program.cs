@@ -122,7 +122,11 @@ builder.Services.AddAuthentication("Bearer")
                 "http://localhost:18080/realms/logistics_realm",
                 "http://127.0.0.1:8080/realms/logistics_realm",
                 "http://127.0.0.1:18080/realms/logistics_realm",
-                "http://keycloak:8080/realms/logistics_realm"
+                "http://keycloak:8080/realms/logistics_realm",
+                "http://192.168.1.6:8080/realms/logistics_realm",
+                "http://192.168.1.6:18080/realms/logistics_realm",
+                "http://192.168.88.214:8080/realms/logistics_realm",
+                "http://192.168.88.214:18080/realms/logistics_realm"
             },
             ValidateAudience = false,
         };

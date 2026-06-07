@@ -29,10 +29,12 @@ public record CreateInboundReceiptCommand(
 public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundReceiptCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public CreateInboundReceiptCommandHandler(IApplicationDbContext context)
+    public CreateInboundReceiptCommandHandler(IApplicationDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<Result<Guid>> Handle(CreateInboundReceiptCommand request, CancellationToken cancellationToken)
@@ -74,6 +76,14 @@ public class CreateInboundReceiptCommandHandler : IRequestHandler<CreateInboundR
         _context.InboundReceipts.Add(receipt);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _notificationService.NotifyAsync(
+            "Lô hàng inbound mới",
+            $"Lô {receiptNo} đã nhập kho, chờ Quản đốc phân ô kệ.",
+            Domain.Entities.NotificationType.Info,
+            Domain.Entities.NotificationCategory.InboundCreated,
+            request.WarehouseId,
+            cancellationToken: cancellationToken);
 
         return Result<Guid>.Success(receipt.Id);
     }

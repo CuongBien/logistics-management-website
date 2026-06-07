@@ -41,4 +41,13 @@ class InventoryRepository {
       throw Exception(e.response?.data['Message'] ?? 'Lỗi cập nhật số đếm kiểm kê');
     }
   }
+
+  Future<Map<String, dynamic>> getWarehouseHierarchy(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get('/Warehouse/$warehouseId/hierarchy');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi tải sơ đồ cấu trúc kho');
+    }
+  }
 }

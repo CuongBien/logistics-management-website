@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
-import '../providers/putaway_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../qr/providers/qr_providers.dart';
+import '../../../../../core/network/offline_queue.dart';
+import '../../../../../core/network/connectivity_service.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class PutawayExecutionScreen extends ConsumerStatefulWidget {
   final String taskId;
@@ -34,21 +37,53 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
   void _handleScan(String code) async {
     if (_isLoading) return;
     
-    if (code != widget.targetBin) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Sai vị trí! Vui lòng cất vào ô: ${widget.targetBin}'),
-        backgroundColor: AppColors.error,
-      ));
+    setState(() => _isLoading = true);
+
+    final isOffline = ref.read(isOnlineProvider).value == false;
+
+    if (isOffline) {
+      final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+      final body = {
+        'taskId': widget.taskId,
+        'scannedBin': code,
+      };
+
+      try {
+        final queue = ref.read(offlineQueueProvider);
+        await queue.enqueue(OfflineAction(
+          id: actionId,
+          actionType: 'confirm-putaway',
+          endpoint: '/qrcode/actions/confirm-putaway',
+          method: 'POST',
+          body: body,
+          createdAt: DateTime.now(),
+        ));
+        
+        ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('📥 Đã lưu yêu cầu cất hàng ngoại tuyến (sẽ đồng bộ khi có mạng)'),
+          backgroundColor: AppColors.warning,
+        ));
+        
+        if (mounted) {
+          context.pop();
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
+      }
       return;
     }
 
-    setState(() => _isLoading = true);
-
     try {
-      final repo = ref.read(putawayRepositoryProvider);
-      await repo.completePutawayTask(
+      final qrActionService = ref.read(qrActionServiceProvider);
+      await qrActionService.confirmPutaway(
         taskId: widget.taskId,
-        scannedBinCode: code,
+        scannedBin: code,
       );
       
       setState(() => _isLoading = false);
@@ -57,16 +92,14 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
         backgroundColor: AppColors.success,
       ));
       
-      // Quay lại màn hình trước đó
-      if (context.mounted) {
+      if (mounted) {
         context.pop();
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ $e'),
-        backgroundColor: AppColors.error,
-      ));
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 

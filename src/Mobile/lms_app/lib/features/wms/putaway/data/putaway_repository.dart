@@ -6,20 +6,18 @@ class PutawayRepository {
 
   PutawayRepository(this._apiClient);
 
-  Future<bool> completePutawayTask({
-    required String taskId,
-    required String scannedBinCode,
-  }) async {
+  Future<List<dynamic>> getPutawayTasks(String warehouseId) async {
     try {
-      final response = await _apiClient.dio.post(
-        '/inbound/putaway-tasks/$taskId/complete',
-        data: {
-          'ScannedDestinationBinCode': scannedBinCode,
-        },
+      final response = await _apiClient.dio.get(
+        '/PutawayTasks',
+        queryParameters: {'warehouseId': warehouseId},
       );
-      return response.statusCode == 200;
+      return response.data as List<dynamic>;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi xác nhận cất hàng (Putaway)');
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi kết nối API lấy danh sách Putaway Task');
     }
   }
 }

@@ -23,10 +23,14 @@ public sealed class GetOptimizedPickTasksQueryHandler : IRequestHandler<GetOptim
         // For safety, you might want to query which warehouse this wave belongs to.
         // However, we just check if the user is authorized. We'll find the WarehouseId from one of the PickTasks or just assume they have access to the records if the wave exists.
         // Or we can query the tasks directly.
+        var wave = await _context.Waves.FirstOrDefaultAsync(w => w.Id.ToString() == request.WaveId || w.WaveNo == request.WaveId, cancellationToken);
+        var searchWaveId = wave != null ? wave.Id.ToString() : request.WaveId;
+        var searchWaveNo = wave != null ? wave.WaveNo : request.WaveId;
+
         var pickTasks = await _context.PickTasks
             .Include(pt => pt.FromBin)
             .Include(pt => pt.OutboundOrderLine).ThenInclude(l => l.OutboundOrder)
-            .Where(pt => pt.WaveId == request.WaveId)
+            .Where(pt => pt.WaveId == searchWaveId || pt.WaveId == searchWaveNo)
             .OrderBy(pt => pt.FromBin.PickSequence)
             .ThenBy(pt => pt.FromBin.Aisle)
             .ThenBy(pt => pt.FromBin.Rack)

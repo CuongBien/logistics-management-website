@@ -13,12 +13,14 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
     private readonly IApplicationDbContext _context;
     private readonly ILogger<CreateOutboundOrderCommandHandler> _logger;
     private readonly IOperatorAuthorizationService _authService;
+    private readonly INotificationService _notificationService;
 
-    public CreateOutboundOrderCommandHandler(IApplicationDbContext context, ILogger<CreateOutboundOrderCommandHandler> logger, IOperatorAuthorizationService authService)
+    public CreateOutboundOrderCommandHandler(IApplicationDbContext context, ILogger<CreateOutboundOrderCommandHandler> logger, IOperatorAuthorizationService authService, INotificationService notificationService)
     {
         _context = context;
         _logger = logger;
         _authService = authService;
+        _notificationService = notificationService;
     }
 
     public async Task<Result<Guid>> Handle(CreateOutboundOrderCommand request, CancellationToken cancellationToken)
@@ -99,6 +101,17 @@ public sealed class CreateOutboundOrderCommandHandler : IRequestHandler<CreateOu
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Successfully created outbound order {OrderId}", outboundOrder.Id);
+
+        if (request.Priority == 1) // Assuming 1 means High priority
+        {
+            await _notificationService.NotifyAsync(
+                "Đơn hàng xuất gấp",
+                $"Đơn hàng {request.OrderNo} được đánh dấu ƯU TIÊN CAO, cần được xử lý ngay lập tức.",
+                Domain.Entities.NotificationType.Warning,
+                Domain.Entities.NotificationCategory.HighPriorityOutbound,
+                request.WarehouseId,
+                cancellationToken: cancellationToken);
+        }
 
         return Result<Guid>.Success(outboundOrder.Id);
     }

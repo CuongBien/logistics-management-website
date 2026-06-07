@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
-import '../providers/outbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../qr/providers/qr_providers.dart';
+import '../../qr/domain/qr_models.dart';
+import '../../../../../core/network/offline_queue.dart';
+import '../../../../../core/network/connectivity_service.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class SortScreen extends ConsumerStatefulWidget {
   const SortScreen({super.key});
@@ -18,6 +22,7 @@ class _SortScreenState extends ConsumerState<SortScreen> {
 
   bool _isLoading = false;
   String _lastScanned = 'Chưa quét kiện hàng nào';
+  ScanSortResponse? _lastResponse;
 
   @override
   void initState() {
@@ -33,37 +38,64 @@ class _SortScreenState extends ConsumerState<SortScreen> {
       _isLoading = true;
     });
 
-    try {
-      final repo = ref.read(outboundRepositoryProvider);
-      
-      // Gọi API chia chọn
-      final success = await repo.sortOrder(code);
+    final isOffline = ref.read(isOnlineProvider).value == false;
 
-      setState(() => _isLoading = false);
+    if (isOffline) {
+      final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+      final body = {
+        'scannedOrder': code,
+      };
 
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('✅ Chia chọn thành công kiện hàng: $code'),
-          backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 2),
+      try {
+        final queue = ref.read(offlineQueueProvider);
+        await queue.enqueue(OfflineAction(
+          id: actionId,
+          actionType: 'scan-sort',
+          endpoint: '/qrcode/actions/scan-sort',
+          method: 'POST',
+          body: body,
+          createdAt: DateTime.now(),
         ));
+
+        ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+        setState(() {
+          _isLoading = false;
+          _lastResponse = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('📥 Đã lưu yêu cầu chia chọn ngoại tuyến cho đơn: $code'),
+          backgroundColor: AppColors.warning,
+        ));
+      } catch (e) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
+      return;
+    }
+
+    try {
+      final qrActionService = ref.read(qrActionServiceProvider);
+      final response = await qrActionService.scanSort(scannedOrder: code);
+
+      setState(() {
+        _isLoading = false;
+        _lastResponse = response;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('✅ Chia chọn thành công kiện hàng: $code'),
+        backgroundColor: AppColors.success,
+        duration: const Duration(seconds: 2),
+      ));
     } catch (e) {
       setState(() => _isLoading = false);
-      
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Lỗi chia chọn', style: TextStyle(color: AppColors.error)),
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Đóng'),
-            )
-          ],
-        ),
-      );
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
     }
   }
 
@@ -163,7 +195,7 @@ class _SortScreenState extends ConsumerState<SortScreen> {
                             child: TextField(
                               controller: _orderIdController,
                               decoration: const InputDecoration(
-                                labelText: 'Nhập / Quét Order ID',
+                                label: Text('Nhập / Quét Order ID'),
                                 border: OutlineInputBorder(),
                               ),
                               onSubmitted: (value) {
@@ -201,6 +233,52 @@ class _SortScreenState extends ConsumerState<SortScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+
+              if (_lastResponse != null) ...[
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'KẾT QUẢ PHÂN LOẠI CHUYẾN',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                        ),
+                        const Divider(),
+                        if (_lastResponse!.routing != null) ...[
+                          Text('🏁 Đích cuối: ${_lastResponse!.routing!.finalDestination ?? "N/A"}', style: const TextStyle(fontSize: 15)),
+                          const SizedBox(height: 4),
+                          Text('🚚 Điểm trung chuyển kế: ${_lastResponse!.routing!.nextHop ?? "N/A"}', style: const TextStyle(fontSize: 15)),
+                          const SizedBox(height: 8),
+                        ],
+                        if (_lastResponse!.shipment != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('📦 Lô hàng: ${_lastResponse!.shipment!.shipmentNo}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.success)),
+                                const SizedBox(height: 4),
+                                Text('📊 Số đơn hiện tại trong lô: ${_lastResponse!.shipment!.currentOrderCount} đơn', style: const TextStyle(fontSize: 14)),
+                                Text('ℹ️ Trạng thái lô: ${_lastResponse!.shipment!.status}', style: const TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                          )
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
               const Spacer(),
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())

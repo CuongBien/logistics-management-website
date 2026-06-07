@@ -51,11 +51,13 @@ class InboundRepository {
     }
   }
 
-  Future<Map<String, dynamic>> getReceiptByOrderId(String orderId) async {
+  Future<Map<String, dynamic>> getReceiptByOrderId(String orderId, {String? warehouseId}) async {
     try {
       final response = await _apiClient.dio.get(
         '/inbound/receipts/by-order/$orderId',
-        queryParameters: {'warehouseId': 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'},
+        queryParameters: {
+          if (warehouseId != null) 'warehouseId': warehouseId,
+        },
       );
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {

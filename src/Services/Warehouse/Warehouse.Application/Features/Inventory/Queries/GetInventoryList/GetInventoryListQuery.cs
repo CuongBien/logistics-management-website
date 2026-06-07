@@ -4,7 +4,7 @@ using Warehouse.Application.Common.Interfaces;
 
 namespace Warehouse.Application.Features.Inventory.Queries.GetInventoryList;
 
-public record GetInventoryListQuery(string? TenantId, Guid? WarehouseId) : IRequest<List<InventoryItemDto>>;
+public record GetInventoryListQuery(string? TenantId, Guid? WarehouseId, Guid? BinId = null) : IRequest<List<InventoryItemDto>>;
 
 public record InventoryItemDto(
     Guid Id,
@@ -51,6 +51,11 @@ public class GetInventoryListQueryHandler : IRequestHandler<GetInventoryListQuer
         if (request.WarehouseId.HasValue)
         {
             itemsQuery = itemsQuery.Where(x => x.Item.WarehouseId == request.WarehouseId.Value);
+        }
+
+        if (request.BinId.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(x => x.Item.BinId == request.BinId.Value);
         }
 
         var result = await itemsQuery.ToListAsync(cancellationToken);

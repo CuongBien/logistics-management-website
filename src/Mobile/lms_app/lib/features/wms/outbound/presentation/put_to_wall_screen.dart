@@ -5,6 +5,7 @@ import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class PutToWallScreen extends ConsumerStatefulWidget {
   const PutToWallScreen({super.key});
@@ -60,15 +61,20 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
     }
 
     if (!_isItemScanned) {
+      String cleanCode = code;
+      if (code.startsWith('SKU:')) {
+        cleanCode = code.substring(4);
+      }
+
       // Quét SKU -> Hệ thống gọi API chọc lấy ô đích
       setState(() {
         _isLoading = true;
-        _lastScannedSku = code;
+        _lastScannedSku = cleanCode;
       });
 
       try {
         final repo = ref.read(outboundRepositoryProvider);
-        final result = await repo.putToWall(_waveId, code);
+        final result = await repo.putToWall(_waveId, cleanCode);
         
         setState(() {
           _isItemScanned = true;
@@ -84,14 +90,18 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
           _isLoading = false;
           _lastScannedSku = '';
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('❌ Lỗi chia chọn: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: AppColors.error,
-        ));
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
       }
     } else {
+      String cleanCode = code;
+      if (code.startsWith('BIN:')) {
+        cleanCode = code.substring(4);
+      }
+
       // Đang chờ quét mã ô kệ đích để xác nhận cất thành công
-      if (code == _targetSlot) {
+      if (cleanCode == _targetSlot) {
         setState(() {
           _isItemScanned = false;
           _targetSlot = '';
@@ -215,10 +225,11 @@ class _PutToWallScreenState extends ConsumerState<PutToWallScreen> {
               const SizedBox(height: 24),
 
               // Trạng thái cất hàng
-                      Expanded(
-                        child: _isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : _waveId.isEmpty
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 24),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _waveId.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,

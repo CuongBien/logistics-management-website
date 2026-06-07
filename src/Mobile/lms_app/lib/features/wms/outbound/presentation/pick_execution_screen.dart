@@ -5,6 +5,10 @@ import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../providers/outbound_provider.dart';
 import '../../../../../core/widgets/camera_scanner_dialog.dart';
+import '../../qr/providers/qr_providers.dart';
+import '../../../../../core/network/offline_queue.dart';
+import '../../../../../core/network/connectivity_service.dart';
+import '../../../../../core/error/error_handler.dart';
 
 class PickExecutionScreen extends ConsumerStatefulWidget {
   final String waveId;
@@ -18,6 +22,7 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
   late final ScannerHelper _scannerHelper;
   int _currentTaskIndex = 0;
   bool _isBinScanned = false;
+  String _scannedBinCode = '';
   
   List<dynamic> _tasks = [];
   bool _isFetching = true;
@@ -59,30 +64,101 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
     final taskId = currentTask['taskId']?.toString() ?? '';
 
     if (!_isBinScanned) {
-      if (code == targetBin) {
+      String cleanBin = code;
+      if (code.startsWith('BIN:')) {
+        cleanBin = code.substring(4);
+      }
+      
+      if (cleanBin == targetBin) {
         setState(() {
           _isBinScanned = true;
+          _scannedBinCode = code; // Lưu mã thô đã quét
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Đã đến đúng Kệ! Quét mã Sản phẩm ngay.'), backgroundColor: AppColors.success));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('✅ Đã đến đúng Kệ! Quét mã Sản phẩm ngay.'),
+          backgroundColor: AppColors.success,
+        ));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Sai vị trí kệ. Vui lòng đến $targetBin'), backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Sai vị trí kệ. Vui lòng đến $targetBin'),
+          backgroundColor: AppColors.error,
+        ));
       }
     } else {
-      if (code == targetSku) {
+      String cleanSku = code;
+      if (code.startsWith('SKU:')) {
+        cleanSku = code.substring(4);
+      }
+
+      if (cleanSku == targetSku) {
+        final isOffline = ref.read(isOnlineProvider).value == false;
+
+        if (isOffline) {
+          final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+          final body = {
+            'pickTaskId': taskId,
+            'scannedBin': _scannedBinCode,
+            'scannedSku': code,
+          };
+
+          try {
+            final queue = ref.read(offlineQueueProvider);
+            await queue.enqueue(OfflineAction(
+              id: actionId,
+              actionType: 'confirm-pick',
+              endpoint: '/qrcode/actions/confirm-pick',
+              method: 'POST',
+              body: body,
+              createdAt: DateTime.now(),
+            ));
+
+            ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+            setState(() {
+              _currentTaskIndex++;
+              _isBinScanned = false;
+              _scannedBinCode = '';
+            });
+            
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('📥 Đã lưu yêu cầu lấy hàng ngoại tuyến (sẽ đồng bộ khi có mạng)'),
+              backgroundColor: AppColors.warning,
+            ));
+          } catch (e) {
+            if (mounted) {
+              ErrorHandler.showError(context, e);
+            }
+          }
+          return;
+        }
+
         try {
-          final repo = ref.read(outboundRepositoryProvider);
-          await repo.confirmPickTask(taskId);
+          final qrActionService = ref.read(qrActionServiceProvider);
+          await qrActionService.confirmPick(
+            pickTaskId: taskId,
+            scannedBin: _scannedBinCode,
+            scannedSku: code,
+          );
           
           setState(() {
             _currentTaskIndex++;
             _isBinScanned = false;
+            _scannedBinCode = '';
           });
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Lấy hàng thành công! Chuyển sang món tiếp theo.'), backgroundColor: AppColors.success));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('✅ Lấy hàng thành công! Chuyển sang món tiếp theo.'),
+            backgroundColor: AppColors.success,
+          ));
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Lỗi API: $e'), backgroundColor: AppColors.error));
+          if (mounted) {
+            ErrorHandler.showError(context, e);
+          }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Lấy sai sản phẩm! Yêu cầu: $targetSku'), backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Lấy sai sản phẩm! Yêu cầu: $targetSku'),
+          backgroundColor: AppColors.error,
+        ));
       }
     }
   }
@@ -127,6 +203,134 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
                 if (controller.text.isNotEmpty) _handleScan(controller.text);
               },
               child: const Text('Xác nhận'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _handleShortPick(int actualQty) async {
+    if (_tasks.isEmpty || _currentTaskIndex >= _tasks.length) return;
+    final currentTask = _tasks[_currentTaskIndex];
+    final taskId = currentTask['taskId']?.toString() ?? '';
+
+    final isOffline = ref.read(isOnlineProvider).value == false;
+
+    if (isOffline) {
+      final actionId = DateTime.now().microsecondsSinceEpoch.toString();
+      final body = {
+        'pickTaskId': taskId,
+        'scannedBin': _scannedBinCode,
+        'scannedSku': currentTask['sku']?.toString() ?? '',
+        'quantity': actualQty,
+      };
+
+      try {
+        final queue = ref.read(offlineQueueProvider);
+        await queue.enqueue(OfflineAction(
+          id: actionId,
+          actionType: 'confirm-pick',
+          endpoint: '/qrcode/actions/confirm-pick',
+          method: 'POST',
+          body: body,
+          createdAt: DateTime.now(),
+        ));
+
+        ref.read(pendingCountProvider.notifier).set(queue.pendingCount);
+
+        setState(() {
+          _currentTaskIndex++;
+          _isBinScanned = false;
+          _scannedBinCode = '';
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('📥 Đã lưu yêu cầu báo thiếu hàng ngoại tuyến (sẽ đồng bộ khi có mạng)'),
+            backgroundColor: AppColors.warning,
+          ));
+        }
+      } catch (e) {
+        if (mounted) {
+          ErrorHandler.showError(context, e);
+        }
+      }
+      return;
+    }
+
+    try {
+      final qrActionService = ref.read(qrActionServiceProvider);
+      await qrActionService.confirmPick(
+        pickTaskId: taskId,
+        scannedBin: _scannedBinCode,
+        scannedSku: currentTask['sku']?.toString() ?? '',
+        quantity: actualQty,
+      );
+      
+      setState(() {
+        _currentTaskIndex++;
+        _isBinScanned = false;
+        _scannedBinCode = '';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Đã xác nhận thiếu hàng (Lấy thực tế: $actualQty PCS).'),
+          backgroundColor: AppColors.success,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
+    }
+  }
+
+  void _showShortPickDialog(int maxQty) {
+    final TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Báo thiếu hàng (Short Pick)'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Số lượng yêu cầu: $maxQty PCS'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Số lượng thực tế lấy được',
+                  hintText: 'Nhập số lượng...',
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final input = int.tryParse(controller.text.trim());
+                if (input == null || input < 0 || input >= maxQty) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('⚠️ Số lượng phải từ 0 đến ${maxQty - 1}!'),
+                    backgroundColor: AppColors.warning,
+                  ));
+                  return;
+                }
+                Navigator.pop(context);
+                _handleShortPick(input);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text('Xác nhận thiếu'),
             ),
           ],
         );
@@ -265,9 +469,7 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
                         ),
                         const SizedBox(height: 24),
                         OutlinedButton.icon(
-                          onPressed: _isBinScanned ? () {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã báo lỗi Short Pick!')));
-                          } : null,
+                          onPressed: _isBinScanned ? () => _showShortPickDialog(targetQty) : null,
                           icon: const Icon(Icons.report_problem),
                           label: const Text('Báo lỗi (Thiếu hàng / Hư hỏng)'),
                           style: OutlinedButton.styleFrom(
