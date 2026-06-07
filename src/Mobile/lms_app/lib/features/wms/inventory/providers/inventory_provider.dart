@@ -16,3 +16,23 @@ final warehouseHierarchyProvider = FutureProvider.autoDispose<Map<String, dynami
   final repo = ref.read(inventoryRepositoryProvider);
   return await repo.getWarehouseHierarchy(activeWarehouse.warehouseId);
 });
+
+final replenishmentTasksProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final activeWarehouse = ref.watch(warehouseContextProvider);
+  if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+    return [];
+  }
+  
+  final repo = ref.read(inventoryRepositoryProvider);
+  return await repo.getReplenishmentTasks(activeWarehouse.warehouseId);
+});
+
+final cycleCountTasksProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final activeWarehouse = ref.watch(warehouseContextProvider);
+  if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+    return [];
+  }
+  
+  final repo = ref.read(inventoryRepositoryProvider);
+  return await repo.getCycleCountTasks(activeWarehouse.warehouseId);
+});

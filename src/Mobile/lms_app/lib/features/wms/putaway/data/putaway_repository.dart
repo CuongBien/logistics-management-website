@@ -6,10 +6,17 @@ class PutawayRepository {
 
   PutawayRepository(this._apiClient);
 
+  Future<void> assignPutawayTask(String taskId) async {
+    final response = await _apiClient.dio.post('/inbound/putaway-tasks/$taskId/assign');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to assign task');
+    }
+  }
+
   Future<List<dynamic>> getPutawayTasks(String warehouseId) async {
     try {
       final response = await _apiClient.dio.get(
-        '/PutawayTasks',
+        '/inbound/putaway-tasks',
         queryParameters: {'warehouseId': warehouseId},
       );
       return response.data as List<dynamic>;

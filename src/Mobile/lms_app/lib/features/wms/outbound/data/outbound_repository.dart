@@ -170,6 +170,13 @@ class OutboundRepository {
     }
   }
 
+  Future<void> assignWave(String waveId) async {
+    final response = await _apiClient.dio.post('/outbound/waves/$waveId/assign');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to assign wave');
+    }
+  }
+
   Future<bool> sortOrder(String orderId) async {
     try {
       final response = await _apiClient.dio.put(

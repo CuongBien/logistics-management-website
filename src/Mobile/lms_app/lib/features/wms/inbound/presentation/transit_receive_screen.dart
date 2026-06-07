@@ -32,7 +32,7 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
   
   final Map<String, int> _scannedItems = {};
   
-  final String _defaultBinCode = 'BIN-TRANSIT-01';
+  String _binCode = '';
 
   TransitReceiveResponse? _lastResponse;
 
@@ -90,8 +90,32 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
 
   void _handleScan(String code) async {
     if (_orderId.isEmpty || _receiptId.isEmpty) {
+      // If code starts with BIN:, assume user scanned the bin before order
+      if (code.startsWith('BIN:')) {
+        setState(() {
+          _binCode = code;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Đã nhận mã trạm tập kết: $code'),
+          backgroundColor: AppColors.success,
+        ));
+        return;
+      }
+      
       _orderIdController.text = code;
       _loadReceipt(code);
+      return;
+    }
+
+    // If order is loaded and code is BIN, update bin
+    if (code.startsWith('BIN:')) {
+      setState(() {
+        _binCode = code;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('✅ Đã nhận mã trạm tập kết: $code'),
+        backgroundColor: AppColors.success,
+      ));
       return;
     }
 
@@ -140,6 +164,14 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
       return;
     }
 
+    if (_binCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ Vui lòng quét mã Bin (Khu vực tập kết) trước khi nhận!'),
+        backgroundColor: AppColors.error,
+      ));
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     final isOffline = ref.read(isOnlineProvider).value == false;
@@ -160,7 +192,7 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
       final body = {
         'scannedOrder': _orderId,
         'warehouseId': warehouseId,
-        'scannedBin': _defaultBinCode,
+        'scannedBin': _binCode,
         'receivedItems': itemsToReceive,
       };
 
@@ -202,7 +234,7 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
       final response = await qrActionService.transitReceive(
         scannedOrder: _orderId,
         warehouseId: warehouseId,
-        scannedBin: _defaultBinCode,
+        scannedBin: _binCode,
         receivedItems: itemsToReceive,
       );
 
@@ -378,10 +410,13 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.1),
+                                color: _binCode.isNotEmpty ? AppColors.success.withOpacity(0.1) : AppColors.error.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text('Trạm: $_defaultBinCode', style: const TextStyle(color: AppColors.primary)),
+                              child: Text(
+                                _binCode.isNotEmpty ? 'Trạm: $_binCode' : 'Chưa quét Bin tập kết', 
+                                style: TextStyle(color: _binCode.isNotEmpty ? AppColors.success : AppColors.error, fontWeight: FontWeight.bold)
+                              ),
                             )
                           ],
                         ),
@@ -522,8 +557,8 @@ class _TransitReceiveScreenState extends ConsumerState<TransitReceiveScreen> {
                     children: [
                       const Icon(Icons.center_focus_strong, color: AppColors.primary, size: 28),
                       const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text('Đang đợi quét SKU...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Expanded(
+                        child: Text(_binCode.isEmpty ? 'Hãy quét mã Bin tập kết...' : 'Đang đợi quét SKU...', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       ),
                       IconButton(
                         icon: const Icon(Icons.camera_alt, color: AppColors.primary),

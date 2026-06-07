@@ -86,15 +86,7 @@ class PutawayTasksListScreen extends ConsumerWidget {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
-                            context.push(
-                              Uri(
-                                path: '/wms/putaway_execution',
-                                queryParameters: {
-                                  'taskId': taskId,
-                                  'targetBin': targetBin,
-                                },
-                              ).toString(),
-                            );
+                            _showPutawayTaskDetails(context, task, taskId, targetBin);
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -195,6 +187,74 @@ class PutawayTasksListScreen extends ConsumerWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showPutawayTaskDetails(BuildContext context, Map<String, dynamic> task, String taskId, String targetBin) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Chi tiết Cất hàng (Putaway)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Divider(height: 32),
+              _buildDetailRow('Mã Task', taskId),
+              _buildDetailRow('Phiếu nhập', task['receiptNo'] ?? 'N/A'),
+              _buildDetailRow('Sản phẩm (SKU)', task['skuCode'] ?? task['sku'] ?? 'N/A'),
+              _buildDetailRow('Số lượng', '${task['quantity'] ?? 0} PCS'),
+              _buildDetailRow('Nguồn (Source)', task['sourceBinCode'] ?? 'Pre-Dock'),
+              _buildDetailRow('Kệ đích', targetBin),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Đóng'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        context.push(
+                          Uri(
+                            path: '/wms/putaway_execution',
+                            queryParameters: {
+                              'taskId': taskId,
+                              'targetBin': targetBin,
+                            },
+                          ).toString(),
+                        );
+                      },
+                      child: const Text('Tiến hành'),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.textSecondary))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold))),
         ],
       ),
     );

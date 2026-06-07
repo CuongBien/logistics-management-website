@@ -82,118 +82,7 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF0052CC)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, size: 35, color: Color(0xFF0052CC)),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    userProfile?.username ?? 'Nhân viên',
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    roleName,
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  if (userProfile?.warehouseName != null)
-                    Text(
-                      'Kho: ${userProfile!.warehouseName}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                ],
-              ),
-            ),
-            if (RoleManager.hasAccessToOms(_currentRole)) ...[
-              const ListTile(
-                title: Text('Hệ thống OMS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.list_alt),
-                title: const Text('Quản lý đơn hàng'),
-                onTap: () {},
-              ),
-            ],
-            const ListTile(
-              title: Text('Hệ thống WMS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Trang chủ / Tác vụ'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _currentIndex = 0);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.map),
-              title: const Text('Sơ đồ & Cấu trúc kho'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _currentIndex = 1);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.qr_code_scanner),
-              title: const Text('Quét mã thông minh'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _currentIndex = 2);
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.inventory_2),
-              title: const Text('Đóng gói (Pack)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/pack');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.local_shipping),
-              title: const Text('Xuất bến (Dispatch)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/dispatch');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.fact_check),
-              title: const Text('Kiểm kê (Cycle Count)'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/count');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.search),
-              title: const Text('Tra cứu tồn kho'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/wms/inventory');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                ref.read(authProvider.notifier).logout();
-              },
-            ),
-          ],
-        ),
-      ),
+      // Đã gỡ bỏ Drawer (Nav bar bên trái) theo yêu cầu
       body: _currentIndex == 0 
           ? DashboardScreen(role: _currentRole)
           : _currentIndex == 1
@@ -201,30 +90,149 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
               : _currentIndex == 2
                   ? const ScanTabScreen()
                   : const ProfileTabScreen(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Tác vụ',
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => setState(() => _currentIndex = 2), // Chuyển sang màn hình Quét mã
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 28),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(child: _buildNavItem(icon: Icons.assignment, label: 'Tác vụ', index: 0)),
+              Expanded(child: _buildNavItem(icon: Icons.map, label: 'Sơ đồ', index: 1)),
+              const SizedBox(width: 48), // Khoảng trống cho nút FAB ở giữa
+              Expanded(
+                child: InkWell(
+                  onTap: () => _showQuickUtilitiesBottomSheet(context),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.apps, color: Colors.grey, size: 24),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Tiện ích', 
+                          style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.normal),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(child: _buildNavItem(icon: Icons.person, label: 'Cá nhân', index: 3)),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Sơ đồ kho',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({required IconData icon, required String label, required int index}) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? AppColors.primary : Colors.grey;
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = index),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 24), // Fix cứng size icon
+            const SizedBox(height: 4),
+            Text(
+              label, 
+              style: TextStyle(color: color, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showQuickUtilitiesBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Container(
+            padding: EdgeInsets.only(
+              top: 24, left: 16, right: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                'TIỆN ÍCH NGHIỆP VỤ NHANH',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                  letterSpacing: 1.1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 16,
+                runSpacing: 24,
+                alignment: WrapAlignment.spaceEvenly,
+                children: [
+                  _buildUtilityButton(context: context, icon: Icons.download, label: 'Nhập kho', onTap: () { Navigator.pop(context); context.push('/wms/receive'); }, color: Colors.green),
+                  _buildUtilityButton(context: context, icon: Icons.compare_arrows, label: 'Luân chuyển', onTap: () { Navigator.pop(context); context.push('/wms/transit-receive'); }, color: Colors.purple),
+                  _buildUtilityButton(context: context, icon: Icons.fact_check, label: 'Kiểm kê', onTap: () { Navigator.pop(context); context.push('/wms/count'); }, color: Colors.orange),
+                  _buildUtilityButton(context: context, icon: Icons.category, label: 'Chia chọn', onTap: () { Navigator.pop(context); context.push('/wms/sort'); }, color: Colors.blue),
+                  _buildUtilityButton(context: context, icon: Icons.local_shipping, label: 'Xuất bến', onTap: () { Navigator.pop(context); context.push('/wms/dispatch_load'); }, color: Colors.redAccent),
+                  _buildUtilityButton(context: context, icon: Icons.search, label: 'Tra cứu', onTap: () { Navigator.pop(context); context.push('/wms/inventory'); }, color: Colors.blueGrey),
+                ],
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code_scanner, size: 28),
-            label: 'Quét mã',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Cá nhân',
-          ),
-        ],
+        ));
+      },
+    );
+  }
+
+  Widget _buildUtilityButton({required BuildContext context, required IconData icon, required String label, required VoidCallback onTap, required Color color}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 80,
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: color.withOpacity(0.1),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

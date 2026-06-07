@@ -389,13 +389,25 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
     final targetBin = currentTask['binCode']?.toString() ?? 'N/A';
     final targetSku = currentTask['sku']?.toString() ?? 'N/A';
     final targetQty = currentTask['quantity'] ?? 1;
+    final targetProductName = currentTask['productName']?.toString();
+    final targetUom = currentTask['uom']?.toString() ?? 'PCS';
 
     return KeyboardListener(
       focusNode: _scannerHelper.focusNode,
       onKeyEvent: _scannerHelper.handleKeyEvent,
       autofocus: true,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Lấy Hàng (Pick Task)')),
+        appBar: AppBar(
+          title: Text('Lấy Hàng (${_currentTaskIndex + 1}/${_tasks.length})'),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(4.0),
+            child: LinearProgressIndicator(
+              value: _tasks.isEmpty ? 0 : (_currentTaskIndex / _tasks.length),
+              backgroundColor: Colors.white24,
+              color: AppColors.success,
+            ),
+          ),
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -446,28 +458,36 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.inventory_2, size: 64, color: AppColors.warning),
-                        const SizedBox(height: 16),
                         const Text('SẢN PHẨM CẦN LẤY', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
                         const SizedBox(height: 8),
+                        if (targetProductName != null)
+                          Text(
+                            targetProductName,
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          ),
                         Text(
-                          targetSku,
-                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                          'SKU: $targetSku',
+                          style: TextStyle(
+                            fontSize: targetProductName != null ? 16 : 24, 
+                            fontWeight: targetProductName != null ? FontWeight.normal : FontWeight.bold,
+                            color: targetProductName != null ? AppColors.textSecondary : AppColors.textPrimary
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'SL: $targetQty',
-                            style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
+                            '$targetQty $targetUom',
+                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.primary),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                        ),const SizedBox(height: 24),
                         OutlinedButton.icon(
                           onPressed: _isBinScanned ? () => _showShortPickDialog(targetQty) : null,
                           icon: const Icon(Icons.report_problem),

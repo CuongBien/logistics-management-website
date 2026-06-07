@@ -12,12 +12,13 @@ class AuthRepository {
   Future<bool> login(String username, String password) async {
     try {
       // Endpoint giả lập của Keycloak
-      const String tokenEndpoint = 'http://10.0.2.2:8080/realms/logistics_realm/protocol/openid-connect/token';
+      const String tokenEndpoint = 'http://192.168.88.144:18080/realms/logistics_realm/protocol/openid-connect/token';
       
       final response = await dio.post(
         tokenEndpoint,
         data: {
           'client_id': 'oms-client',
+          'client_secret': 'my-secret',
           'grant_type': 'password',
           'username': username,
           'password': password,

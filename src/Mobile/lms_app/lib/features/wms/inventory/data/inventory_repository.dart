@@ -18,6 +18,50 @@ class InventoryRepository {
     }
   }
 
+  Future<void> assignCycleCountTask(String taskId) async {
+    final response = await _apiClient.dio.post('/inventory/cycle-count/$taskId/assign');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to assign count task');
+    }
+  }
+
+  Future<void> assignReplenishmentTask(String taskId) async {
+    final response = await _apiClient.dio.post('/inventory/replenishments/$taskId/assign');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to assign replenishment task');
+    }
+  }
+
+  Future<List<dynamic>> getReplenishmentTasks(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/inventory/tasks/replenish',
+        queryParameters: {'warehouseId': warehouseId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi tải danh sách tác vụ Replenishment');
+    }
+  }
+
+  Future<List<dynamic>> getCycleCountTasks(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/inventory/tasks/cycle-count',
+        queryParameters: {'warehouseId': warehouseId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw Exception(e.response?.data['Message'] ?? 'Lỗi tải danh sách tác vụ kiểm kê');
+    }
+  }
+
   Future<bool> reconcileCycleCount({
     required String warehouseId,
     required String sku,

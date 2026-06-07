@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -104,7 +105,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = UserProfile.fromJwt(accessToken);
       state = AuthAuthenticated(user);
       log('Auth: Đã khôi phục phiên đăng nhập cho ${user.username}');
-      Future.microtask(() {
+      Future.microtask(() async {
         ref.read(notificationServiceProvider).startConnection();
         final currentContext = ref.read(warehouseContextProvider);
         if (currentContext == null && user.warehouseId != null && user.warehouseId!.isNotEmpty) {
@@ -114,6 +115,9 @@ class AuthNotifier extends Notifier<AuthState> {
               warehouseName: user.warehouseName ?? 'Kho mặc định',
             ),
           );
+        } else if (currentContext == null) {
+          // JWT không có warehouse_id → tự động lấy kho đầu tiên từ API
+          await _autoSelectFirstWarehouse(accessToken);
         }
       });
     } catch (e) {
@@ -139,6 +143,7 @@ class AuthNotifier extends Notifier<AuthState> {
         tokenEndpoint,
         data: {
           'client_id': config.keycloakClientId,
+          'client_secret': 'my-secret',
           'grant_type': 'password',
           'username': username.trim(),
           'password': password,
@@ -162,7 +167,7 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = UserProfile.fromJwt(tokenResponse.accessToken);
         state = AuthAuthenticated(user);
         log('Auth: Đăng nhập thành công - ${user.username} (${user.appRole.name})');
-        Future.microtask(() {
+        Future.microtask(() async {
           ref.read(notificationServiceProvider).startConnection();
           if (user.warehouseId != null && user.warehouseId!.isNotEmpty) {
             ref.read(warehouseContextProvider.notifier).setWarehouse(
@@ -171,6 +176,9 @@ class AuthNotifier extends Notifier<AuthState> {
                 warehouseName: user.warehouseName ?? 'Kho mặc định',
               ),
             );
+          } else {
+            // JWT không có warehouse_id → tự động lấy kho đầu tiên từ API
+            await _autoSelectFirstWarehouse(tokenResponse.accessToken);
           }
         });
       } else {
@@ -232,6 +240,7 @@ class AuthNotifier extends Notifier<AuthState> {
         tokenEndpoint,
         data: {
           'client_id': config.keycloakClientId,
+          'client_secret': 'my-secret',
           'grant_type': 'refresh_token',
           'refresh_token': refreshTokenValue,
         },
@@ -253,7 +262,7 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = UserProfile.fromJwt(tokenResponse.accessToken);
         state = AuthAuthenticated(user);
         log('Auth: Refresh token thành công - ${user.username}');
-        Future.microtask(() {
+        Future.microtask(() async {
           ref.read(notificationServiceProvider).startConnection();
           final currentContext = ref.read(warehouseContextProvider);
           if (currentContext == null && user.warehouseId != null && user.warehouseId!.isNotEmpty) {
@@ -263,6 +272,8 @@ class AuthNotifier extends Notifier<AuthState> {
                 warehouseName: user.warehouseName ?? 'Kho mặc định',
               ),
             );
+          } else if (currentContext == null) {
+            await _autoSelectFirstWarehouse(tokenResponse.accessToken);
           }
         });
       } else {
@@ -271,6 +282,41 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       log('Auth: Refresh token thất bại - $e');
       state = const AuthUnauthenticated();
+    }
+  }
+
+  /// Tự động lấy kho đầu tiên từ API khi JWT không có warehouse_id
+  Future<void> _autoSelectFirstWarehouse(String accessToken) async {
+    try {
+      final config = ref.read(appConfigProvider);
+      final warehouseDio = Dio(BaseOptions(
+        baseUrl: config.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
+      final response = await warehouseDio.get(
+        '/warehouse',
+        queryParameters: {'all': true},
+        options: Options(
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ),
+      );
+      if (response.statusCode == 200 && response.data is List && (response.data as List).isNotEmpty) {
+        final firstWarehouse = response.data[0];
+        final whId = firstWarehouse['id']?.toString() ?? firstWarehouse['warehouseId']?.toString() ?? '';
+        final whName = firstWarehouse['name']?.toString() ?? firstWarehouse['warehouseName']?.toString() ?? 'Kho mặc định';
+        if (whId.isNotEmpty) {
+          ref.read(warehouseContextProvider.notifier).setWarehouse(
+            WarehouseContext(
+              warehouseId: whId,
+              warehouseName: whName,
+            ),
+          );
+          log('Auth: Tự động chọn kho "$whName" ($whId)');
+        }
+      }
+    } catch (e) {
+      log('Auth: Không thể tự động chọn kho - $e');
     }
   }
 

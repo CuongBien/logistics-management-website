@@ -250,9 +250,30 @@ class _SortScreenState extends ConsumerState<SortScreen> {
                         const Divider(),
                         if (_lastResponse!.routing != null) ...[
                           Text('🏁 Đích cuối: ${_lastResponse!.routing!.finalDestination ?? "N/A"}', style: const TextStyle(fontSize: 15)),
-                          const SizedBox(height: 4),
-                          Text('🚚 Điểm trung chuyển kế: ${_lastResponse!.routing!.nextHop ?? "N/A"}', style: const TextStyle(fontSize: 15)),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.warning, width: 2),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.place, color: AppColors.warning, size: 40),
+                                const SizedBox(height: 8),
+                                const Text('HƯỚNG DẪN TẬP KẾT TẠI KHO', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.warning)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Hãy đặt lên khu vực xuất hàng đi\n[ ${_lastResponse!.routing!.nextHop ?? "N/A"} ]',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                         ],
                         if (_lastResponse!.shipment != null) ...[
                           Container(

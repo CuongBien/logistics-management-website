@@ -235,29 +235,61 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
       final repo = ref.read(outboundRepositoryProvider);
       
       await repo.packOrder(_orderId);
-      await repo.shipOrder(_orderId);
+      // Remove auto-ship here! Load step will handle shipment
+      // await repo.shipOrder(_orderId);
 
       setState(() => _isLoading = false);
 
       if (mounted) {
         showDialog(
           context: context,
+          barrierDismissible: false,
           builder: (context) => AlertDialog(
             title: const Row(
               children: [
                 Icon(Icons.check_circle, color: AppColors.success, size: 28),
                 SizedBox(width: 8),
-                Text('Đóng gói & Auto Ship OK'),
+                Text('Đóng gói thành công'),
               ],
             ),
-            content: Text('Đơn hàng $_orderNo đã được Đóng gói thành công!\nHệ thống tự động liên kết và phân phối Shipment để chuyển qua khâu Xuất bến (Dispatch).'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Đơn hàng $_orderNo đã được đóng gói đủ số lượng. Vui lòng in tem dán lên thùng:'),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.qr_code_2, size: 100),
+                      const SizedBox(height: 8),
+                      Text('OB:$_orderNo', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text('Mã QR này sẽ dùng cho khâu Xếp xe (Load) và Xuất bến.', style: TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.center),
+              ],
+            ),
             actions: [
+              OutlinedButton(
+                onPressed: () {
+                  // Giả lập gọi in qua bluetooth
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đang gửi lệnh in tới máy in tem...')));
+                },
+                child: const Text('IN TEM'),
+              ),
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  Navigator.pop(context);
+                  Navigator.pop(context); // Về màn hình trước
                 },
-                child: const Text('HOÀN TẤT & IN TEM'),
+                child: const Text('HOÀN TẤT & ĐÓNG'),
               )
             ],
           ),
@@ -522,7 +554,7 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
                 ElevatedButton.icon(
                   onPressed: _isLoading ? null : _submitPack,
                   icon: const Icon(Icons.check),
-                  label: const Text('HOÀN THÀNH ĐÓNG GÓI & SHIP'),
+                  label: const Text('HOÀN THÀNH ĐÓNG GÓI & IN TEM'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
                     foregroundColor: Colors.white,

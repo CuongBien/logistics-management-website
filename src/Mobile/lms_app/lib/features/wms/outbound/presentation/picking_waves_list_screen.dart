@@ -47,7 +47,7 @@ class PickingWavesListScreen extends ConsumerWidget {
                 // Lọc waves đang Picking hoặc mới tạo
                 final activeWaves = waves.where((w) {
                   final status = w['status']?.toString().toLowerCase() ?? '';
-                  return status == 'picking' || status == 'created' || status == 'allocated';
+                  return status == 'picking' || status == 'created' || status == 'allocated' || status == 'new';
                 }).toList();
 
                 if (activeWaves.isEmpty) {

@@ -5,204 +5,53 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_config.dart';
 import '../../../core/utils/role_manager.dart';
 import '../../wms/outbound/providers/outbound_provider.dart';
-import '../../wms/putaway/providers/putaway_providers.dart';
+import '../../wms/putaway/providers/putaway_provider.dart';
+import '../../wms/inventory/providers/inventory_provider.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../providers/unified_tasks_provider.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   final AppRole role;
   
   const DashboardScreen({super.key, required this.role});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  TaskType? _selectedFilter;
+  String _searchQuery = '';
+  bool _showMyTasksOnly = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final activeWarehouse = ref.watch(warehouseContextProvider);
-    
-    // Đăng ký theo dõi các tác vụ động
-    final wavesAsync = ref.watch(wavesProvider);
-    final putawayAsync = ref.watch(putawayTasksProvider);
+    final unifiedTasksAsync = ref.watch(unifiedTasksProvider);
 
-    // Xử lý giao diện cho quản lý (Manager)
-    if (role == AppRole.manager) {
-      return _buildManagerDashboard(context, activeWarehouse, wavesAsync, putawayAsync);
-    }
+    return Column(
+      children: [
+        // Banner kho hiện tại
+        _buildWarehouseBanner(activeWarehouse),
+        
+        // Thanh tìm kiếm
+        _buildSearchBar(),
 
-    // Xử lý giao diện cho nhân viên (Operator) - My Tasks Dashboard
-    return _buildOperatorDashboard(context, ref, activeWarehouse, wavesAsync, putawayAsync);
-  }
+        // Thanh bộ lọc
+        _buildFilterChips(),
 
-  Widget _buildManagerDashboard(
-    BuildContext context, 
-    WarehouseContext? activeWarehouse,
-    AsyncValue<List<dynamic>> wavesAsync,
-    AsyncValue<List<dynamic>> putawayAsync,
-  ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Banner kho hiện tại
-          _buildWarehouseBanner(activeWarehouse),
-          const SizedBox(height: 16),
-          
-          const Text(
-            'Tổng quan hiệu suất kho',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 12),
-          
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        activeWarehouse?.warehouseName ?? 'Chưa chọn kho',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const Text(
-                        '75% Sức chứa',
-                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-                      )
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
-                    child: LinearProgressIndicator(
-                      value: 0.75, 
-                      minHeight: 12,
-                      backgroundColor: Colors.black12,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Đã lưu trữ: 1,850 / 2,500 Pallets',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Số liệu thống kê tác vụ
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  title: 'Đợt Picking',
-                  value: wavesAsync.when(
-                    data: (list) => '${list.length}',
-                    loading: () => '...',
-                    error: (_, __) => '!',
-                  ),
-                  icon: Icons.outbox,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  title: 'Tác vụ cất hàng',
-                  value: putawayAsync.when(
-                    data: (list) => '${list.where((t) => t['status']?.toString().toLowerCase() == 'pending').length}',
-                    loading: () => '...',
-                    error: (_, __) => '!',
-                  ),
-                  icon: Icons.move_to_inbox,
-                  color: Colors.amber,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          
-          const Text(
-            'Tình trạng hoạt động (Backlog)',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.red.withOpacity(0.15),
-                child: const Icon(Icons.warning, color: Colors.red),
-              ),
-              title: const Text('120 Đơn hàng xuất kho đang đợi phân bổ'),
-              subtitle: const Text('Yêu cầu xử lý nhanh để kịp giờ xuất bến'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOperatorDashboard(
-    BuildContext context,
-    WidgetRef ref,
-    WarehouseContext? activeWarehouse,
-    AsyncValue<List<dynamic>> wavesAsync,
-    AsyncValue<List<dynamic>> putawayAsync,
-  ) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        body: Column(
-          children: [
-            // Banner kho hiện tại
-            _buildWarehouseBanner(activeWarehouse),
-            
-            // TabBar điều khiển công việc
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TabBar(
-                  indicator: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: AppColors.textSecondary,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  tabs: const [
-                    Tab(text: 'Lấy hàng (Picking)'),
-                    Tab(text: 'Cất hàng (Putaway)'),
-                  ],
-                ),
-              ),
-            ),
-
-            // Danh sách các tác vụ theo Tab
-            Expanded(
-              child: TabBarView(
-                children: [
-                  // Tab 1: Picking Waves
-                  _buildPickingTab(context, ref, wavesAsync),
-                  
-                  // Tab 2: Putaway Tasks
-                  _buildPutawayTab(context, ref, putawayAsync),
-                ],
-              ),
-            ),
-
-            // Panel Tiện ích nhanh dưới cùng
-            _buildQuickUtilities(context),
-          ],
+        // Danh sách tác vụ hợp nhất
+        Expanded(
+          child: _buildUnifiedTaskList(unifiedTasksAsync),
         ),
-      ),
+      ],
     );
   }
 
@@ -258,209 +107,244 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPickingTab(BuildContext context, WidgetRef ref, AsyncValue<List<dynamic>> wavesAsync) {
-    return wavesAsync.when(
-      data: (waves) {
-        // Lọc các wave gom hàng nhặt đang active
-        final activeWaves = waves.where((w) {
-          final status = w['status']?.toString().toLowerCase() ?? '';
-          return status == 'picking' || status == 'created' || status == 'allocated';
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: InputDecoration(
+          hintText: 'Tìm kiếm tác vụ (mã, mô tả)...',
+          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+          suffixIcon: _searchQuery.isNotEmpty 
+            ? IconButton(
+                icon: const Icon(Icons.clear, size: 20),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _searchQuery = '');
+                },
+              )
+            : null,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips() {
+    return SizedBox(
+      height: 50,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
+          FilterChip(
+            label: const Text('Của tôi'),
+            selected: _showMyTasksOnly,
+            onSelected: (selected) {
+              setState(() => _showMyTasksOnly = selected);
+            },
+            selectedColor: AppColors.primary.withOpacity(0.2),
+            labelStyle: TextStyle(
+              color: _showMyTasksOnly ? AppColors.primary : AppColors.textSecondary,
+              fontWeight: _showMyTasksOnly ? FontWeight.bold : FontWeight.normal,
+            ),
+            backgroundColor: Colors.grey.shade200,
+            side: BorderSide.none,
+          ),
+          const SizedBox(width: 8),
+          _buildChip(label: 'Tất cả', type: null),
+          const SizedBox(width: 8),
+          _buildChip(label: 'Picking', type: TaskType.picking),
+          const SizedBox(width: 8),
+          _buildChip(label: 'Putaway', type: TaskType.putaway),
+          const SizedBox(width: 8),
+          _buildChip(label: 'Replenish', type: TaskType.replenishment),
+          const SizedBox(width: 8),
+          _buildChip(label: 'Kiểm kê', type: TaskType.count),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip({required String label, required TaskType? type}) {
+    final isSelected = _selectedFilter == type;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() => _selectedFilter = type);
+        }
+      },
+      selectedColor: AppColors.primary.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      backgroundColor: Colors.grey.shade200,
+      side: BorderSide.none,
+    );
+  }
+
+  Widget _buildUnifiedTaskList(AsyncValue<List<InternalTask>> tasksAsync) {
+    return tasksAsync.when(
+      data: (tasks) {
+        // Lấy thông tin user hiện tại
+        final authState = ref.watch(authProvider);
+        String? operatorSub;
+        if (authState is AuthAuthenticated) {
+          operatorSub = authState.user.id;
+        }
+
+        // Áp dụng bộ lọc
+        var filteredTasks = tasks.where((t) {
+          final matchFilter = _selectedFilter == null || t.type == _selectedFilter;
+          final matchMyTasks = !_showMyTasksOnly || (t.assignedTo == operatorSub);
+          final matchSearch = _searchQuery.isEmpty || 
+              t.title.toLowerCase().contains(_searchQuery.toLowerCase()) || 
+              t.subtitle.toLowerCase().contains(_searchQuery.toLowerCase());
+          return matchFilter && matchMyTasks && matchSearch;
         }).toList();
 
-        if (activeWaves.isEmpty) {
-          return _buildEmptyTaskView(
-            icon: Icons.check_circle_outline,
-            message: 'Tuyệt vời! Không có đợt gom hàng lấy hàng nào đang chờ xử lý.',
-          );
+        if (filteredTasks.isEmpty) {
+          return _buildEmptyTaskView();
         }
 
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(wavesProvider),
+          onRefresh: () async => ref.invalidate(unifiedTasksProvider),
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: activeWaves.length,
+            itemCount: filteredTasks.length,
             itemBuilder: (context, index) {
-              final wave = activeWaves[index];
-              final waveId = wave['id']?.toString() ?? '';
-              final waveNo = wave['waveNo']?.toString() ?? 'N/A';
-              final orderCount = wave['orderCount'] ?? 0;
-              final status = wave['status']?.toString() ?? 'Pending';
-              final type = wave['type']?.toString() ?? 'N/A';
-              
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 2,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => context.push('/wms/pick_tasks/$waveId'),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Đợt nhặt: $waveNo',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
-                            ),
-                            _buildStatusBadge(status),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Phân loại', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                                const SizedBox(height: 2),
-                                Text(type, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text('Quy mô', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                                const SizedBox(height: 2),
-                                Text('$orderCount Đơn hàng', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
+              final task = filteredTasks[index];
+              return _buildTaskCard(task);
             },
           ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => _buildErrorTaskView(err, () => ref.invalidate(wavesProvider)),
+      error: (err, _) => _buildErrorTaskView(err, () => ref.invalidate(unifiedTasksProvider)),
     );
   }
 
-  Widget _buildPutawayTab(BuildContext context, WidgetRef ref, AsyncValue<List<dynamic>> putawayAsync) {
-    return putawayAsync.when(
-      data: (tasks) {
-        // Chỉ lấy các task putaway Pending
-        final pendingTasks = tasks.where((t) => t['status']?.toString().toLowerCase() == 'pending').toList();
-
-        if (pendingTasks.isEmpty) {
-          return _buildEmptyTaskView(
-            icon: Icons.assignment_turned_in_outlined,
-            message: 'Tất cả các sản phẩm đã được cất kệ! Không có hàng tồn đọng.',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(putawayTasksProvider),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: pendingTasks.length,
-            itemBuilder: (context, index) {
-              final task = pendingTasks[index];
-              final taskId = task['id']?.toString() ?? '';
-              final sku = task['skuCode'] ?? task['sku'] ?? 'N/A';
-              final qty = task['quantity'] ?? 0;
-              final sourceBin = task['sourceBinCode'] ?? 'Pre-Dock';
-              final targetBin = task['targetBinCode'] ?? task['suggestedBinCode'] ?? 'N/A';
-              
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 2,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    context.push(
-                      Uri(
-                        path: '/wms/putaway_execution',
-                        queryParameters: {
-                          'taskId': taskId,
-                          'targetBin': targetBin,
-                        },
-                      ).toString(),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildTaskCard(InternalTask task) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: task.color.withOpacity(0.3), width: 1),
+      ),
+      elevation: 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _handleTaskTap(task),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              colors: [task.color.withOpacity(0.05), Colors.white],
+              begin: Alignment.centerLeft,
+              end: Alignment.center,
+            ),
+          ),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(task.icon, color: task.color, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        task.typeName.toUpperCase(),
+                        style: TextStyle(
+                          color: task.color,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildStatusBadge(task.status, task.color),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                task.title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                task.subtitle,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: Colors.black12),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Chi tiết', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      const SizedBox(height: 2),
+                      Text(task.primaryData, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    ],
+                  ),
+                  if (task.secondaryData.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'SKU: $sku',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                'SL: $qty PCS',
-                                style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold, fontSize: 11),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Từ nguồn', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                                const SizedBox(height: 2),
-                                Text(sourceBin, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                              ],
-                            ),
-                            const Icon(Icons.arrow_forward_sharp, color: AppColors.primary, size: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text('Gợi ý cất', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                                const SizedBox(height: 2),
-                                Text(targetBin, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13)),
-                              ],
-                            ),
-                          ],
-                        ),
+                        const Text('Thông tin thêm', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        const SizedBox(height: 2),
+                        Text(task.secondaryData, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       ],
                     ),
-                  ),
-                ),
-              );
-            },
+                ],
+              ),
+            ],
           ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => _buildErrorTaskView(err, () => ref.invalidate(putawayTasksProvider)),
+        ),
+      ),
     );
   }
 
-  Widget _buildEmptyTaskView({required IconData icon, required String message}) {
+  void _handleTaskTap(InternalTask task) {
+    if (task.type == TaskType.picking) {
+      _showPickingTaskDetails(context, task.originalData, task.id, task);
+    } else if (task.type == TaskType.putaway) {
+      final targetBin = task.originalData['targetBinCode'] ?? task.originalData['suggestedBinCode'] ?? 'N/A';
+      _showPutawayTaskDetails(context, task.originalData, task.id, targetBin, task);
+    } else if (task.type == TaskType.replenishment) {
+      _showReplenishmentTaskDetails(context, task.originalData, task.id, task);
+    } else if (task.type == TaskType.count) {
+      _showCountTaskDetails(context, task.originalData, task.id, task);
+    }
+  }
+
+  Widget _buildEmptyTaskView() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 60, color: Colors.grey.shade400),
+            Icon(Icons.check_circle_outline, size: 60, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
-              message,
+              'Tuyệt vời! Không tìm thấy tác vụ nào đang chờ xử lý.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.4),
             ),
@@ -495,14 +379,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
-    Color color = Colors.grey;
-    if (status.toLowerCase() == 'picking' || status.toLowerCase() == 'in_progress') {
-      color = AppColors.primary;
-    } else if (status.toLowerCase() == 'allocated' || status.toLowerCase() == 'created') {
-      color = Colors.blueGrey;
-    }
-    
+  Widget _buildStatusBadge(String status, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -516,139 +393,363 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: color.withOpacity(0.12),
-              child: Icon(icon, color: color),
+  void _showPutawayTaskDetails(BuildContext context, dynamic rawTask, String taskId, String targetBin, InternalTask internalTask) {
+    final task = Map<String, dynamic>.from(rawTask as Map);
+    final authState = ref.read(authProvider);
+    final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
+    final assignedTo = internalTask.assignedTo;
+    
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 24.0, right: 24.0, top: 24.0,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              const Text('Chi tiết Cất hàng (Putaway)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Divider(height: 32),
+              _buildDetailRow('Mã Task', taskId),
+              if (internalTask.productName != null) _buildDetailRow('Sản phẩm', internalTask.productName!),
+              _buildDetailRow('SKU', task['sku'] ?? 'N/A'),
+              if (internalTask.lotNo != null) _buildDetailRow('Số Lô (Lot)', internalTask.lotNo!),
+              _buildDetailRow('Số lượng', '${task['quantity'] ?? 0} ${internalTask.uom ?? 'PCS'}'),
+              _buildDetailRow('Nguồn (Source)', task['sourceBinId'] ?? 'Pre-Dock'),
+              _buildDetailRow('Kệ đích', targetBin),
+              if (assignedTo != null) _buildDetailRow('Người nhận', isAssignedToMe ? 'Bạn' : assignedTo),
+              const SizedBox(height: 24),
+              Row(
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Đóng'),
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  const SizedBox(width: 12),
+                  if (!isAssignedToOther)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (!isAssignedToMe) {
+                            try {
+                              await ref.read(putawayRepositoryProvider).assignPutawayTask(taskId);
+                              ref.invalidate(unifiedTasksProvider);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                              return;
+                            }
+                          }
+                          if (context.mounted) {
+                            context.push(
+                              Uri(
+                                path: '/wms/putaway_execution',
+                                queryParameters: {
+                                  'taskId': taskId,
+                                  'targetBin': targetBin,
+                                },
+                              ).toString(),
+                            );
+                          }
+                        },
+                        child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
+                      ),
+                    ),
                 ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickUtilities(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'TIỆN ÍCH NGHIỆP VỤ NHANH',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textSecondary,
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildUtilityButton(
-                context: context,
-                icon: Icons.download,
-                label: 'Nhập kho',
-                onTap: () => context.push('/wms/receive'),
-                color: Colors.green,
-              ),
-              _buildUtilityButton(
-                context: context,
-                icon: Icons.compare_arrows,
-                label: 'Luân chuyển',
-                onTap: () => context.push('/wms/transit-receive'),
-                color: Colors.purple,
-              ),
-              _buildUtilityButton(
-                context: context,
-                icon: Icons.fact_check,
-                label: 'Kiểm kê',
-                onTap: () => context.push('/wms/count'),
-                color: Colors.orange,
-              ),
-              _buildUtilityButton(
-                context: context,
-                icon: Icons.search,
-                label: 'Tra cứu',
-                onTap: () => context.push('/wms/inventory'),
-                color: Colors.blueGrey,
-              ),
+              )
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUtilityButton({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required Color color,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-        child: Column(
-          children: [
-            CircleAvatar(
-              backgroundColor: color.withOpacity(0.08),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-            ),
-          ],
         ),
+      );
+    },
+  );
+}
+
+  void _showPickingTaskDetails(BuildContext context, dynamic rawTask, String taskId, InternalTask internalTask) {
+    final task = Map<String, dynamic>.from(rawTask as Map);
+    final authState = ref.read(authProvider);
+    final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
+    final assignedTo = internalTask.assignedTo;
+    
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    
+    final pickTasks = task['pickTasks'] as List<dynamic>? ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 24.0, right: 24.0, top: 24.0,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              const Text('Chi tiết Đợt lấy hàng (Picking Wave)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Divider(height: 32),
+              _buildDetailRow('Đợt nhặt', task['waveNo'] ?? 'N/A'),
+              _buildDetailRow('Loại Đợt', task['type'] ?? 'N/A'),
+              _buildDetailRow('Tổng số đơn', '${task['orderCount'] ?? 0} Đơn'),
+              if (assignedTo != null) _buildDetailRow('Người nhận', isAssignedToMe ? 'Bạn' : assignedTo),
+              const SizedBox(height: 16),
+              const Text('Danh sách cần lấy:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              const SizedBox(height: 8),
+              if (pickTasks.isEmpty)
+                const Text('Không có dữ liệu chi tiết.', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))
+              else
+                Container(
+                  constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.35),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(12),
+                    itemCount: pickTasks.length,
+                    separatorBuilder: (_, __) => const Divider(height: 16),
+                    itemBuilder: (context, index) {
+                      final pt = pickTasks[index];
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                            child: const Icon(Icons.inventory_2, size: 16, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${pt['productName'] ?? pt['sku'] ?? 'N/A'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+                                const SizedBox(height: 4),
+                                Text('SKU: ${pt['sku'] ?? 'N/A'}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                const SizedBox(height: 2),
+                                Text('Kệ: ${pt['binCode'] ?? 'N/A'}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ),
+                          Text('${pt['quantity'] ?? 0} ${pt['uom'] ?? 'PCS'}', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 13)),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Đóng'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  if (!isAssignedToOther)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (!isAssignedToMe) {
+                            try {
+                              await ref.read(outboundRepositoryProvider).assignWave(taskId);
+                              ref.invalidate(unifiedTasksProvider);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                              return;
+                            }
+                          }
+                          if (context.mounted) {
+                            context.push('/wms/pick_tasks/$taskId');
+                          }
+                        },
+                        child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
+                      ),
+                    ),
+                ],
+              )
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  void _showReplenishmentTaskDetails(BuildContext context, dynamic rawTask, String taskId, InternalTask internalTask) {
+    final task = Map<String, dynamic>.from(rawTask as Map);
+    final authState = ref.read(authProvider);
+    final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
+    final assignedTo = internalTask.assignedTo;
+    
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 24.0, right: 24.0, top: 24.0,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              const Text('Chi tiết Bổ sung (Replenishment)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Divider(height: 32),
+              if (internalTask.productName != null) _buildDetailRow('Sản phẩm', internalTask.productName!),
+              _buildDetailRow('SKU', task['sku'] ?? 'N/A'),
+              _buildDetailRow('Số lượng', '${task['quantity'] ?? 0} ${internalTask.uom ?? 'PCS'}'),
+              _buildDetailRow('Kệ nguồn', task['fromBinId'] ?? 'N/A'),
+              _buildDetailRow('Kệ đích', task['toBinId'] ?? 'N/A'),
+              _buildDetailRow('Mức ưu tiên', task['priority']?.toString() ?? 'Bình thường'),
+              if (assignedTo != null) _buildDetailRow('Người nhận', isAssignedToMe ? 'Bạn' : assignedTo),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Đóng'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  if (!isAssignedToOther)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (!isAssignedToMe) {
+                            try {
+                              await ref.read(inventoryRepositoryProvider).assignReplenishmentTask(taskId);
+                              ref.invalidate(unifiedTasksProvider);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                              return;
+                            }
+                          }
+                          // Replenishment execution is not fully implemented yet in the example, so we just pop
+                          // context.push('/wms/replenishment_execution/$taskId');
+                        },
+                        child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
+                      ),
+                    ),
+                ],
+              )
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  void _showCountTaskDetails(BuildContext context, dynamic rawTask, String taskId, InternalTask internalTask) {
+    final task = Map<String, dynamic>.from(rawTask as Map);
+    final authState = ref.read(authProvider);
+    final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
+    final assignedTo = internalTask.assignedTo;
+    
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 24.0, right: 24.0, top: 24.0,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              const Text('Chi tiết Kiểm kê (Cycle Count)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Divider(height: 32),
+              _buildDetailRow('Kệ kiểm kê', task['binId'] ?? 'N/A'),
+              if (internalTask.productName != null) _buildDetailRow('Sản phẩm', internalTask.productName!),
+              _buildDetailRow('SKU', task['sku'] ?? 'Tất cả'),
+              _buildDetailRow('Tổng số', '${task['expectedQty'] ?? 0} ${internalTask.uom ?? ''}'),
+              _buildDetailRow('Đã đếm', '${task['countedQty'] ?? 0}'),
+              _buildDetailRow('Mức ưu tiên', task['priority']?.toString() ?? 'Bình thường'),
+              if (assignedTo != null) _buildDetailRow('Người nhận', isAssignedToMe ? 'Bạn' : assignedTo),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Đóng'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const SizedBox(width: 12),
+                  if (!isAssignedToOther)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (!isAssignedToMe) {
+                            try {
+                              await ref.read(inventoryRepositoryProvider).assignCycleCountTask(taskId);
+                              ref.invalidate(unifiedTasksProvider);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                              return;
+                            }
+                          }
+                          if (context.mounted) {
+                            context.push('/wms/count?binCode=${task['binCode']}');
+                          }
+                        },
+                        child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
+                      ),
+                    ),
+                ],
+              )
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.textSecondary))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold))),
+        ],
       ),
     );
   }
