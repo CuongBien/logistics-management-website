@@ -6,6 +6,8 @@ public record PickTaskDto(
     Guid TaskId,
     string? OrderNo,
     string? Sku,
+    string? ProductName,
+    string? UOM,
     int Quantity,
     string BinCode,
     string? Aisle,

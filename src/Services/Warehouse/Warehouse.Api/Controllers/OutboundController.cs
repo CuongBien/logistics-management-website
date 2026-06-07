@@ -58,7 +58,7 @@ public class OutboundController : ApiControllerBase
 
         var shipments = await query
             .OrderByDescending(x => x.CreatedAt)
-            .Take(50)
+            .Take(1000)
             .ToListAsync();
 
         return Ok(shipments);
@@ -208,6 +208,28 @@ public class OutboundController : ApiControllerBase
         return ToActionResult(await Mediator.Send(command));
     }
 
+    [HttpGet("shipments/{shipmentId:guid}/orders")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetShipmentOrders(Guid shipmentId)
+    {
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var shipment = await _context.Shipments
+            .FirstOrDefaultAsync(x => x.Id == shipmentId && x.TenantId == tenantId);
+
+        if (shipment == null)
+            return NotFound(new { Message = $"Shipment {shipmentId} not found." });
+
+        var orders = await _context.ShipmentOrders
+            .Where(x => x.ShipmentId == shipmentId)
+            .Include(x => x.OutboundOrder)
+                .ThenInclude(o => o.Lines)
+            .Select(x => x.OutboundOrder)
+            .ToListAsync();
+
+        return Ok(orders);
+    }
+
     [HttpPost("orders/{id:guid}/cancel")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> CancelOrder(Guid id)
@@ -350,6 +372,16 @@ public class OutboundController : ApiControllerBase
     {
         var command = new Warehouse.Application.Features.Outbound.Commands.PutToWall.PutToWallCommand(waveId, request.Sku, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
         return ToActionResult(await Mediator.Send(command));
+    }
+    [HttpPost("waves/{id}/assign")]
+    public async Task<IActionResult> AssignWave(Guid id)
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrEmpty(operatorSub)) return Unauthorized();
+
+        var result = await Mediator.Send(new Warehouse.Application.Features.Outbound.Commands.AssignWave.AssignWaveCommand(id, operatorSub));
+        if (!result.IsSuccess) return BadRequest(result.Error);
+        return Ok();
     }
 }
 

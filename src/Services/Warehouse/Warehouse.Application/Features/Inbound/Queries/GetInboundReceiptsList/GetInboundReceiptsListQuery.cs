@@ -50,7 +50,8 @@ public class GetInboundReceiptsListQueryHandler : IRequestHandler<GetInboundRece
         else
         {
             var isAdmin = request.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8" || 
-                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8"));
+                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.DisplayName == "System Admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8")) ||
+                          await _context.OperatorRoleAssignments.AnyAsync(a => a.OperatorProfile.OperatorSub == request.OperatorSub && a.Role.Code == "WMS_ADMIN", cancellationToken);
 
             if (isAdmin)
             {

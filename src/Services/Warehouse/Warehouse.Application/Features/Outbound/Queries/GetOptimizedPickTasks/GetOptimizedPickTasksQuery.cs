@@ -2,6 +2,8 @@ using Logistics.Core;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Warehouse.Application.Common.Interfaces;
+using Warehouse.Domain.Entities;
+using System.Linq;
 
 namespace Warehouse.Application.Features.Outbound.Queries.GetOptimizedPickTasks;
 
@@ -57,18 +59,40 @@ public sealed class GetOptimizedPickTasksQueryHandler : IRequestHandler<GetOptim
             return Result<List<PickTaskDto>>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:pick' for warehouse '{warehouseId}'."));
         }
 
-        var dtos = pickTasks.Select(pt => new PickTaskDto(
-            pt.Id,
-            pt.OutboundOrderLine.OutboundOrder.OrderNo,
-            pt.OutboundOrderLine.Sku,
-            pt.Quantity,
-            pt.FromBin.BinCode,
-            pt.FromBin.Aisle,
-            pt.FromBin.Rack,
-            pt.FromBin.Shelf,
-            pt.FromBin.PickSequence,
-            pt.Status
-        )).ToList();
+        // Auto-claim all Pending tasks in the Wave for the requesting operator
+        var pendingTasks = pickTasks.Where(pt => pt.Status == PickTaskStatus.Pending).ToList();
+        if (pendingTasks.Any())
+        {
+            foreach (var task in pendingTasks)
+            {
+                task.Start(request.OperatorId);
+            }
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        // Fetch SKU details
+        var skus = pickTasks.Select(pt => pt.OutboundOrderLine.Sku).Distinct().ToList();
+        var skuDetails = await _context.ErpSkuMirrors
+            .Where(s => skus.Contains(s.SkuCode))
+            .ToDictionaryAsync(s => s.SkuCode, s => s, cancellationToken);
+
+        // Return only InProgress tasks claimed by the current operator
+        var dtos = pickTasks
+            .Where(pt => pt.Status == PickTaskStatus.InProgress && pt.AssignedOperatorId == request.OperatorId)
+            .Select(pt => new PickTaskDto(
+                pt.Id,
+                pt.OutboundOrderLine.OutboundOrder.OrderNo,
+                pt.OutboundOrderLine.Sku,
+                skuDetails.ContainsKey(pt.OutboundOrderLine.Sku) ? skuDetails[pt.OutboundOrderLine.Sku].Name : null,
+                skuDetails.ContainsKey(pt.OutboundOrderLine.Sku) ? skuDetails[pt.OutboundOrderLine.Sku].UnitOfMeasure : null,
+                pt.Quantity,
+                pt.FromBin.BinCode,
+                pt.FromBin.Aisle,
+                pt.FromBin.Rack,
+                pt.FromBin.Shelf,
+                pt.FromBin.PickSequence,
+                pt.Status
+            )).ToList();
 
         return Result<List<PickTaskDto>>.Success(dtos);
     }

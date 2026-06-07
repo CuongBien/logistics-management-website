@@ -112,6 +112,28 @@ public class InventoryTasksController : ControllerBase
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { Error = result.Error.Code, Message = result.Error.Message });
     }
+
+    [HttpPost("cycle-count/{id}/assign")]
+    public async Task<IActionResult> AssignCycleCount(Guid id)
+    {
+        var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrEmpty(operatorSub)) return Unauthorized();
+
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Commands.AssignCycleCount.AssignCycleCountCommand(id, operatorSub));
+        if (!result.IsSuccess) return BadRequest(result.Error);
+        return Ok();
+    }
+
+    [HttpPost("replenishments/{id}/assign")]
+    public async Task<IActionResult> AssignReplenishment(Guid id)
+    {
+        var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrEmpty(operatorSub)) return Unauthorized();
+
+        var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Commands.AssignReplenishment.AssignReplenishmentCommand(id, operatorSub));
+        if (!result.IsSuccess) return BadRequest(result.Error);
+        return Ok();
+    }
 }
 
 public class SubmitCountRequest

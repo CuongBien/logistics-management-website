@@ -44,7 +44,31 @@ public class InboundController : ApiControllerBase
         var receipt = await query.OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
 
         if (receipt == null) return NotFound(new { Message = $"Inbound receipt for OrderId {orderId} not found." });
-        return Ok(receipt);
+
+        var skuCodes = receipt.Lines.Select(l => l.Sku).Distinct().ToList();
+        var skus = await _context.ErpSkuMirrors
+            .Where(s => s.TenantId == receipt.TenantId && skuCodes.Contains(s.SkuCode))
+            .ToDictionaryAsync(s => s.SkuCode, s => new { s.Name, s.UnitOfMeasure });
+
+        var result = new {
+            receipt.Id,
+            receipt.ReceiptNo,
+            receipt.OrderId,
+            receipt.Status,
+            receipt.WarehouseId,
+            receipt.FinalDestinationWarehouseId,
+            receipt.TenantId,
+            Lines = receipt.Lines.Select(l => new {
+                l.Id,
+                l.Sku,
+                l.ExpectedQuantity,
+                l.ReceivedQuantity,
+                ProductName = skus.ContainsKey(l.Sku) ? skus[l.Sku].Name : null,
+                UOM = skus.ContainsKey(l.Sku) ? skus[l.Sku].UnitOfMeasure : "PCS"
+            }).ToList()
+        };
+
+        return Ok(result);
     }
 
     [HttpGet("receipts")]
@@ -289,6 +313,17 @@ public class InboundController : ApiControllerBase
         var command = new CompleteCrossDockTaskCommand(taskId, operatorSub, request.ScannedDestinationBinCode);
         var result = await Mediator.Send(command);
         return ToActionResult(result);
+    }
+
+    [HttpPost("putaway-tasks/{id}/assign")]
+    public async Task<IActionResult> AssignPutawayTask(Guid id)
+    {
+        var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrEmpty(operatorSub)) return Unauthorized();
+
+        var result = await Mediator.Send(new Warehouse.Application.Features.Inbound.Commands.AssignPutawayTask.AssignPutawayTaskCommand(id, operatorSub));
+        if (!result.IsSuccess) return BadRequest(result.Error);
+        return Ok();
     }
 }
 

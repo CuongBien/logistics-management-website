@@ -8,6 +8,8 @@ using Warehouse.Application.Features.Dashboard.Queries.GetPendingWorkloads;
 using Warehouse.Application.Features.Dashboard.Queries.GetDiscrepanciesStats;
 using Warehouse.Application.Features.Dashboard.Queries.GetOperatorProductivity;
 using Warehouse.Application.Features.Dashboard.Queries.GetTopMovingSkus;
+using Warehouse.Application.Features.Dashboard.Queries.GetZoneOccupancy;
+using Warehouse.Application.Features.Dashboard.Queries.GetOperatorProductivityHistory;
 
 namespace Warehouse.Api.Controllers;
 
@@ -62,6 +64,20 @@ public class DashboardController : ControllerBase
     public async Task<ActionResult<Result<List<TopMovingSkuDto>>>> GetTopMovingSkus([FromQuery] Guid? warehouseId)
     {
         var result = await _mediator.Send(new GetTopMovingSkusQuery(warehouseId));
+        return result.IsFailure ? BadRequest(result) : Ok(result);
+    }
+
+    [HttpGet("zone-occupancy")]
+    public async Task<ActionResult<Result<List<ZoneOccupancyDto>>>> GetZoneOccupancy([FromQuery] Guid warehouseId)
+    {
+        var result = await _mediator.Send(new GetZoneOccupancyQuery(warehouseId));
+        return result.IsFailure ? BadRequest(result) : Ok(result);
+    }
+
+    [HttpGet("productivity-history")]
+    public async Task<ActionResult<Result<OperatorProductivityHistoryDto>>> GetProductivityHistory([FromQuery] Guid? warehouseId)
+    {
+        var result = await _mediator.Send(new GetOperatorProductivityHistoryQuery(warehouseId));
         return result.IsFailure ? BadRequest(result) : Ok(result);
     }
 }

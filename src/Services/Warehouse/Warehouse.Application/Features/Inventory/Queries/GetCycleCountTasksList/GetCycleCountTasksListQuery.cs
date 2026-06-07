@@ -12,10 +12,12 @@ public class CycleCountTaskDto
     public Guid Id { get; set; }
     public string BinId { get; set; } = default!;
     public string Sku { get; set; } = default!;
+    public string? ProductName { get; set; }
+    public string? UOM { get; set; }
     public int ExpectedQty { get; set; }
     public int? CountedQty { get; set; }
     public string Status { get; set; } = default!;
-    public string? OperatorId { get; set; }
+    public string? AssignedTo { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -44,7 +46,8 @@ public class GetCycleCountTasksListQueryHandler : IRequestHandler<GetCycleCountT
         else
         {
             var isAdmin = request.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8" || 
-                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8"));
+                          (opProfile != null && (opProfile.DisplayName == "admin" || opProfile.DisplayName == "System Admin" || opProfile.OperatorSub == "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8")) ||
+                          await _context.OperatorRoleAssignments.AnyAsync(a => a.OperatorProfile.OperatorSub == request.OperatorSub && a.Role.Code == "WMS_ADMIN", cancellationToken);
 
             if (isAdmin)
             {
@@ -71,15 +74,22 @@ public class GetCycleCountTasksListQueryHandler : IRequestHandler<GetCycleCountT
             .Take(100)
             .ToListAsync(cancellationToken);
 
+        var skus = tasks.Select(t => t.Sku).Where(s => s != null).Distinct().ToList();
+        var skuDetails = await _context.ErpSkuMirrors
+            .Where(s => skus.Contains(s.SkuCode))
+            .ToDictionaryAsync(s => s.SkuCode, s => s, cancellationToken);
+
         var result = tasks.Select(t => new CycleCountTaskDto
         {
             Id = t.Id,
             BinId = t.Bin != null ? t.Bin.BinCode : t.BinId.ToString(),
             Sku = t.Sku,
+            ProductName = (t.Sku != null && skuDetails.ContainsKey(t.Sku)) ? skuDetails[t.Sku].Name : null,
+            UOM = (t.Sku != null && skuDetails.ContainsKey(t.Sku)) ? skuDetails[t.Sku].UnitOfMeasure : null,
             ExpectedQty = t.ExpectedQty,
             CountedQty = t.CountedQty,
             Status = t.Status.ToString(),
-            OperatorId = t.AssignedTo,
+            AssignedTo = t.AssignedTo,
             CreatedAt = t.CreatedAt
         }).ToList();
 

@@ -6,7 +6,7 @@ using Warehouse.Domain.Entities;
 
 namespace Warehouse.Application.Features.Outbound.Queries.GetWavesList;
 
-public record WaveDto(string Id, string WaveNo, string Type, int OrderCount, string Status, DateTime CreatedAt);
+public record WaveDto(string Id, string WaveNo, string Type, int OrderCount, string Status, string? AssignedTo, DateTime CreatedAt);
 
 public record GetWavesListQuery(Guid WarehouseId) : IRequest<Result<List<WaveDto>>>;
 
@@ -32,6 +32,7 @@ public sealed class GetWavesListQueryHandler : IRequestHandler<GetWavesListQuery
             w.Type == WaveType.SingleItem ? "Single-Item" : "Multi-Item",
             w.OrderCount,
             w.Status.ToString(),
+            w.AssignedOperatorId,
             w.CreatedAt
         )).ToList();
 
