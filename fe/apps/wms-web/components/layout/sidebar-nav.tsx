@@ -22,7 +22,8 @@ import {
   AlertTriangle,
   History,
   Scale,
-  Milestone
+  Milestone,
+  TrendingUp
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { cn } from "@repo/ui/utils"
@@ -54,6 +55,7 @@ const navGroups: NavGroup[] = [
       { label: "Orders (OMS)", href: "/orders", icon: <ShoppingCart className="h-4 w-4" /> },
       { label: "Scanner (QR)", href: "/wms/scanner", icon: <QrCode className="h-4 w-4" /> },
       { label: "Reports", href: "/reports", icon: <BarChart3 className="h-4 w-4" /> },
+      { label: "Productivity", href: "/reports/productivity", icon: <TrendingUp className="h-4 w-4" /> },
     ]
   },
   {
@@ -71,6 +73,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Outbound Orders", href: "/wms/outbound/orders", icon: <Truck className="h-4 w-4" /> },
       { label: "Wave Planning", href: "/wms/outbound/waves", icon: <Layers className="h-4 w-4" /> },
+      { label: "Shipments", href: "/wms/outbound/shipments", icon: <Milestone className="h-4 w-4" /> },
       { label: "Returns & RTO", href: "/wms/outbound/returns", icon: <RefreshCw className="h-4 w-4" /> },
     ]
   },

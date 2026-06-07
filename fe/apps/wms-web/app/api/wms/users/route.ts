@@ -37,7 +37,7 @@ export async function GET(req: Request) {
       const targetRealm = 'logistics_realm'
 
       // 2. Fetch Users from Keycloak
-      const usersUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users?max=100`
+      const usersUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/admin/realms/${targetRealm}/users?max=1000`
       const kcRes = await fetch(usersUrl, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,

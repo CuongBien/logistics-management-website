@@ -175,3 +175,51 @@ export const getPickTasksByOrder = async (id: string): Promise<any[]> => {
 export const getOptimizedPickTasks = async (waveId: string): Promise<any[]> => {
   return await fetchApi<any[]>("wms", `/outbound/waves/${waveId}/pick-tasks`) || [];
 };
+
+export interface ShipmentDto {
+  id: string;
+  shipmentNo: string;
+  tenantId: string;
+  customerId: string;
+  warehouseId: string;
+  destinationType: number; // 0 = Warehouse, 1 = Customer
+  destinationId: string;
+  carrier?: string;
+  routeId?: string;
+  trackingNo?: string;
+  status: number; // enum ShipmentStatus
+  createdAt: string;
+  shippedAt?: string;
+}
+
+export const getShipments = async (warehouseId?: string): Promise<ShipmentDto[]> => {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any[]>('wms', `/outbound/shipments${query}`);
+  return res || [];
+};
+
+export const dispatchShipment = async (id: string): Promise<{ success: boolean }> => {
+  await fetchApi('wms', `/outbound/shipments/${id}/dispatch`, {
+    method: "POST"
+  });
+  return { success: true };
+};
+
+export const getShipmentOrders = async (shipmentId: string): Promise<OutboundOrderDto[]> => {
+  const res = await fetchApi<any[]>('wms', `/outbound/shipments/${shipmentId}/orders`);
+  if (res) {
+    return res.map((s: any) => ({
+      id: s.id,
+      orderNo: s.orderNo,
+      tenantId: s.tenantId,
+      status: mapStatus(s.status),
+      lines: (s.lines || []).map((l: any) => ({
+        id: l.id,
+        sku: l.sku || l.skuCode || '',
+        quantity: l.quantity ?? l.orderedQuantity ?? l.requestedQty ?? 0
+      })),
+      createdAt: s.createdAt
+    }));
+  }
+  return [];
+};
