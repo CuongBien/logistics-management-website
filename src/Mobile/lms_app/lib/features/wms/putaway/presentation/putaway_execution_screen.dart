@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../../core/utils/scanner_helper.dart';
-import '../../../../../core/constants/app_colors.dart';
-import '../../../../../core/widgets/camera_scanner_dialog.dart';
-import '../../qr/providers/qr_providers.dart';
-import '../../../../../core/network/offline_queue.dart';
-import '../../../../../core/network/connectivity_service.dart';
-import '../../../../../core/error/error_handler.dart';
+import 'package:lms_app/core/utils/scanner_helper.dart';
+import 'package:lms_app/core/constants/app_colors.dart';
+import 'package:lms_app/core/widgets/camera_scanner_dialog.dart';
+import 'package:lms_app/features/wms/qr/providers/qr_providers.dart';
+import 'package:lms_app/core/network/offline_queue.dart';
+import 'package:lms_app/core/network/connectivity_service.dart';
+import 'package:lms_app/core/error/error_handler.dart';
+import 'package:lms_app/core/error/app_exception.dart';
+import 'package:lms_app/core/constants/app_config.dart';
+import 'package:lms_app/features/wms/putaway/providers/putaway_provider.dart';
 
 class PutawayExecutionScreen extends ConsumerStatefulWidget {
   final String taskId;
@@ -27,11 +30,45 @@ class PutawayExecutionScreen extends ConsumerStatefulWidget {
 class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen> {
   late final ScannerHelper _scannerHelper;
   bool _isLoading = false;
+  bool _isLoadingTask = true;
+  Map<String, dynamic>? _taskDetails;
 
   @override
   void initState() {
     super.initState();
     _scannerHelper = ScannerHelper(onCodeScanned: _handleScan);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTaskDetails();
+    });
+  }
+
+  Future<void> _loadTaskDetails() async {
+    setState(() => _isLoadingTask = true);
+    try {
+      final activeWarehouse = ref.read(warehouseContextProvider);
+      if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+        throw AppException('Vui lòng chọn kho làm việc trước khi cất hàng!', code: 'Warehouse.Required');
+      }
+
+      final repo = ref.read(putawayRepositoryProvider);
+      final tasks = await repo.getPutawayTasks(activeWarehouse.warehouseId);
+      final task = tasks.firstWhere(
+        (t) => t['id'] == widget.taskId,
+        orElse: () => null,
+      );
+
+      if (mounted) {
+        setState(() {
+          _taskDetails = task != null ? Map<String, dynamic>.from(task as Map) : null;
+          _isLoadingTask = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingTask = false);
+        ErrorHandler.showError(context, e);
+      }
+    }
   }
 
   void _handleScan(String code) async {
@@ -169,6 +206,70 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_isLoadingTask)
+                const Center(child: CircularProgressIndicator())
+              else if (_taskDetails == null)
+                Card(
+                  color: AppColors.error.withOpacity(0.1),
+                  child: const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('Không tìm thấy thông tin công việc. Bạn vui lòng quay lại hoặc quét lại mã.', style: TextStyle(color: AppColors.error)),
+                  ),
+                )
+              else
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('SẢN PHẨM CẦN CẤT', style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(
+                          _taskDetails!['sku'] ?? 'N/A',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        if (_taskDetails!['productName'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _taskDetails!['productName'],
+                            style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Số lượng', style: TextStyle(color: AppColors.textSecondary)),
+                                Text(
+                                  '${_taskDetails!['quantity'] ?? 0} ${_taskDetails!['uom'] ?? _taskDetails!['uOM'] ?? 'PCS'}',
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                            if (_taskDetails!['lotNo'] != null)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text('Số Lô (Lot)', style: TextStyle(color: AppColors.textSecondary)),
+                                  Text(
+                                    _taskDetails!['lotNo'],
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+
               Card(
                 color: AppColors.warning.withOpacity(0.2),
                 child: Padding(

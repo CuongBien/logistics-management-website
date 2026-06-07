@@ -4,7 +4,7 @@ import 'dart:developer';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SignalRService {
-  static const String hubUrl = 'http://10.0.2.2:5000/hubs/order';
+  static const String hubUrl = 'http://192.168.88.144:5000/hubs/order';
   // HubConnection? _hubConnection;
 
   Future<void> initConnection() async {

@@ -109,8 +109,132 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       return;
     }
 
+    String cleanSku = code;
+    if (code.startsWith('SKU:')) {
+      cleanSku = code.substring(4);
+    }
+    
+    // Scan continuous mode: default +1
+    _executeReceiveAction(
+      sku: cleanSku,
+      quantity: 1,
+    );
+  }
+
+  void _forceClose() async {
+    if (_receiptId.isEmpty) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final repo = ref.read(inboundRepositoryProvider);
+      await repo.forceCloseReceipt(_receiptId);
+      await _loadReceipt(_orderId);
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('✅ Đã đóng cưỡng chế phiếu nhập thành công!'),
+        backgroundColor: AppColors.success,
+      ));
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ErrorHandler.showError(context, e);
+      }
+    }
+  }
+
+  Future<void> _openCameraScanner() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CameraScannerDialog(),
+    );
+    if (result != null && result.isNotEmpty) {
+      _handleScan(result);
+    }
+  }
+
+  void _showManualEntryDialog(Map<String, dynamic> line) {
+    final sku = line['skuCode'] ?? line['sku'] ?? '';
+    final expected = line['expectedQuantity'] ?? line['expectedQty'] ?? 0;
+    final received = line['receivedQuantity'] ?? line['receivedQty'] ?? 0;
+    final remaining = expected - received > 0 ? expected - received : 1;
+
+    final TextEditingController qtyController = TextEditingController(text: remaining.toString());
+    final TextEditingController lotController = TextEditingController();
+    DateTime? selectedDate;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text('Nhập $sku thủ công'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: qtyController,
+                      decoration: const InputDecoration(labelText: 'Số lượng', border: OutlineInputBorder()),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: lotController,
+                      decoration: const InputDecoration(labelText: 'Số Lô / Batch No (Tuỳ chọn)', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now().add(const Duration(days: 30)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 3650)),
+                        );
+                        if (date != null) {
+                          setStateDialog(() => selectedDate = date);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(labelText: 'Hạn sử dụng (Tuỳ chọn)', border: OutlineInputBorder()),
+                        child: Text(selectedDate == null ? 'Chọn ngày' : '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+                ElevatedButton(
+                  onPressed: () {
+                    final qty = int.tryParse(qtyController.text) ?? 1;
+                    Navigator.pop(context);
+                    _executeReceiveAction(
+                      sku: sku,
+                      quantity: qty,
+                      lotNo: lotController.text.isNotEmpty ? lotController.text : null,
+                      expiryDate: selectedDate,
+                    );
+                  },
+                  child: const Text('Xác nhận'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _executeReceiveAction({
+    required String sku,
+    required int quantity,
+    String? lotNo,
+    DateTime? expiryDate,
+  }) async {
     setState(() {
-      _lastScanned = code;
+      _lastScanned = sku;
       _isLoading = true;
     });
 
@@ -120,9 +244,11 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       final actionId = DateTime.now().microsecondsSinceEpoch.toString();
       final body = {
         'receiptId': _receiptId,
-        'scannedSku': code,
+        'scannedSku': sku,
         'scannedBin': 'BIN-DOCK-01',
-        'quantity': 1,
+        'quantity': quantity,
+        if (lotNo != null) 'lotNo': lotNo,
+        if (expiryDate != null) 'expiryDate': expiryDate.toIso8601String(),
       };
 
       try {
@@ -140,19 +266,14 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
 
         setState(() {
           _isLoading = false;
-          String cleanSku = code;
-          if (code.startsWith('SKU:')) {
-            cleanSku = code.substring(4);
-          }
-          
           final lines = List<Map<String, dynamic>>.from(
             _receiptLines.map((e) => Map<String, dynamic>.from(e as Map))
           );
           for (var line in lines) {
-            final sku = line['skuCode'] ?? line['sku'] ?? '';
-            if (sku == cleanSku) {
+            final lineSku = line['skuCode'] ?? line['sku'] ?? '';
+            if (lineSku == sku) {
               final currentReceived = line['receivedQuantity'] ?? line['receivedQty'] ?? 0;
-              line['receivedQuantity'] = currentReceived + 1;
+              line['receivedQuantity'] = currentReceived + quantity;
             }
           }
           _receiptLines = lines;
@@ -176,9 +297,11 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       final qrActionService = ref.read(qrActionServiceProvider);
       final result = await qrActionService.scanReceive(
         receiptId: _receiptId,
-        scannedSku: code,
+        scannedSku: sku,
         scannedBin: 'BIN-DOCK-01',
-        quantity: 1,
+        quantity: quantity,
+        lotNo: lotNo,
+        expiryDate: expiryDate,
       );
 
       setState(() {
@@ -217,7 +340,7 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('✅ Nhận thành công SKU: $code (Pre-dock: BIN-DOCK-01)'),
+          content: Text('✅ Nhận thành công SKU: $sku (Pre-dock: BIN-DOCK-01)'),
           backgroundColor: AppColors.success,
         ));
       }
@@ -304,37 +427,6 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
       if (mounted) {
         ErrorHandler.showError(context, e);
       }
-    }
-  }
-
-  void _forceClose() async {
-    if (_receiptId.isEmpty) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final repo = ref.read(inboundRepositoryProvider);
-      await repo.forceCloseReceipt(_receiptId);
-      await _loadReceipt(_orderId);
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('✅ Đã đóng cưỡng chế phiếu nhập thành công!'),
-        backgroundColor: AppColors.success,
-      ));
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ErrorHandler.showError(context, e);
-      }
-    }
-  }
-
-  Future<void> _openCameraScanner() async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => const CameraScannerDialog(),
-    );
-    if (result != null && result.isNotEmpty) {
-      _handleScan(result);
     }
   }
 
@@ -637,16 +729,42 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
                                             Row(
                                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                               children: [
-                                                Text(
-                                                  sku,
-                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                                                ),
-                                                Text(
-                                                  '$received / $expected PCS',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: received == expected ? AppColors.success : AppColors.primary,
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        sku,
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                                      ),
+                                                      if (line['productName'] != null) ...[
+                                                        const SizedBox(height: 4),
+                                                        Text(
+                                                          line['productName'],
+                                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ]
+                                                    ],
                                                   ),
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                                  children: [
+                                                    Text(
+                                                      '$received / $expected ${line['uom'] ?? line['uOM'] ?? 'PCS'}',
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        color: received == expected ? AppColors.success : AppColors.primary,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.edit, color: AppColors.primary, size: 20),
+                                                      onPressed: () => _showManualEntryDialog(line),
+                                                      tooltip: 'Nhập thủ công (Số lượng, Lot, HSD)',
+                                                    )
+                                                  ],
                                                 )
                                               ],
                                             ),
