@@ -32,33 +32,47 @@ function StatusTile({ title, count, subtext, color, icon }: StatusTileProps) {
   )
 }
 
-export function StatusTiles() {
+import { PendingWorkloadsDto, DiscrepanciesStatsDto } from "@/lib/api/reports"
+
+interface StatusTilesProps {
+  workloads?: PendingWorkloadsDto | null;
+  discrepancies?: DiscrepanciesStatsDto | null;
+}
+
+export function StatusTiles({ workloads, discrepancies }: StatusTilesProps) {
+  const pendingOutboundWaves = workloads?.pendingOutboundWaves || 0;
+  const pendingPutaways = workloads?.pendingPutawayTasks || 0;
+  const pendingInbounds = workloads?.pendingInboundReceipts || 0;
+  const unresolvedInboundDiscrepancies = discrepancies?.unresolvedInboundDiscrepancies || 0;
+  const unresolvedTransitDiscrepancies = discrepancies?.unresolvedTransitDiscrepancies || 0;
+  const totalDiscrepancies = unresolvedInboundDiscrepancies + unresolvedTransitDiscrepancies;
+
   const tiles: StatusTileProps[] = [
     {
       title: "Orders Waiting",
-      count: 0,
-      subtext: "0 urgent, 0 standard",
+      count: pendingOutboundWaves,
+      subtext: "Đợt hàng đang chờ xử lý",
       color: "blue",
       icon: <Clock className="h-5 w-5" />,
     },
     {
       title: "Work in Progress",
-      count: 0,
-      subtext: "0 picking, 0 packing",
+      count: pendingPutaways,
+      subtext: `Chờ cất hàng: ${pendingPutaways} tác vụ`,
       color: "yellow",
       icon: <Loader2 className="h-5 w-5" />,
     },
     {
       title: "Orders Finished",
-      count: 0,
-      subtext: "Today: +0 completed",
+      count: pendingInbounds,
+      subtext: `Phiếu nhập hàng chờ: ${pendingInbounds}`,
       color: "green",
       icon: <CheckCircle className="h-5 w-5" />,
     },
     {
       title: "Problems",
-      count: 0,
-      subtext: "0 stock issues, 0 delays",
+      count: totalDiscrepancies,
+      subtext: `${unresolvedInboundDiscrepancies} nhập kho, ${unresolvedTransitDiscrepancies} vận chuyển`,
       color: "red",
       icon: <AlertTriangle className="h-5 w-5" />,
     },

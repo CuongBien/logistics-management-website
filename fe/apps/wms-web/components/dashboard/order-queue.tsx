@@ -32,48 +32,83 @@ const statusClasses = {
   qc: "bg-green-100 text-green-800",
 }
 
-export function OrderQueue() {
-  const orders: OrderEntry[] = []
+import { OutboundOrderDto } from "@/types/wms-outbound"
+
+interface OrderQueueProps {
+  orders?: OutboundOrderDto[];
+}
+
+export function OrderQueue({ orders = [] }: OrderQueueProps) {
+  const mappedOrders = orders.slice(0, 10).map(o => {
+    const itemsCount = o.lines.reduce((sum, l) => sum + l.quantity, 0);
+
+    let priority: "urgent" | "high" | "normal" = "normal";
+    if (itemsCount > 10) priority = "urgent";
+    else if (itemsCount > 3) priority = "high";
+
+    let status: "waiting" | "picking" | "packing" | "qc" = "waiting";
+    if (o.status === "Picking") status = "picking";
+    else if (o.status === "Packing") status = "packing";
+    else if (o.status === "Packed") status = "qc";
+
+    return {
+      orderId: o.orderNo,
+      customer: o.tenantId,
+      items: itemsCount,
+      zone: o.lines[0]?.sku.slice(0, 6) || "WH",
+      priority: priority,
+      age: new Date(o.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      status: status
+    }
+  });
 
   return (
-    <div className="border border-border bg-white">
+    <div className="border border-border bg-white h-full">
       <div className="bg-muted px-3 py-1.5 border-b border-border flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">Order Queue</h3>
-        <span className="text-[10px] text-muted-foreground">{orders.length} orders</span>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">Hàng đợi đơn hàng xuất kho</h3>
+        <span className="text-[10px] text-muted-foreground">{orders.length} đơn</span>
       </div>
       <div className="overflow-auto max-h-[320px]">
         <Table>
           <TableHeader className="sticky top-0 bg-muted/50">
             <TableRow className="border-b border-border hover:bg-transparent">
-              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[80px]">Order</TableHead>
-              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2">Customer</TableHead>
-              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[50px] text-center">Items</TableHead>
-              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[50px]">Zone</TableHead>
-              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[60px]">Priority</TableHead>
-              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[60px]">Age</TableHead>
-              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[70px]">Status</TableHead>
+              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[100px]">Mã đơn</TableHead>
+              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2">Khách hàng</TableHead>
+              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[60px] text-center">Items</TableHead>
+              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[70px]">Mã SKU</TableHead>
+              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[70px]">Ưu tiên</TableHead>
+              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[60px]">Giờ tạo</TableHead>
+              <TableHead className="text-[10px] font-semibold uppercase h-7 py-1 px-2 w-[80px]">Trạng thái</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.orderId} className="border-b border-border/50 hover:bg-muted/30">
-                <TableCell className="text-xs font-mono py-1 px-2 text-blue-600">{order.orderId}</TableCell>
-                <TableCell className="text-xs py-1 px-2 truncate max-w-[120px]">{order.customer}</TableCell>
-                <TableCell className="text-xs py-1 px-2 text-center font-medium">{order.items}</TableCell>
-                <TableCell className="text-xs font-mono py-1 px-2">{order.zone}</TableCell>
-                <TableCell className="py-1 px-2">
-                  <span className={`text-[9px] px-1.5 py-0.5 font-bold uppercase ${priorityClasses[order.priority]}`}>
-                    {order.priority}
-                  </span>
-                </TableCell>
-                <TableCell className="text-xs py-1 px-2 font-mono text-muted-foreground">{order.age}</TableCell>
-                <TableCell className="py-1 px-2">
-                  <span className={`text-[9px] px-1.5 py-0.5 font-medium capitalize ${statusClasses[order.status]}`}>
-                    {order.status}
-                  </span>
+            {mappedOrders.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-xs text-muted-foreground py-8">
+                  Không có đơn hàng xuất nào
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              mappedOrders.map((order) => (
+                <TableRow key={order.orderId} className="border-b border-border/50 hover:bg-muted/30">
+                  <TableCell className="text-xs font-mono py-1 px-2 text-blue-600 font-bold">{order.orderId}</TableCell>
+                  <TableCell className="text-xs py-1 px-2 truncate max-w-[120px]">{order.customer}</TableCell>
+                  <TableCell className="text-xs py-1 px-2 text-center font-bold font-mono">{order.items}</TableCell>
+                  <TableCell className="text-xs font-mono py-1 px-2 truncate max-w-[60px]" title={order.zone}>{order.zone}</TableCell>
+                  <TableCell className="py-1 px-2">
+                    <span className={`text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-sm ${priorityClasses[order.priority]}`}>
+                      {order.priority === "urgent" ? "Khẩn" : order.priority === "high" ? "Cao" : "Thường"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs py-1 px-2 font-mono text-muted-foreground">{order.age}</TableCell>
+                  <TableCell className="py-1 px-2">
+                    <span className={`text-[9px] px-1.5 py-0.5 font-semibold capitalize rounded-sm ${statusClasses[order.status]}`}>
+                      {order.status === "waiting" ? "Chờ xử lý" : order.status === "picking" ? "Đang lấy" : order.status === "packing" ? "Đóng gói" : "QC"}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

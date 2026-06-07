@@ -71,3 +71,43 @@ export async function getTopMovingSkus(warehouseId?: string): Promise<TopMovingS
   const res = await fetchApi<any>('wms', `/Dashboard/top-skus${query}`);
   return res?.value || res || [];
 }
+
+export interface ZoneOccupancyDto {
+  id: string;
+  name: string;
+  ordersActive: number;
+  workersAssigned: number;
+  capacity: number;
+  alerts: number;
+}
+
+export async function getZoneOccupancy(warehouseId: string): Promise<ZoneOccupancyDto[]> {
+  const res = await fetchApi<any>('wms', `/Dashboard/zone-occupancy?warehouseId=${warehouseId}`);
+  return res?.value || res || [];
+}
+
+export interface DailyProductivityDto {
+  date: string;
+  putawayCount: number;
+  pickCount: number;
+  replenishCount: number;
+  countCount: number;
+}
+
+export interface OperatorLeaderboardDto {
+  operatorId: string;
+  totalCompleted: number;
+  avgDurationSeconds: number;
+  pendingTasksCount: number;
+}
+
+export interface OperatorProductivityHistoryDto {
+  trend: DailyProductivityDto[];
+  leaderboard: OperatorLeaderboardDto[];
+}
+
+export async function getProductivityHistory(warehouseId?: string): Promise<OperatorProductivityHistoryDto> {
+  const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
+  const res = await fetchApi<any>('wms', `/Dashboard/productivity-history${query}`);
+  return res?.value || res;
+}
