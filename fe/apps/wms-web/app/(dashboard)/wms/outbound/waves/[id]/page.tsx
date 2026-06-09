@@ -211,29 +211,33 @@ export default function WaveDetailPage() {
                 <TableHead className="font-bold w-16 text-center">STT</TableHead>
                 <TableHead className="font-bold">Mã SKU</TableHead>
                 <TableHead className="font-bold">Mã Đơn</TableHead>
+                <TableHead className="font-bold text-center">Vị trí Kệ (Bin)</TableHead>
                 <TableHead className="font-bold text-center">Số Lượng</TableHead>
                 <TableHead className="font-bold text-center">Trạng Thái</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pickTasks.map((task, idx) => (
-                <TableRow key={task.id || idx} className="hover:bg-muted/10">
+                <TableRow key={task.taskId || task.id || idx} className="hover:bg-muted/10">
                   <TableCell className="text-center font-mono font-medium text-muted-foreground">{idx + 1}</TableCell>
-                  <TableCell className="font-mono font-bold text-primary">{task.sku || (task.outboundOrderLine?.sku) || '-'}</TableCell>
-                  <TableCell className="font-mono text-sm">{task.outboundOrderLine?.outboundOrderId ? task.outboundOrderLine.outboundOrderId.substring(0, 8) + '...' : '-'}</TableCell>
+                  <TableCell className="font-mono font-bold text-primary">{task.sku || '-'}</TableCell>
+                  <TableCell className="font-mono text-sm">{task.orderNo || '-'}</TableCell>
+                  <TableCell className="text-center font-mono font-bold text-indigo-600">{task.binCode || '-'}</TableCell>
                   <TableCell className="text-center font-mono font-bold text-lg">{task.quantity}</TableCell>
                   <TableCell className="text-center">
-                    {task.status === 2 || task.status === 'Completed' ? (
+                    {task.status === 3 || task.status === 'Completed' || task.status === 'Picked' ? (
                       <Badge variant="outline" className="bg-emerald-50 text-emerald-600">Đã lấy</Badge>
+                    ) : task.status === 2 || task.status === 'InProgress' ? (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-600 animate-pulse">Đang lấy</Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-amber-50 text-amber-600">Chờ lấy</Badge>
+                      <Badge variant="outline" className="bg-zinc-100 text-zinc-500">Chờ lấy</Badge>
                     )}
                   </TableCell>
                 </TableRow>
               ))}
               {pickTasks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                     <Box className="h-10 w-10 mx-auto opacity-20 mb-2" />
                     Không có danh sách hàng hóa nào trong wave này.
                   </TableCell>

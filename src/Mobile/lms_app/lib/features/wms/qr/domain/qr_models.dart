@@ -31,7 +31,7 @@ class QrParseResult {
     return QrParseResult(
       type: _parseQrType(json['type'] as String?),
       entityId: json['entityId'] as String?,
-      data: json['data'] as Map<String, dynamic>?,
+      data: json['data'] != null ? Map<String, dynamic>.from(json['data'] as Map) : null,
       message: json['message'] as String?,
     );
   }
@@ -50,15 +50,19 @@ class QrParseResult {
       case 'bin':
         return QrType.bin;
       case 'order':
+      case 'ord':
         return QrType.order;
       case 'outboundorder':
       case 'outbound_order':
+      case 'ob':
         return QrType.outboundOrder;
       case 'shipment':
+      case 'shp':
         return QrType.shipment;
       case 'sku':
         return QrType.sku;
       case 'receipt':
+      case 'rcv':
         return QrType.receipt;
       default:
         return QrType.unknown;
@@ -93,15 +97,15 @@ class ScanReceiveResponse {
       success: json['success'] as bool? ?? false,
       receiptStatus: json['receiptStatus'] as String? ?? '',
       lineProgress: json['lineProgress'] != null
-          ? LineProgress.fromJson(json['lineProgress'] as Map<String, dynamic>)
+          ? LineProgress.fromJson(Map<String, dynamic>.from(json['lineProgress'] as Map))
           : null,
       binCode: json['binCode'] as String? ?? '',
       alerts: json['alerts'] != null
-          ? ScanAlerts.fromJson(json['alerts'] as Map<String, dynamic>)
+          ? ScanAlerts.fromJson(Map<String, dynamic>.from(json['alerts'] as Map))
           : null,
       suggestion: json['suggestion'] != null
           ? PutawaySuggestion.fromJson(
-              json['suggestion'] as Map<String, dynamic>)
+              Map<String, dynamic>.from(json['suggestion'] as Map))
           : null,
     );
   }
@@ -197,14 +201,14 @@ class VerifyPackResponse {
     return VerifyPackResponse(
       success: json['success'] as bool? ?? false,
       orderNo: json['orderNo'] as String? ?? '',
-      verifiedItems: (json['verifiedItems'] as List<dynamic>?)
+      verifiedItems: (json['verifiedItems'] as List?)
               ?.map((e) =>
-                  VerifiedItem.fromJson(e as Map<String, dynamic>))
+                  VerifiedItem.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList() ??
           [],
       allItemsVerified: json['allItemsVerified'] as bool? ?? false,
-      remainingSkus: (json['remainingSkus'] as List<dynamic>?)
-              ?.map((e) => e as String)
+      remainingSkus: (json['remainingSkus'] as List?)
+              ?.map((e) => e.toString())
               .toList() ??
           [],
     );
@@ -228,8 +232,8 @@ class VerifiedItem {
   factory VerifiedItem.fromJson(Map<String, dynamic> json) {
     return VerifiedItem(
       sku: json['sku'] as String? ?? '',
-      required: json['required'] as int? ?? 0,
-      scanned: json['scanned'] as int? ?? 0,
+      required: (json['required'] as num?)?.toInt() ?? 0,
+      scanned: (json['scanned'] as num?)?.toInt() ?? 0,
       complete: json['complete'] as bool? ?? false,
     );
   }
@@ -267,10 +271,10 @@ class ScanSortResponse {
       outboundOrderId: json['outboundOrderId'] as String? ?? '',
       outboundOrderNo: json['outboundOrderNo'] as String? ?? '',
       shipment: json['shipment'] != null
-          ? ShipmentInfo.fromJson(json['shipment'] as Map<String, dynamic>)
+          ? ShipmentInfo.fromJson(Map<String, dynamic>.from(json['shipment'] as Map))
           : null,
       routing: json['routing'] != null
-          ? RoutingInfo.fromJson(json['routing'] as Map<String, dynamic>)
+          ? RoutingInfo.fromJson(Map<String, dynamic>.from(json['routing'] as Map))
           : null,
     );
   }
@@ -300,7 +304,7 @@ class ShipmentInfo {
       currentOrderCount: json['currentOrderCount'] as int? ?? 0,
       destination: json['destination'] != null
           ? DestinationInfo.fromJson(
-              json['destination'] as Map<String, dynamic>)
+              Map<String, dynamic>.from(json['destination'] as Map))
           : null,
     );
   }
@@ -445,7 +449,7 @@ class TransitReceiveResponse {
       nextAction: json['nextAction'] as String? ?? '',
       discrepancy: json['discrepancy'] != null
           ? TransitDiscrepancy.fromJson(
-              json['discrepancy'] as Map<String, dynamic>)
+              Map<String, dynamic>.from(json['discrepancy'] as Map))
           : null,
     );
   }
@@ -466,9 +470,9 @@ class TransitDiscrepancy {
   factory TransitDiscrepancy.fromJson(Map<String, dynamic> json) {
     return TransitDiscrepancy(
       hasDiscrepancy: json['hasDiscrepancy'] as bool? ?? false,
-      items: (json['items'] as List<dynamic>?)
+      items: (json['items'] as List?)
               ?.map(
-                  (e) => DiscrepancyItem.fromJson(e as Map<String, dynamic>))
+                  (e) => DiscrepancyItem.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList() ??
           [],
       discrepancyId: json['discrepancyId'] as String?,

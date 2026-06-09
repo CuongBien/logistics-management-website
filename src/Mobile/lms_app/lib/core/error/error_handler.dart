@@ -29,6 +29,10 @@ class ErrorHandler {
       case AuthException():
         backgroundColor = AppColors.error;
         icon = Icons.lock_outline_rounded;
+        if (appException.statusCode == 403 || appException.code == 'Operator.Forbidden') {
+          action = null;
+          break;
+        }
         actionLabel = 'Đăng nhập';
         action = () {
           try {

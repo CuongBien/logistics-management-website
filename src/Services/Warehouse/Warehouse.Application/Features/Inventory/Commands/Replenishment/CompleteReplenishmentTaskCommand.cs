@@ -10,7 +10,9 @@ namespace Warehouse.Application.Features.Inventory.Commands.Replenishment;
 
 public record CompleteReplenishmentTaskCommand(
     Guid TaskId,
-    string OperatorId) : IRequest<Result<bool>>;
+    string OperatorId,
+    int? ActualQty = null,
+    Guid? ActualDestinationBinId = null) : IRequest<Result<bool>>;
 
 public sealed class CompleteReplenishmentTaskCommandHandler : IRequestHandler<CompleteReplenishmentTaskCommand, Result<bool>>
 {
@@ -18,17 +20,20 @@ public sealed class CompleteReplenishmentTaskCommandHandler : IRequestHandler<Co
     private readonly ILogger<CompleteReplenishmentTaskCommandHandler> _logger;
     private readonly IOperatorAuthorizationService _authService;
     private readonly IInventoryService _inventoryService;
+    private readonly INotificationService _notificationService;
 
     public CompleteReplenishmentTaskCommandHandler(
         IApplicationDbContext context, 
         ILogger<CompleteReplenishmentTaskCommandHandler> logger, 
         IOperatorAuthorizationService authService,
-        IInventoryService inventoryService)
+        IInventoryService inventoryService,
+        INotificationService notificationService)
     {
         _context = context;
         _logger = logger;
         _authService = authService;
         _inventoryService = inventoryService;
+        _notificationService = notificationService;
     }
 
     public async Task<Result<bool>> Handle(CompleteReplenishmentTaskCommand request, CancellationToken cancellationToken)
@@ -45,19 +50,40 @@ public sealed class CompleteReplenishmentTaskCommandHandler : IRequestHandler<Co
         if (task.Status != ReplenishmentTaskStatus.Pending && task.Status != ReplenishmentTaskStatus.InProgress)
             return Result<bool>.Failure(new Error("ReplenishmentTask.InvalidStatus", "Task must be Pending or InProgress to complete"));
 
+        // Evaluate actual quantity
+        int actualQty = request.ActualQty ?? task.RequestedQty;
+        
+        // Resolve actual destination bin
+        Guid destBinId = request.ActualDestinationBinId ?? task.DestinationBinId;
+        var destBin = await _context.Bins.FirstOrDefaultAsync(b => b.Id == destBinId, cancellationToken);
+        if (destBin == null)
+            return Result<bool>.Failure(Error.NotFound("ReplenishmentTask.DestinationBinNotFound", "Destination bin not found"));
+
         // Move stock
         await _inventoryService.MoveAsync(
             task.TenantId,
             task.WarehouseId,
             task.SourceBinId,
-            task.DestinationBinId,
+            destBinId,
             task.Sku,
-            task.RequestedQty,
+            actualQty,
             task.Id.ToString(),
             request.OperatorId,
             cancellationToken);
 
-        task.Complete();
+        if (actualQty < task.RequestedQty)
+        {
+            await _notificationService.NotifyAsync(
+                "Thiếu Hàng Khi Bổ Sung (Short Replenish)",
+                $"Task Bổ sung {task.Id} chỉ lấy được {actualQty}/{task.RequestedQty} sản phẩm {task.Sku} từ kệ {task.SourceBinId}.",
+                NotificationType.Warning,
+                NotificationCategory.ShortReplenish,
+                task.WarehouseId,
+                cancellationToken: cancellationToken);
+            _logger.LogWarning("Short Replenish for Task {TaskId}. Expected {Expected}, Actual {Actual}", task.Id, task.RequestedQty, actualQty);
+        }
+
+        task.Complete(destBinId);
         task.Assign(request.OperatorId);
 
         var activityLog = new OperatorActivityLog(
@@ -67,11 +93,32 @@ public sealed class CompleteReplenishmentTaskCommandHandler : IRequestHandler<Co
             "Replenish",
             task.Id,
             task.Sku,
-            task.RequestedQty,
+            actualQty,
             task.StartedAt ?? task.CreatedAt,
             task.CompletedAt ?? DateTime.UtcNow
         );
         _context.OperatorActivityLogs.Add(activityLog);
+
+        // Log override if destination bin differs
+        if (destBinId != task.DestinationBinId)
+        {
+            var origBin = await _context.Bins.FirstOrDefaultAsync(b => b.Id == task.DestinationBinId, cancellationToken);
+            var origCode = origBin?.BinCode ?? "UNKNOWN";
+
+            var overrideLog = new TaskOverrideLog(
+                task.TenantId,
+                task.WarehouseId,
+                request.OperatorId,
+                "Replenish",
+                task.Id,
+                task.Sku,
+                actualQty,
+                origCode,
+                destBin.BinCode,
+                "Operator overrode destination replenishment bin"
+            );
+            _context.TaskOverrideLogs.Add(overrideLog);
+        }
         
         await _context.SaveChangesAsync(cancellationToken);
 

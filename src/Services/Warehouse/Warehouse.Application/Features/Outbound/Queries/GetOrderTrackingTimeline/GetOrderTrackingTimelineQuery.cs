@@ -45,8 +45,89 @@ public class GetOrderTrackingTimelineQueryHandler : IRequestHandler<GetOrderTrac
             Timestamp = order.CreatedAt,
             Location = sourceWh?.Name ?? "Unknown Hub",
             EventType = "OrderCreated",
-            Description = "Order received and allocated."
+            Description = "Mới tạo: Đơn xuất kho được ghi nhận."
         });
+
+        // 1.5. Dynamic Internal Status Transitions from PickTasks and Order Status
+        var pickTasks = await _context.PickTasks
+            .Include(pt => pt.OutboundOrderLine)
+            .Where(pt => pt.OutboundOrderLine.OutboundOrderId == request.OrderId)
+            .ToListAsync(cancellationToken);
+
+        if (pickTasks.Any())
+        {
+            // Allocated Event
+            var allocatedTime = pickTasks.Min(pt => pt.CreatedAt);
+            dto.Timeline.Add(new TimelineEventDto
+            {
+                Timestamp = allocatedTime,
+                Location = sourceWh?.Name ?? "Unknown Hub",
+                EventType = "Allocated",
+                Description = "Đã cấp phát: Đã phân bổ tồn kho và tạo tác vụ lấy hàng."
+            });
+
+            // Picking Event (if picking has started)
+            var startedTasks = pickTasks.Where(pt => pt.StartedAt.HasValue).ToList();
+            if (startedTasks.Any() || pickTasks.Any(pt => pt.Status == PickTaskStatus.Completed))
+            {
+                var pickingTime = startedTasks.Any() 
+                    ? startedTasks.Min(pt => pt.StartedAt!.Value) 
+                    : pickTasks.Min(pt => pt.PickedAt ?? pt.CreatedAt);
+
+                dto.Timeline.Add(new TimelineEventDto
+                {
+                    Timestamp = pickingTime,
+                    Location = sourceWh?.Name ?? "Unknown Hub",
+                    EventType = "Picking",
+                    Description = "Đang lấy hàng: Nhân viên kho bắt đầu lấy hàng."
+                });
+            }
+
+            // Picked Event (if all tasks are completed)
+            var allCompleted = pickTasks.All(pt => pt.Status == PickTaskStatus.Completed);
+            if (allCompleted)
+            {
+                var pickedTime = pickTasks.Max(pt => pt.PickedAt ?? DateTime.UtcNow);
+                dto.Timeline.Add(new TimelineEventDto
+                {
+                    Timestamp = pickedTime,
+                    Location = sourceWh?.Name ?? "Unknown Hub",
+                    EventType = "Picked",
+                    Description = "Đã lấy hàng: Hoàn thành lấy hàng, chuyển hàng về khu vực đóng gói."
+                });
+
+                // Packing Event (if status is Packing or higher)
+                if (order.Status == OutboundOrderStatus.Packing || 
+                    order.Status == OutboundOrderStatus.Packed || 
+                    order.Status == OutboundOrderStatus.Loaded || 
+                    order.Status == OutboundOrderStatus.Shipped || 
+                    order.Status == OutboundOrderStatus.Delivered)
+                {
+                    dto.Timeline.Add(new TimelineEventDto
+                    {
+                        Timestamp = pickedTime.AddMinutes(2),
+                        Location = sourceWh?.Name ?? "Unknown Hub",
+                        EventType = "Packing",
+                        Description = "Đang đóng gói: Bắt đầu kiểm đếm đóng gói."
+                    });
+                }
+
+                // Packed Event (if status is Packed or higher)
+                if (order.Status == OutboundOrderStatus.Packed || 
+                    order.Status == OutboundOrderStatus.Loaded || 
+                    order.Status == OutboundOrderStatus.Shipped || 
+                    order.Status == OutboundOrderStatus.Delivered)
+                {
+                    dto.Timeline.Add(new TimelineEventDto
+                    {
+                        Timestamp = pickedTime.AddMinutes(5),
+                        Location = sourceWh?.Name ?? "Unknown Hub",
+                        EventType = "Packed",
+                        Description = "Đã đóng gói: Đơn hàng đã được đóng gói và dán nhãn vận chuyển."
+                    });
+                }
+            }
+        }
 
         // 2. Fetch past Transit Events
         var shipmentOrders = await _context.ShipmentOrders
@@ -189,6 +270,8 @@ public class GetOrderTrackingTimelineQueryHandler : IRequestHandler<GetOrderTrac
         {
             dto.IsSlaBreached = true;
         }
+
+        dto.Timeline = dto.Timeline.OrderBy(t => t.Timestamp).ToList();
 
         return Result<OrderTrackingDto>.Success(dto);
     }

@@ -10,7 +10,11 @@ public record AssignRoleCommand(
     Guid WarehouseId,
     string OperatorSub,
     string RoleCode,
-    string? DisplayName = null) : IRequest<Result<Guid>>;
+    string? DisplayName = null,
+    string? FullName = null,
+    string? Email = null,
+    string? Phone = null,
+    string? EmployeeCode = null) : IRequest<Result<Guid>>;
 
 public class AssignRoleHandler : IRequestHandler<AssignRoleCommand, Result<Guid>>
 {
@@ -30,12 +34,23 @@ public class AssignRoleHandler : IRequestHandler<AssignRoleCommand, Result<Guid>
         if (operatorProfile == null)
         {
             // Tự động khởi tạo OperatorProfile mới để tránh lỗi 400 Bad Request
-            var name = !string.IsNullOrEmpty(request.DisplayName) ? request.DisplayName : "New Staff";
+            var name = !string.IsNullOrEmpty(request.DisplayName) ? request.DisplayName : (request.FullName ?? "New Staff");
             operatorProfile = new OperatorProfile("default-tenant", request.OperatorSub, name);
+            operatorProfile.UpdatePersonalDetails(request.FullName, request.Email, request.Phone, request.EmployeeCode);
             _context.OperatorProfiles.Add(operatorProfile);
             await _context.SaveChangesAsync(cancellationToken);
             
             Console.WriteLine($"Automatically provisioned OperatorProfile for sub '{request.OperatorSub}' with name '{name}'");
+        }
+        else
+        {
+            operatorProfile.UpdatePersonalDetails(
+                request.FullName ?? operatorProfile.FullName,
+                request.Email ?? operatorProfile.Email,
+                request.Phone ?? operatorProfile.Phone,
+                request.EmployeeCode ?? operatorProfile.EmployeeCode
+            );
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // 2. Tìm Role

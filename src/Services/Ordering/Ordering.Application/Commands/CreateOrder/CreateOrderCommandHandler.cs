@@ -99,7 +99,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Res
         Result confirmResult;
         if (request.FulfillmentMode == 2) // Warehouse
         {
-            confirmResult = order.SetInWarehouseDirectly();
+            confirmResult = order.SetInWarehouseDirectly(request.SourceWarehouseCode);
         }
         else // Pickup
         {

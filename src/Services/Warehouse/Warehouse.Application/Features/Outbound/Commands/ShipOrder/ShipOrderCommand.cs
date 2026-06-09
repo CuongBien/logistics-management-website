@@ -228,16 +228,29 @@ public sealed class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, 
                 // second can produce identical ShipmentNo values.
                 var uniquePart = Guid.NewGuid().ToString("N")[..8].ToUpper();
                 var shipmentNo = $"SHP-{order.WarehouseId.ToString()[..8]}-{DateTime.UtcNow:yyyyMMddHHmmss}-{uniquePart}";
+                
+                string? matchedRouteId = null;
+                if (destWh != null && sourceWh != null)
+                {
+                    var r = await _context.WarehouseRoutes
+                        .FirstOrDefaultAsync(x => x.SourceWarehouseId == sourceWh.Id && x.DestinationWarehouseId == destWh.Id, cancellationToken);
+                    if (r != null)
+                    {
+                        matchedRouteId = r.Id.ToString();
+                    }
+                }
+
                 shipment = new Shipment(
                     tenantId: order.TenantId,
                     customerId: order.CustomerId,
                     shipmentNo: shipmentNo,
                     warehouseId: order.WarehouseId,
-                    destinationType: DestinationType.Other,
-                    destinationId: destinationKey
+                    destinationType: destWh != null ? DestinationType.Warehouse : DestinationType.Other,
+                    destinationId: destinationKey,
+                    routeId: matchedRouteId
                 );
                 _context.Shipments.Add(shipment);
-                _logger.LogInformation("Created new auto-shipment {ShipmentNo} under {Mode} rule for next hop {Dest}", shipment.ShipmentNo, transportMode, destinationKey);
+                _logger.LogInformation("Created new auto-shipment {ShipmentNo} under {Mode} rule for next hop {Dest} with route {RouteId}", shipment.ShipmentNo, transportMode, destinationKey, matchedRouteId);
             }
         }
 

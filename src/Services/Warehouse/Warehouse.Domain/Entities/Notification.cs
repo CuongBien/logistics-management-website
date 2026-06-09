@@ -19,7 +19,8 @@ public enum NotificationCategory
     ShortPick = 5,
     LowStock = 6,
     RtoReceived = 7,
-    IntegrationFailure = 8
+    IntegrationFailure = 8,
+    ShortReplenish = 9
 }
 
 public class Notification : Entity<Guid>, IAggregateRoot

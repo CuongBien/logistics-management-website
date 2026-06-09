@@ -11,12 +11,12 @@ import '../../qr/domain/qr_models.dart';
 import '../../../../../shared/widgets/progress_card.dart';
 import '../../../../../core/network/offline_queue.dart';
 import '../../../../../core/network/connectivity_service.dart';
-import '../../../../../core/error/app_exception.dart';
 import '../../../../../core/error/error_handler.dart';
 
 class DispatchLoadScreen extends ConsumerStatefulWidget {
   final String? shipmentId;
-  const DispatchLoadScreen({super.key, this.shipmentId});
+  final String? initialOrder;
+  const DispatchLoadScreen({super.key, this.shipmentId, this.initialOrder});
 
   @override
   ConsumerState<DispatchLoadScreen> createState() => _DispatchLoadScreenState();
@@ -33,6 +33,8 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
   bool _isLoading = false;
   bool _isDispatched = false;
   String _lastScanned = 'Chưa quét';
+  List<dynamic> _orders = [];
+  final Set<String> _expandedOrders = {};
 
   @override
   void initState() {
@@ -40,6 +42,8 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
     _scannerHelper = ScannerHelper(onCodeScanned: _handleScan);
     if (widget.shipmentId != null && widget.shipmentId!.isNotEmpty) {
       Future.microtask(() => _loadShipment(widget.shipmentId!));
+    } else if (widget.initialOrder != null && widget.initialOrder!.isNotEmpty) {
+      Future.microtask(() => _loadOrderOnVehicle(widget.initialOrder!));
     }
   }
 
@@ -72,6 +76,9 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
       setState(() {
         _shipmentId = code;
         _shipmentNo = code.startsWith('SHP:') ? code.substring(4) : code;
+        _orders = [];
+        _totalOrders = 0;
+        _loadedOrders = 0;
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -82,30 +89,80 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
     }
 
     try {
-      // Gọi API parse/lookup thông tin shipment
+      // 1. Nếu code có dạng UUID (độ dài 36), thử lookup trực tiếp trước
+      if (code.length == 36 && !code.contains(':')) {
+        try {
+          final details = await ref.read(qrLookupServiceProvider).lookupShipment(shipmentId: code);
+          setState(() {
+            _shipmentId = code;
+            _shipmentNo = (details['shipmentNo'] ?? details['ShipmentNo'])?.toString() ?? 'N/A';
+            final rawOrders = details['orders'] ?? details['Orders'];
+            final orders = rawOrders != null ? List<dynamic>.from(rawOrders) : [];
+            _orders = orders;
+            _totalOrders = orders.length;
+            _loadedOrders = orders.where((o) {
+              final s = (o['status'] ?? o['Status'])?.toString().toLowerCase() ?? '';
+              return s == 'loaded' || s == 'shipped' || s == '10' || s == '11';
+            }).length;
+            _isLoading = false;
+          });
+          return;
+        } catch (_) {}
+      }
+
+      // 2. Thử parse QR
       final parsed = await ref.read(qrLookupServiceProvider).parse(rawValue: code);
       if (parsed.type == QrType.shipment) {
         final targetId = parsed.entityId ?? code;
         final details = await ref.read(qrLookupServiceProvider).lookupShipment(shipmentId: targetId);
         setState(() {
           _shipmentId = targetId;
-          _shipmentNo = details['shipmentNo']?.toString() ?? 'N/A';
-          final orders = details['orders'] as List<dynamic>? ?? [];
+          _shipmentNo = (details['shipmentNo'] ?? details['ShipmentNo'])?.toString() ?? 'N/A';
+          final rawOrders = details['orders'] ?? details['Orders'];
+          final orders = rawOrders != null ? List<dynamic>.from(rawOrders) : [];
+          _orders = orders;
           _totalOrders = orders.length;
-          _loadedOrders = orders.where((o) => o['status'] == 'Loaded' || o['status'] == 'Shipped').length;
+          _loadedOrders = orders.where((o) {
+            final s = (o['status'] ?? o['Status'])?.toString().toLowerCase() ?? '';
+            return s == 'loaded' || s == 'shipped' || s == '10' || s == '11';
+          }).length;
           _isLoading = false;
         });
       } else {
-        setState(() {
-          _shipmentId = code;
-          _shipmentNo = code;
-          _isLoading = false;
-        });
+        // Thử lookup trực tiếp bằng code nếu parse không nhận diện nhưng có thể là ID/No
+        try {
+          final details = await ref.read(qrLookupServiceProvider).lookupShipment(shipmentId: code);
+          setState(() {
+            _shipmentId = (details['id'] ?? details['Id'])?.toString() ?? code;
+            _shipmentNo = (details['shipmentNo'] ?? details['ShipmentNo'])?.toString() ?? 'N/A';
+            final rawOrders = details['orders'] ?? details['Orders'];
+            final orders = rawOrders != null ? List<dynamic>.from(rawOrders) : [];
+            _orders = orders;
+            _totalOrders = orders.length;
+            _loadedOrders = orders.where((o) {
+              final s = (o['status'] ?? o['Status'])?.toString().toLowerCase() ?? '';
+              return s == 'loaded' || s == 'shipped' || s == '10' || s == '11';
+            }).length;
+            _isLoading = false;
+          });
+        } catch (_) {
+          setState(() {
+            _shipmentId = code;
+            _shipmentNo = code;
+            _orders = [];
+            _totalOrders = 0;
+            _loadedOrders = 0;
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       setState(() {
         _shipmentId = code;
         _shipmentNo = code;
+        _orders = [];
+        _totalOrders = 0;
+        _loadedOrders = 0;
         _isLoading = false;
       });
     }
@@ -144,11 +201,14 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
           }
         });
 
+        HapticFeedback.lightImpact();
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('📥 Đã lưu ngoại tuyến xếp đơn hàng: $code'),
           backgroundColor: AppColors.warning,
         ));
       } catch (e) {
+        HapticFeedback.vibrate();
         setState(() => _isLoading = false);
         if (mounted) {
           ErrorHandler.showError(context, e);
@@ -164,19 +224,16 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
         shipmentId: _shipmentId.isNotEmpty ? _shipmentId : null,
       );
 
-      setState(() {
-        _shipmentId = response.shipmentId;
-        _shipmentNo = response.shipmentNo;
-        _loadedOrders = response.loadProgress.loadedOrders;
-        _totalOrders = response.loadProgress.totalOrders;
-        _isLoading = false;
-      });
+      await _loadShipment(response.shipmentId);
+
+      HapticFeedback.lightImpact();
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('✅ Đã xếp đơn hàng ${response.orderNo} lên xe thành công!'),
         backgroundColor: AppColors.success,
       ));
     } catch (e) {
+      HapticFeedback.vibrate();
       setState(() => _isLoading = false);
       if (mounted) {
         ErrorHandler.showError(context, e);
@@ -239,6 +296,8 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
         _isDispatched = true;
         _isLoading = false;
       });
+
+      HapticFeedback.heavyImpact();
 
       if (mounted) {
         showDialog(
@@ -416,7 +475,7 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: _isDispatched ? AppColors.success.withOpacity(0.12) : AppColors.primary.withOpacity(0.08),
+                        color: _isDispatched ? AppColors.success.withValues(alpha: 0.12) : AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: _isDispatched ? AppColors.success : AppColors.primary, width: 2),
                       ),
@@ -457,6 +516,112 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
                           ),
                         ),
                       ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'DANH SÁCH ĐƠN HÀNG TRONG CHUYẾN',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_orders.isEmpty)
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text(
+                            'Chưa có đơn hàng nào trong chuyến xe này',
+                            style: TextStyle(color: AppColors.textSecondary),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _orders.length,
+                        itemBuilder: (context, index) {
+                          final order = _orders[index];
+                          final orderId = (order['id'] ?? order['Id'])?.toString() ?? '';
+                          final orderNo = (order['orderNo'] ?? order['OrderNo'])?.toString() ?? 'N/A';
+                          final status = (order['status'] ?? order['Status'])?.toString() ?? 'N/A';
+                          final isLoaded = status.toLowerCase() == 'loaded' || status.toLowerCase() == 'shipped' || status == '10' || status == '11';
+                          final orderLines = (order['lines'] ?? order['Lines']) as List<dynamic>? ?? [];
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                ListTile(
+                                  leading: Icon(
+                                    isLoaded ? Icons.check_circle : Icons.radio_button_unchecked,
+                                    color: isLoaded ? AppColors.success : AppColors.textSecondary,
+                                  ),
+                                  title: Text(
+                                    orderNo,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                  subtitle: Text(
+                                    'Trạng thái: ${isLoaded ? "Đã lên xe (Loaded)" : "Chờ xếp xe ($status)"}',
+                                    style: TextStyle(
+                                      color: isLoaded ? AppColors.success : AppColors.warning,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  trailing: Icon(
+                                    _expandedOrders.contains(orderId) ? Icons.expand_less : Icons.expand_more,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      if (_expandedOrders.contains(orderId)) {
+                                        _expandedOrders.remove(orderId);
+                                      } else {
+                                        _expandedOrders.add(orderId);
+                                      }
+                                    });
+                                  },
+                                ),
+                                if (_expandedOrders.contains(orderId)) ...[
+                                  const Divider(height: 1),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Sản phẩm trong đơn:',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        if (orderLines.isEmpty)
+                                          const Text('Không có chi tiết sản phẩm', style: TextStyle(fontStyle: FontStyle.italic))
+                                        else
+                                          ...orderLines.map((line) {
+                                            final sku = (line['sku'] ?? line['Sku'])?.toString() ?? 'N/A';
+                                            final qty = line['quantity'] ?? line['Quantity'] ?? 0;
+                                            return Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 4),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Text(sku, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w600)),
+                                                  Text('$qty PCS', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                      ],
+                                    ),
+                                  ),
+                                ]
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     const SizedBox(height: 32),
                     if (!_isDispatched)
                       ElevatedButton.icon(
@@ -477,9 +642,9 @@ class _DispatchLoadScreenState extends ConsumerState<DispatchLoadScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [

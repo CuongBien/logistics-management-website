@@ -43,6 +43,14 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
         setState(() {
           _tasks = data;
           _isFetching = false;
+          // Find the first task that is NOT completed
+          _currentTaskIndex = data.indexWhere((task) {
+            final statusStr = task['status']?.toString().toLowerCase() ?? '';
+            return statusStr != 'completed' && statusStr != 'picked' && statusStr != '3';
+          });
+          if (_currentTaskIndex == -1) {
+            _currentTaskIndex = data.length; // All tasks completed
+          }
         });
       }
     } catch (e) {
@@ -70,6 +78,7 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
       }
       
       if (cleanBin == targetBin) {
+        HapticFeedback.lightImpact();
         setState(() {
           _isBinScanned = true;
           _scannedBinCode = code; // Lưu mã thô đã quét
@@ -79,6 +88,7 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
           backgroundColor: AppColors.success,
         ));
       } else {
+        HapticFeedback.vibrate();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('❌ Sai vị trí kệ. Vui lòng đến $targetBin'),
           backgroundColor: AppColors.error,
@@ -140,6 +150,7 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
             scannedSku: code,
           );
           
+          HapticFeedback.lightImpact();
           setState(() {
             _currentTaskIndex++;
             _isBinScanned = false;
@@ -150,11 +161,13 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
             backgroundColor: AppColors.success,
           ));
         } catch (e) {
+          HapticFeedback.vibrate();
           if (mounted) {
             ErrorHandler.showError(context, e);
           }
         }
       } else {
+        HapticFeedback.vibrate();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('❌ Lấy sai sản phẩm! Yêu cầu: $targetSku'),
           backgroundColor: AppColors.error,
@@ -408,101 +421,22 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
             ),
           ),
         ),
-        body: SingleChildScrollView(
+        body: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                color: !_isBinScanned ? AppColors.warning.withOpacity(0.2) : AppColors.success.withOpacity(0.2),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      Icon(
-                        _isBinScanned ? Icons.check_circle : Icons.location_on,
-                        size: 64,
-                        color: _isBinScanned ? AppColors.success : AppColors.primary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _isBinScanned ? 'ĐÃ XÁC NHẬN KỆ' : 'ĐI ĐẾN KỆ',
-                        style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        targetBin,
-                        style: TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                          color: _isBinScanned ? AppColors.success : AppColors.textPrimary,
-                          decoration: _isBinScanned ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Opacity(
-                opacity: _isBinScanned ? 1.0 : 0.4,
-                child: Card(
-                  elevation: _isBinScanned ? 8 : 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: _isBinScanned ? AppColors.warning : Colors.transparent,
-                      width: 2,
-                    )
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text('SẢN PHẨM CẦN LẤY', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
-                        const SizedBox(height: 8),
-                        if (targetProductName != null)
-                          Text(
-                            targetProductName,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                          ),
-                        Text(
-                          'SKU: $targetSku',
-                          style: TextStyle(
-                            fontSize: targetProductName != null ? 16 : 24, 
-                            fontWeight: targetProductName != null ? FontWeight.normal : FontWeight.bold,
-                            color: targetProductName != null ? AppColors.textSecondary : AppColors.textPrimary
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '$targetQty $targetUom',
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.primary),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),const SizedBox(height: 24),
-                        OutlinedButton.icon(
-                          onPressed: _isBinScanned ? () => _showShortPickDialog(targetQty) : null,
-                          icon: const Icon(Icons.report_problem),
-                          label: const Text('Báo lỗi (Thiếu hàng / Hư hỏng)'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.error),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(1.0, 0.0),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
+            child: !_isBinScanned 
+              ? _buildBinFocus(targetBin)
+              : _buildSkuFocus(targetSku, targetProductName, targetQty, targetUom),
           ),
         ),
         floatingActionButton: Column(
@@ -522,6 +456,143 @@ class _PickExecutionScreenState extends ConsumerState<PickExecutionScreen> {
               onPressed: _showManualInputDialog,
               tooltip: 'Nhập mã thủ công',
               child: const Icon(Icons.keyboard),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBinFocus(String targetBin) {
+    return Container(
+      key: const ValueKey('bin_focus'),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.location_on, size: 80, color: AppColors.primary),
+          ),
+          const SizedBox(height: 32),
+          const Text(
+            'HÃY ĐI ĐẾN KỆ',
+            style: TextStyle(
+              fontSize: 18, 
+              color: AppColors.textSecondary, 
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2.0
+            ),
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () => _handleScan(targetBin),
+            child: Text(
+              targetBin,
+              style: const TextStyle(
+                fontSize: 64,
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
+                decoration: TextDecoration.underline,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 48),
+          const Text(
+            'Quét mã vạch kệ để xác nhận',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkuFocus(String targetSku, String? targetProductName, int targetQty, String targetUom) {
+    return Container(
+      key: const ValueKey('sku_focus'),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.success, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.success.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Center(
+              child: Text('SẢN PHẨM CẦN LẤY', style: TextStyle(fontSize: 16, color: AppColors.success, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            ),
+            const SizedBox(height: 24),
+            if (targetProductName != null)
+              Text(
+                targetProductName,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                textAlign: TextAlign.center,
+              ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _handleScan(targetSku),
+              child: Text(
+                'SKU: $targetSku',
+                style: TextStyle(
+                  fontSize: targetProductName != null ? 18 : 28, 
+                  fontWeight: targetProductName != null ? FontWeight.normal : FontWeight.w900,
+                  color: targetProductName != null ? AppColors.textSecondary : AppColors.textPrimary,
+                  decoration: TextDecoration.underline,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.inventory_2, color: AppColors.success, size: 64),
+                    const SizedBox(height: 16),
+                    Text(
+                      '$targetQty $targetUom',
+                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppColors.success),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            OutlinedButton.icon(
+              onPressed: () => _showShortPickDialog(targetQty),
+              icon: const Icon(Icons.report_problem),
+              label: const Text('Báo thiếu hàng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: AppColors.error, width: 2),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
             ),
           ],
         ),

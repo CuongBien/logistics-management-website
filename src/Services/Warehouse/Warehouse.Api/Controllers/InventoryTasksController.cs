@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Warehouse.Application.Features.Inventory.Commands.CycleCount;
 using Warehouse.Application.Features.Inventory.Commands.Replenishment;
 using Warehouse.Application.Features.Inventory.Commands.VerifyCycleCount;
+using Warehouse.Application.Features.Inventory.Commands.StartReplenishment;
+using Warehouse.Application.Features.Inventory.Commands.StartCycleCount;
 using Logistics.Core;
 
 namespace Warehouse.Api.Controllers;
@@ -21,10 +23,10 @@ public class InventoryTasksController : ControllerBase
     }
 
     [HttpGet("cycle-count")]
-    public async Task<IActionResult> GetCycleCountTasks([FromQuery] Guid? warehouseId)
+    public async Task<IActionResult> GetCycleCountTasks([FromQuery] Guid? warehouseId, [FromQuery] bool? assignedToMe, [FromQuery] bool? unassigned)
     {
         var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        var query = new Warehouse.Application.Features.Inventory.Queries.GetCycleCountTasksList.GetCycleCountTasksListQuery(operatorSub, warehouseId);
+        var query = new Warehouse.Application.Features.Inventory.Queries.GetCycleCountTasksList.GetCycleCountTasksListQuery(operatorSub, warehouseId, assignedToMe, unassigned);
         var result = await _mediator.Send(query);
         
         if (!result.IsSuccess)
@@ -34,10 +36,10 @@ public class InventoryTasksController : ControllerBase
     }
 
     [HttpGet("replenish")]
-    public async Task<IActionResult> GetReplenishmentTasks([FromQuery] Guid? warehouseId)
+    public async Task<IActionResult> GetReplenishmentTasks([FromQuery] Guid? warehouseId, [FromQuery] bool? assignedToMe, [FromQuery] bool? unassigned)
     {
         var operatorSub = Logistics.Core.CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
-        var query = new Warehouse.Application.Features.Inventory.Queries.GetReplenishmentTasksList.GetReplenishmentTasksListQuery(operatorSub, warehouseId);
+        var query = new Warehouse.Application.Features.Inventory.Queries.GetReplenishmentTasksList.GetReplenishmentTasksListQuery(operatorSub, warehouseId, assignedToMe, unassigned);
         var result = await _mediator.Send(query);
         
         if (!result.IsSuccess)
@@ -55,6 +57,17 @@ public class InventoryTasksController : ControllerBase
             return BadRequest(result.Error);
 
         return Ok(result.Value);
+    }
+
+    [HttpPost("cycle-count/{taskId:guid}/start")]
+    public async Task<IActionResult> StartCountTask(Guid taskId)
+    {
+        var command = new StartCycleCountCommand(taskId, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        var result = await _mediator.Send(command);
+        if (!result.IsSuccess)
+            return BadRequest(result.Error);
+
+        return Ok();
     }
 
     [HttpPost("cycle-count/{taskId:guid}/submit")]
@@ -88,6 +101,17 @@ public class InventoryTasksController : ControllerBase
             return BadRequest(result.Error);
 
         return Ok(result.Value);
+    }
+
+    [HttpPost("replenish/{taskId:guid}/start")]
+    public async Task<IActionResult> StartReplenishmentTask(Guid taskId)
+    {
+        var command = new StartReplenishmentCommand(taskId, CurrentUserClaims.GetCustomerId(User) ?? string.Empty);
+        var result = await _mediator.Send(command);
+        if (!result.IsSuccess)
+            return BadRequest(result.Error);
+
+        return Ok();
     }
 
     [HttpPost("replenish/{taskId:guid}/complete")]
@@ -133,6 +157,16 @@ public class InventoryTasksController : ControllerBase
         var result = await _mediator.Send(new Warehouse.Application.Features.Inventory.Commands.AssignReplenishment.AssignReplenishmentCommand(id, operatorSub));
         if (!result.IsSuccess) return BadRequest(result.Error);
         return Ok();
+    }
+
+    [HttpPost("replenish/{id}/claim")]
+    public async Task<IActionResult> ClaimReplenishTask(Guid id)
+    {
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? "sys";
+        var command = new Warehouse.Application.Features.Inventory.Commands.AssignReplenishment.AssignReplenishmentCommand(id, operatorId);
+        var result = await _mediator.Send(command);
+        if (!result.IsSuccess) return BadRequest(result.Error);
+        return Ok(new { Success = true });
     }
 }
 

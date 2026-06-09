@@ -55,16 +55,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (connection) {
       const startConnection = async () => {
         try {
-          await connection.start();
-          if (isMounted) {
-            console.log("Connected to Notification Hub");
-            connection.on("ReceiveNotification", (notification: NotificationDto) => {
-              setNotifications((prev) => [notification, ...prev].slice(0, 50));
-            });
-          } else {
-            await connection.stop();
+          if (connection.state === signalR.HubConnectionState.Disconnected) {
+            await connection.start();
+            if (isMounted) {
+              console.log("Connected to Notification Hub");
+              connection.on("ReceiveNotification", (notification: NotificationDto) => {
+                setNotifications((prev) => [notification, ...prev].slice(0, 50));
+              });
+            } else {
+              await connection.stop();
+            }
           }
         } catch (e) {
+          if (e instanceof Error && e.message.includes("Failed to start the HttpConnection before stop() was called")) {
+            return;
+          }
           console.log("Connection failed: ", e);
         }
       };
@@ -76,10 +81,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       isMounted = false;
       if (connection) {
         connection.off("ReceiveNotification");
-        connection.stop().catch(e => console.log("Error stopping connection: ", e));
+        if (connection.state === signalR.HubConnectionState.Connected) {
+          connection.stop().catch(e => {
+            if (e instanceof Error && e.message.includes("Failed to start the HttpConnection before stop() was called")) {
+              return;
+            }
+            console.log("Error stopping connection: ", e);
+          });
+        }
       }
     };
   }, [connection]);
+
 
   const markAsRead = async (id: string) => {
     try {

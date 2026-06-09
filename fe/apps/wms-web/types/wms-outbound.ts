@@ -1,4 +1,4 @@
-export type OutboundOrderStatus = 'New' | 'Allocating' | 'Allocated' | 'AwaitingPick' | 'Picking' | 'Picked' | 'Packing' | 'Packed' | 'Shipped' | 'Cancelled';
+export type OutboundOrderStatus = 'New' | 'Allocating' | 'Allocated' | 'AwaitingPick' | 'Picking' | 'Picked' | 'Packing' | 'Packed' | 'Loaded' | 'Shipped' | 'Cancelled';
 
 export interface OutboundOrderDto {
   id: string;

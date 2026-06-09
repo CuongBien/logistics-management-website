@@ -69,6 +69,8 @@ export interface Order {
   proofOfDeliveryUrl?: string;
   failureReason?: string;
   deliveryAttempts: number;
+  fulfillment?: string;
+  sourceWarehouseCode?: string;
 }
 
 export interface OrderConsignee {
@@ -105,6 +107,8 @@ export interface CreateOrderRequest {
   codAmount: number;
   note?: string;
   consignee: ConsigneeInfo;
+  fulfillmentMode?: number;
+  sourceWarehouseCode?: string;
 }
 
 // ============================================

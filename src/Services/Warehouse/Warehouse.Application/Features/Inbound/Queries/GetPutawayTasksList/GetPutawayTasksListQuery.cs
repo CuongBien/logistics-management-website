@@ -5,7 +5,12 @@ using Warehouse.Application.Common.Interfaces;
 
 namespace Warehouse.Application.Features.Inbound.Queries.GetPutawayTasksList;
 
-public record GetPutawayTasksListQuery(string OperatorSub, Guid? WarehouseId = null) : IRequest<Result<List<PutawayTaskDto>>>;
+public record GetPutawayTasksListQuery(
+    string OperatorSub, 
+    Guid? WarehouseId = null,
+    bool? AssignedToMe = null,
+    bool? Unassigned = null
+) : IRequest<Result<List<PutawayTaskDto>>>;
 
 public class PutawayTaskDto
 {
@@ -69,6 +74,16 @@ public class GetPutawayTasksListQueryHandler : IRequestHandler<GetPutawayTasksLi
             {
                 return Result<List<PutawayTaskDto>>.Success(new List<PutawayTaskDto>());
             }
+        }
+
+        if (request.AssignedToMe == true)
+        {
+            query = query.Where(t => t.OperatorId == request.OperatorSub);
+        }
+
+        if (request.Unassigned == true)
+        {
+            query = query.Where(t => string.IsNullOrEmpty(t.OperatorId));
         }
 
         var tasks = await query

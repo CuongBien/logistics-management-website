@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/error/app_exception.dart';
@@ -7,6 +8,18 @@ class QrActionService {
   final ApiClient _apiClient;
 
   QrActionService(this._apiClient);
+
+  Future<Uint8List> getOutboundOrderQr(String orderId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/qrcode/outbound-order/$orderId',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data as Uint8List;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
 
   AppException _handleDioError(DioException e) {
     final response = e.response;
@@ -245,6 +258,7 @@ class QrActionService {
     required String taskId,
     required String scannedSourceBin,
     required String scannedDestBin,
+    int? quantity,
   }) async {
     try {
       final response = await _apiClient.dio.post(
@@ -253,6 +267,7 @@ class QrActionService {
           'taskId': taskId,
           'scannedSourceBin': scannedSourceBin,
           'scannedDestBin': scannedDestBin,
+          if (quantity != null) 'quantity': quantity,
         },
       );
       return response.data as Map<String, dynamic>;

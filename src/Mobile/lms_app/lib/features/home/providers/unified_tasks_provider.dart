@@ -89,15 +89,16 @@ class InternalTask {
 
 final unifiedTasksProvider = FutureProvider.autoDispose<List<InternalTask>>((ref) async {
   final wavesAsync = ref.watch(wavesProvider);
+  final ordersAsync = ref.watch(outboundOrdersProvider);
   final putawayAsync = ref.watch(putawayTasksProvider);
   final replenishmentAsync = ref.watch(replenishmentTasksProvider);
   final countAsync = ref.watch(cycleCountTasksProvider);
   
   final List<InternalTask> combinedTasks = [];
+  final repo = ref.read(outboundRepositoryProvider);
 
   // Add Picking Waves
   if (wavesAsync.hasValue && wavesAsync.value != null) {
-    final repo = ref.read(outboundRepositoryProvider);
     for (final wave in wavesAsync.value!) {
       final status = wave['status']?.toString().toLowerCase() ?? '';
       if (status == 'picking' || status == 'created' || status == 'allocated' || status == 'new') {
@@ -108,11 +109,6 @@ final unifiedTasksProvider = FutureProvider.autoDispose<List<InternalTask>>((ref
         } catch (e) {
           // Bỏ qua lỗi
         }
-
-        final combinedData = <String, dynamic>{
-          ...wave,
-          'pickTasks': pickTasks,
-        };
 
         combinedTasks.add(InternalTask(
           id: waveId,
@@ -128,6 +124,52 @@ final unifiedTasksProvider = FutureProvider.autoDispose<List<InternalTask>>((ref
             'pickTasks': pickTasks,
           },
         ));
+      }
+    }
+  }
+
+  // Add Individual Picking Orders
+  if (ordersAsync.hasValue && ordersAsync.value != null) {
+    for (final order in ordersAsync.value!) {
+      final status = order['status']?.toString().toLowerCase() ?? '';
+      
+      final bool isPickingOrAllocated = status == 'picking' || status == 'allocated' || status == 'new' || status == 'pendingallocation' || status == 'partiallyallocated';
+      
+      if (isPickingOrAllocated) {
+        final orderId = order['id']?.toString() ?? '';
+        final orderNo = order['orderNo']?.toString() ?? 'N/A';
+        
+        List<dynamic> pickTasks = [];
+        try {
+          pickTasks = await repo.getPickTasksByOrder(orderId);
+        } catch (_) {}
+
+        if (pickTasks.isNotEmpty) {
+          final firstTask = pickTasks.first;
+          final String? operatorId = (firstTask['assignedOperatorId'] ?? firstTask['AssignedOperatorId'])?.toString();
+          
+          final alreadyAdded = combinedTasks.any((t) => t.type == TaskType.picking && (t.id == orderId || t.id == orderNo));
+          if (!alreadyAdded) {
+            combinedTasks.add(InternalTask(
+              id: orderNo,
+              type: TaskType.picking,
+              title: 'Đơn nhặt: $orderNo',
+              subtitle: 'Quy mô: ${pickTasks.length} tác vụ',
+              status: status,
+              primaryData: '${pickTasks.length} Sản phẩm',
+              secondaryData: order['destinationCity']?.toString() ?? 'Giao trực tiếp',
+              assignedTo: operatorId,
+              originalData: {
+                'id': orderNo,
+                'waveNo': orderNo,
+                'orderCount': 1,
+                'status': status,
+                'pickTasks': pickTasks,
+                'assignedTo': operatorId,
+              },
+            ));
+          }
+        }
       }
     }
   }

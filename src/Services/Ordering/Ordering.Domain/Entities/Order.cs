@@ -110,12 +110,16 @@ public class Order : Entity<Guid>, IAggregateRoot
         return Result<Order>.Success(order);
     }
 
-    public Result SetInWarehouseDirectly()
+    public Result SetInWarehouseDirectly(string? warehouseId = null)
     {
         if (Status != OrderStatus.New)
             return Result.Failure(DomainErrors.Order.InvalidTransition(Status.ToString(), nameof(OrderStatus.InWarehouse)));
 
         Status = OrderStatus.InWarehouse;
+        if (!string.IsNullOrEmpty(warehouseId))
+        {
+            WarehouseId = warehouseId;
+        }
         LastModifiedAt = DateTime.UtcNow;
         return Result.Success();
     }

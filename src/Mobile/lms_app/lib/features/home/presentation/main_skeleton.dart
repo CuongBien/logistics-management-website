@@ -114,19 +114,22 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.apps, color: Colors.grey, size: 24),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Tiện ích', 
-                          style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.normal),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.apps, color: Colors.grey, size: 24),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Tiện ích', 
+                            style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.normal),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -147,19 +150,22 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 24), // Fix cứng size icon
-            const SizedBox(height: 4),
-            Text(
-              label, 
-              style: TextStyle(color: color, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 24), // Fix cứng size icon
+              const SizedBox(height: 4),
+              Text(
+                label, 
+                style: TextStyle(color: color, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -201,7 +207,10 @@ class _MainSkeletonState extends ConsumerState<MainSkeleton> {
                   _buildUtilityButton(context: context, icon: Icons.compare_arrows, label: 'Luân chuyển', onTap: () { Navigator.pop(context); context.push('/wms/transit-receive'); }, color: Colors.purple),
                   _buildUtilityButton(context: context, icon: Icons.fact_check, label: 'Kiểm kê', onTap: () { Navigator.pop(context); context.push('/wms/count'); }, color: Colors.orange),
                   _buildUtilityButton(context: context, icon: Icons.category, label: 'Chia chọn', onTap: () { Navigator.pop(context); context.push('/wms/sort'); }, color: Colors.blue),
-                  _buildUtilityButton(context: context, icon: Icons.local_shipping, label: 'Xuất bến', onTap: () { Navigator.pop(context); context.push('/wms/dispatch_load'); }, color: Colors.redAccent),
+                  _buildUtilityButton(context: context, icon: Icons.inventory_2, label: 'Đóng gói', onTap: () { Navigator.pop(context); context.push('/wms/pack'); }, color: Colors.deepPurple),
+                  _buildUtilityButton(context: context, icon: Icons.local_shipping, label: 'Xuất bến', onTap: () { Navigator.pop(context); context.push('/wms/dispatch'); }, color: Colors.redAccent),
+                  _buildUtilityButton(context: context, icon: Icons.outbox, label: 'Xuất lẻ', onTap: () { Navigator.pop(context); context.push('/wms/ship_release'); }, color: Colors.deepOrange),
+                  _buildUtilityButton(context: context, icon: Icons.delivery_dining, label: 'Lấy hàng', onTap: () { Navigator.pop(context); context.push('/delivery/pickup'); }, color: Colors.indigo),
                   _buildUtilityButton(context: context, icon: Icons.search, label: 'Tra cứu', onTap: () { Navigator.pop(context); context.push('/wms/inventory'); }, color: Colors.blueGrey),
                 ],
               ),

@@ -51,7 +51,14 @@ public class CountTask : Entity<Guid>, ISoftDelete
     public void Assign(string operatorId)
     {
         AssignedTo = operatorId;
-        StartedAt = DateTime.UtcNow;
+    }
+
+    public void Start()
+    {
+        if (Status != CountTaskStatus.Pending)
+            throw new InvalidOperationException("Can only start pending tasks.");
+            
+        StartedAt ??= DateTime.UtcNow;
     }
 
     public void SubmitCount(int countedQty)

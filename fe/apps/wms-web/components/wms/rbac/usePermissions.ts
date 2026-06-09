@@ -56,6 +56,9 @@ export function usePermissions() {
 
   const isSystemAdmin = session?.user?.name === 'admin' || session?.user?.email?.startsWith('admin@');
   const hasWmsAccess = isSystemAdmin || permissions.length > 0 || roles.length > 0 || warehousePermissions.length > 0;
+  const isWmsManager = isSystemAdmin || roles.some(
+    (r) => r.roleCode === 'WMS_ADMIN' || r.roleCode === 'WMS_SUPERVISOR'
+  );
 
   const hasPermission = (permissionCode: string, warehouseId: string) => {
     // Admin user override
@@ -87,5 +90,6 @@ export function usePermissions() {
     hasPermissionInAnyWarehouse,
     isSystemAdmin,
     hasWmsAccess,
+    isWmsManager,
   };
 }

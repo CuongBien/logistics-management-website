@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/utils/scanner_helper.dart';
 import '../../../../../core/constants/app_colors.dart';
@@ -86,12 +87,15 @@ class _SortScreenState extends ConsumerState<SortScreen> {
         _lastResponse = response;
       });
 
+      HapticFeedback.heavyImpact();
+
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('✅ Chia chọn thành công kiện hàng: $code'),
         backgroundColor: AppColors.success,
         duration: const Duration(seconds: 2),
       ));
     } catch (e) {
+      HapticFeedback.vibrate();
       setState(() => _isLoading = false);
       if (mounted) {
         ErrorHandler.showError(context, e);
@@ -152,6 +156,17 @@ class _SortScreenState extends ConsumerState<SortScreen> {
     _orderIdController.dispose();
     _scannerHelper.focusNode.dispose();
     super.dispose();
+  }
+
+  Color _getDestinationColor(String nextHop) {
+    if (nextHop.isEmpty) return AppColors.warning;
+    final hop = nextHop.toLowerCase();
+    if (hop.contains('hcm') || hop.contains('hồ chí minh') || hop.contains('sg')) return Colors.green;
+    if (hop.contains('hn') || hop.contains('hà nội')) return Colors.red;
+    if (hop.contains('đn') || hop.contains('đà nẵng') || hop.contains('dn')) return Colors.blue;
+    if (hop.contains('hp') || hop.contains('hải phòng')) return Colors.deepPurple;
+    if (hop.contains('ct') || hop.contains('cần thơ')) return Colors.orange;
+    return AppColors.warning;
   }
 
   @override
@@ -249,31 +264,55 @@ class _SortScreenState extends ConsumerState<SortScreen> {
                         ),
                         const Divider(),
                         if (_lastResponse!.routing != null) ...[
-                          Text('🏁 Đích cuối: ${_lastResponse!.routing!.finalDestination ?? "N/A"}', style: const TextStyle(fontSize: 15)),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.warning, width: 2),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.place, color: AppColors.warning, size: 40),
-                                const SizedBox(height: 8),
-                                const Text('HƯỚNG DẪN TẬP KẾT TẠI KHO', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.warning)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Hãy đặt lên khu vực xuất hàng đi\n[ ${_lastResponse!.routing!.nextHop ?? "N/A"} ]',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+                          Builder(
+                            builder: (context) {
+                              final nextHop = _lastResponse!.routing!.nextHop ?? "N/A";
+                              final destColor = _getDestinationColor(nextHop);
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('🏁 Đích cuối: ${_lastResponse!.routing!.finalDestination ?? "N/A"}', style: const TextStyle(fontSize: 15)),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: destColor.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: destColor, width: 8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: destColor.withOpacity(0.3),
+                                          blurRadius: 20,
+                                          spreadRadius: 5,
+                                        )
+                                      ]
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Icon(Icons.place, color: destColor, size: 72),
+                                        const SizedBox(height: 16),
+                                        Text('HƯỚNG DẪN TẬP KẾT TẠI KHO', style: TextStyle(fontWeight: FontWeight.w900, color: destColor, fontSize: 16, letterSpacing: 1.2)),
+                                        const SizedBox(height: 12),
+                                        const Text(
+                                          'NÉM VÀO KHU VỰC XUẤT HÀNG ĐI',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          nextHop.toUpperCase(),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(fontSize: 56, fontWeight: FontWeight.w900, color: destColor, letterSpacing: 2.0),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+                              );
+                            }
+                          )
                         ],
                         if (_lastResponse!.shipment != null) ...[
                           Container(

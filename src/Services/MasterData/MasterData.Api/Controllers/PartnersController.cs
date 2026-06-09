@@ -26,12 +26,12 @@ public class PartnersController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreatePartnerCommand command)
     {
         // Inject tenantId if available
-        var isAdmin = User.IsInRole("Admin");
+        var isSystemUser = User.IsInRole("Admin") || User.IsInRole("admin") || User.IsInRole("manager") || User.IsInRole("Manager") || User.IsInRole("operator") || User.IsInRole("Operator");
         var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
         var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
         
-        // Customers store their address book under their own SUB. Admins store in the TENANT.
-        var effectiveTenantId = isAdmin ? (claimTenant ?? "default-tenant") : (claimSub ?? "default-tenant");
+        // Customers store their address book under their own SUB. Admins/System users store in the TENANT.
+        var effectiveTenantId = isSystemUser ? (claimTenant ?? "default-tenant") : (claimSub ?? "default-tenant");
 
         if (string.IsNullOrEmpty(command.TenantId))
         {
@@ -62,11 +62,11 @@ public class PartnersController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] string? tenantId = null)
     {
-        var isAdmin = User.IsInRole("Admin");
+        var isSystemUser = User.IsInRole("Admin") || User.IsInRole("admin") || User.IsInRole("manager") || User.IsInRole("Manager") || User.IsInRole("operator") || User.IsInRole("Operator");
         var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
         var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
         
-        var effectiveTenantId = isAdmin 
+        var effectiveTenantId = isSystemUser 
             ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
             : (claimSub ?? "default-tenant");
 
@@ -78,11 +78,11 @@ public class PartnersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Result<PartnerDto>>> GetById(Guid id, [FromQuery] string? tenantId = null)
     {
-        var isAdmin = User.IsInRole("Admin");
+        var isSystemUser = User.IsInRole("Admin") || User.IsInRole("admin") || User.IsInRole("manager") || User.IsInRole("Manager") || User.IsInRole("operator") || User.IsInRole("Operator");
         var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
         var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
         
-        var effectiveTenantId = isAdmin 
+        var effectiveTenantId = isSystemUser 
             ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
             : (claimSub ?? "default-tenant");
 
@@ -94,11 +94,11 @@ public class PartnersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<Result>> Update(Guid id, [FromBody] UpdatePartnerRequest request, [FromQuery] string? tenantId = null)
     {
-        var isAdmin = User.IsInRole("Admin");
+        var isSystemUser = User.IsInRole("Admin") || User.IsInRole("admin") || User.IsInRole("manager") || User.IsInRole("Manager") || User.IsInRole("operator") || User.IsInRole("Operator");
         var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
         var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
         
-        var effectiveTenantId = isAdmin 
+        var effectiveTenantId = isSystemUser 
             ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
             : (claimSub ?? "default-tenant");
 
@@ -120,11 +120,11 @@ public class PartnersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult<Result>> Deactivate(Guid id, [FromQuery] string? tenantId = null)
     {
-        var isAdmin = User.IsInRole("Admin");
+        var isSystemUser = User.IsInRole("Admin") || User.IsInRole("admin") || User.IsInRole("manager") || User.IsInRole("Manager") || User.IsInRole("operator") || User.IsInRole("Operator");
         var claimTenant = User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
         var claimSub = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
         
-        var effectiveTenantId = isAdmin 
+        var effectiveTenantId = isSystemUser 
             ? (string.IsNullOrWhiteSpace(tenantId) ? (claimTenant ?? "default-tenant") : tenantId)
             : (claimSub ?? "default-tenant");
 

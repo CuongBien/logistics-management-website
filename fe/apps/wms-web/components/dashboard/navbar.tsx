@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   Bell,
@@ -32,6 +32,9 @@ import {
 import { toast } from "sonner"
 import { useSession, signOut } from "next-auth/react"
 import { useNotifications } from "@/contexts/NotificationContext"
+import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
+import { fetchApi } from "@/lib/api-client"
+import { GlobalQrScanner } from "./global-qr-scanner"
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -50,8 +53,35 @@ export function Navbar() {
 
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
 
-  // Warehouse selection state
-  const [activeWarehouse, setActiveWarehouse] = useState("ATL-01")
+  // Real warehouse selection state
+  const { activeWarehouseId, setActiveWarehouseId } = useWarehouseContext()
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string; code: string }[]>([])
+  const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(true)
+
+  useEffect(() => {
+    const loadWarehouses = async () => {
+      try {
+        const res = await fetchApi<any>('wms', '/Warehouse?all=true')
+        let list: any[] = []
+        if (res) {
+          if (res.isSuccess && Array.isArray(res.value)) {
+            list = res.value
+          } else if (Array.isArray(res)) {
+            list = res
+          }
+        }
+        setWarehouses(list)
+      } catch (e) {
+        console.error("Failed to load warehouses in Navbar:", e)
+      } finally {
+        setIsLoadingWarehouses(false)
+      }
+    }
+    loadWarehouses()
+  }, [])
+
+  const activeWh = warehouses.find(w => w.id === activeWarehouseId)
+  const activeWhCode = activeWh ? activeWh.code : "N/A"
 
   const handleMarkAllAsRead = async () => {
     await markAllAsRead()
@@ -67,10 +97,10 @@ export function Navbar() {
     }
   }
 
-  const handleSwitchWarehouse = (code: string, name: string) => {
-    setActiveWarehouse(code)
+  const handleSwitchWarehouse = (id: string, name: string) => {
+    setActiveWarehouseId(id)
     toast.success(`Đã chuyển vùng làm việc sang: ${name}`, {
-      description: `Hệ thống WMS đã cấu hình dữ liệu cho khu vực ${code}`,
+      description: `Hệ thống WMS đã cấu hình dữ liệu cho kho hàng mới`,
       icon: <Building2 className="h-4 w-4 text-[#C41E3A]" />,
       duration: 3000
     })
@@ -102,6 +132,9 @@ export function Navbar() {
       {/* Right widgets */}
       <div className="flex items-center gap-1.5">
         
+        {/* Global QR Scanner */}
+        <GlobalQrScanner />
+
         {/* Notification Bell Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -209,7 +242,7 @@ export function Navbar() {
                   <h4 className="font-semibold text-sm leading-tight">{userName}</h4>
                   <p className="text-[10px] text-white/80 mt-0.5 font-mono">{userEmail}</p>
                   <span className="inline-block mt-1 text-[9px] bg-yellow-400 text-slate-900 font-bold px-1.5 py-0.5 rounded uppercase">
-                    Quản đốc ATL-01
+                    Kho: {activeWhCode}
                   </span>
                 </div>
               </div>
@@ -222,26 +255,28 @@ export function Navbar() {
                 <Building2 className="h-3 w-3" />
                 Vùng làm việc hiện tại
               </DropdownMenuLabel>
-              <DropdownMenuGroup className="px-1 space-y-0.5">
-                {[
-                  { code: "ATL-01", name: "Kho Miền Nam ATL-01" },
-                  { code: "HN-02", name: "Kho Miền Bắc HN-02" },
-                  { code: "DN-03", name: "Kho Miền Trung DN-03" }
-                ].map((wh) => (
-                  <DropdownMenuItem 
-                    key={wh.code}
-                    onClick={() => handleSwitchWarehouse(wh.code, wh.name)}
-                    className="text-xs flex items-center justify-between text-slate-700 focus:bg-[#C41E3A]/5 focus:text-[#C41E3A] px-2 py-1.5 rounded cursor-pointer font-medium"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Building2 className="h-3.5 w-3.5 opacity-60" />
-                      {wh.name}
-                    </span>
-                    {activeWarehouse === wh.code && (
-                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0 font-bold" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
+              <DropdownMenuGroup className="px-1 space-y-0.5 max-h-[180px] overflow-y-auto">
+                {isLoadingWarehouses ? (
+                  <div className="text-[11px] text-slate-400 p-2 text-center">Đang tải danh sách kho...</div>
+                ) : warehouses.length === 0 ? (
+                  <div className="text-[11px] text-slate-400 p-2 text-center">Không có kho khả dụng</div>
+                ) : (
+                  warehouses.map((wh) => (
+                    <DropdownMenuItem 
+                      key={wh.id}
+                      onClick={() => handleSwitchWarehouse(wh.id, wh.name)}
+                      className="text-xs flex items-center justify-between text-slate-700 focus:bg-[#C41E3A]/5 focus:text-[#C41E3A] px-2 py-1.5 rounded cursor-pointer font-medium"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5 opacity-60" />
+                        {wh.name}
+                      </span>
+                      {activeWarehouseId === wh.id && (
+                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0 font-bold" />
+                      )}
+                    </DropdownMenuItem>
+                  ))
+                )}
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator className="bg-slate-100 my-1" />
@@ -253,21 +288,30 @@ export function Navbar() {
               </DropdownMenuLabel>
               
               <DropdownMenuGroup className="px-1">
-                <DropdownMenuItem className="text-xs text-slate-700 focus:bg-[#C41E3A]/5 focus:text-[#C41E3A] px-2 py-1.5 rounded cursor-pointer flex items-center gap-2 font-medium">
-                  <User className="h-3.5 w-3.5 opacity-60" />
-                  Hồ sơ cá nhân
-                </DropdownMenuItem>
-
                 <Link href="/settings" className="w-full">
                   <DropdownMenuItem className="text-xs text-slate-700 focus:bg-[#C41E3A]/5 focus:text-[#C41E3A] px-2 py-1.5 rounded cursor-pointer flex items-center gap-2 font-medium">
-                    <Lock className="h-3.5 w-3.5 opacity-60" />
-                    Cài đặt hệ thống
+                    <User className="h-3.5 w-3.5 opacity-60" />
+                    Hồ sơ & Dev tools
                   </DropdownMenuItem>
                 </Link>
 
-                <DropdownMenuItem className="text-xs text-slate-700 focus:bg-[#C41E3A]/5 focus:text-[#C41E3A] px-2 py-1.5 rounded cursor-pointer flex items-center gap-2 font-medium">
+                <Link href="/settings/system-sync" className="w-full">
+                  <DropdownMenuItem className="text-xs text-slate-700 focus:bg-[#C41E3A]/5 focus:text-[#C41E3A] px-2 py-1.5 rounded cursor-pointer flex items-center gap-2 font-medium">
+                    <Lock className="h-3.5 w-3.5 opacity-60" />
+                    Đồng bộ Checkpoints
+                  </DropdownMenuItem>
+                </Link>
+
+                <DropdownMenuItem 
+                  onClick={() => {
+                    toast.info("Tài liệu hướng dẫn WMS v2.4", {
+                      description: "Vui lòng xem chi tiết file README.md tại thư mục dự án."
+                    })
+                  }}
+                  className="text-xs text-slate-700 focus:bg-[#C41E3A]/5 focus:text-[#C41E3A] px-2 py-1.5 rounded cursor-pointer flex items-center gap-2 font-medium"
+                >
                   <HelpCircle className="h-3.5 w-3.5 opacity-60" />
-                  Tài liệu hướng dẫn WMS
+                  Tài liệu hướng dẫn
                 </DropdownMenuItem>
               </DropdownMenuGroup>
 

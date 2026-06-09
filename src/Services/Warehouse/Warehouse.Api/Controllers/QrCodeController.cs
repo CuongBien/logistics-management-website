@@ -11,6 +11,7 @@ using Warehouse.Application.Features.Inbound.Commands.ReceiveTransitShipment;
 using Warehouse.Application.Features.Outbound.Commands.PickStock;
 using Warehouse.Application.Features.Outbound.Commands.SortOrder;
 using Warehouse.Application.Features.Outbound.Commands.ShipOrder;
+using Warehouse.Application.Features.Outbound.Commands.ShipAndReleaseBin;
 using Warehouse.Domain.Enums;
 
 namespace Warehouse.Api.Controllers;
@@ -44,6 +45,7 @@ public class QrCodeController : ApiControllerBase
 
     /// <summary>A1: Sinh QR cho ô kệ — in tem dán lên kệ vật lý</summary>
     [HttpGet("bin/{binId:guid}")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public async Task<IActionResult> GetBinQr(Guid binId)
     {
         var bin = await _context.Bins.AsNoTracking().FirstOrDefaultAsync(b => b.Id == binId);
@@ -53,6 +55,7 @@ public class QrCodeController : ApiControllerBase
 
     /// <summary>A2: Sinh QR hàng loạt cho tất cả ô kệ trong 1 kho</summary>
     [HttpGet("warehouse/{warehouseId:guid}/bins/batch")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public async Task<IActionResult> GetBinsBatch(Guid warehouseId)
     {
         var bins = await _context.Bins
@@ -69,6 +72,7 @@ public class QrCodeController : ApiControllerBase
 
     /// <summary>A3: Sinh QR cho đơn vận chuyển (courier) — in tem vận đơn</summary>
     [HttpGet("order/{orderId:guid}")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public async Task<IActionResult> GetOrderQr(Guid orderId)
     {
         // orderId = OMS OrderId, tìm OutboundOrder.OrderId
@@ -80,6 +84,7 @@ public class QrCodeController : ApiControllerBase
 
     /// <summary>A4: Sinh QR cho đơn xuất kho WMS — in tem thùng carton sau Pack</summary>
     [HttpGet("outbound-order/{id:guid}")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public async Task<IActionResult> GetOutboundOrderQr(Guid id)
     {
         var order = await _context.OutboundOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id);
@@ -89,6 +94,7 @@ public class QrCodeController : ApiControllerBase
 
     /// <summary>A5: Sinh QR cho lô hàng — dán tem lên pallet/xe</summary>
     [HttpGet("shipment/{shipmentId:guid}")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public async Task<IActionResult> GetShipmentQr(Guid shipmentId)
     {
         var s = await _context.Shipments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == shipmentId);
@@ -98,6 +104,7 @@ public class QrCodeController : ApiControllerBase
 
     /// <summary>A6: Sinh QR cho phiếu nhập — in kèm lô hàng đến</summary>
     [HttpGet("receipt/{receiptId:guid}")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public async Task<IActionResult> GetReceiptQr(Guid receiptId)
     {
         var r = await _context.InboundReceipts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == receiptId);
@@ -107,6 +114,7 @@ public class QrCodeController : ApiControllerBase
 
     /// <summary>A7: Sinh QR cho SKU — sản phẩm không có barcode sẵn</summary>
     [HttpGet("sku/{skuCode}")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public IActionResult GetSkuQr(string skuCode)
         => QrPng(QrPayloadFormat.ForSku(skuCode), $"sku-{skuCode}.png");
 
@@ -275,7 +283,6 @@ public class QrCodeController : ApiControllerBase
         });
     }
 
-    /// <summary>B4: Tra cứu lô hàng — danh sách đơn trong lô</summary>
     [HttpGet("lookup/shipment/{shipmentId:guid}")]
     public async Task<IActionResult> LookupShipment(Guid shipmentId)
     {
@@ -284,8 +291,15 @@ public class QrCodeController : ApiControllerBase
 
         var orderIds = await _context.ShipmentOrders.Where(x => x.ShipmentId == shipmentId)
             .Select(x => x.OutboundOrderId).ToListAsync();
-        var orders = await _context.OutboundOrders.Where(o => orderIds.Contains(o.Id)).AsNoTracking()
-            .Select(o => new { o.Id, o.OrderNo, Status = o.Status.ToString() }).ToListAsync();
+        var orders = await _context.OutboundOrders.Where(o => orderIds.Contains(o.Id))
+            .Include(o => o.Lines)
+            .AsNoTracking()
+            .Select(o => new { 
+                o.Id, 
+                o.OrderNo, 
+                Status = o.Status.ToString(),
+                Lines = o.Lines.Select(l => new { l.Sku, Quantity = l.RequestedQty })
+            }).ToListAsync();
 
         return Ok(new
         {
@@ -338,12 +352,6 @@ public class QrCodeController : ApiControllerBase
 
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? "default";
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? "sys";
-
-        // Tìm receipt line theo sku
-        var receiptLine = await _context.InboundReceiptLines.AsNoTracking()
-            .FirstOrDefaultAsync(l => l.ReceiptId == req.ReceiptId && l.Sku == sku);
-        if (receiptLine == null)
-            return UnprocessableEntity(Err("QR.SkuMismatch", $"SKU '{sku}' không thuộc phiếu nhập này."));
 
         var receipt = await _context.InboundReceipts.AsNoTracking().FirstOrDefaultAsync(r => r.Id == req.ReceiptId);
         if (receipt == null) return NotFound(Err("QR.EntityNotFound", "Phiếu nhập không tồn tại."));
@@ -698,18 +706,40 @@ public class QrCodeController : ApiControllerBase
         var result = await Mediator.Send(new ShipOrderCommand(order.Id, operatorSub, req.ShipmentId));
         if (!result.IsSuccess) return BadRequest(Err(result.Error.Code, result.Error.Message));
 
-        // Đếm progress
-        int totalOrders = 0;
-        if (req.ShipmentId.HasValue)
-            totalOrders = await _context.ShipmentOrders.CountAsync(so => so.ShipmentId == req.ShipmentId.Value);
+        // Lấy thông tin Shipment thực tế sau khi xử lý (kể cả tự động tạo)
+        var shipmentOrder = await _context.ShipmentOrders
+            .Include(so => so.Shipment)
+            .FirstOrDefaultAsync(so => so.OutboundOrderId == order.Id);
+
+        if (shipmentOrder == null || shipmentOrder.Shipment == null)
+            return BadRequest(Err("Shipment.NotFound", "Không tìm thấy chuyến xe liên kết với đơn hàng sau khi xếp xe."));
+
+        var shipment = shipmentOrder.Shipment;
+        var shipmentId = shipment.Id;
+        var shipmentNo = shipment.ShipmentNo;
+
+        // Đếm progress thực tế của chuyến hàng này
+        var allShipmentOrders = await _context.ShipmentOrders
+            .Where(so => so.ShipmentId == shipmentId)
+            .Select(so => so.OutboundOrderId)
+            .ToListAsync();
+
+        int totalOrders = allShipmentOrders.Count;
+        int loadedOrders = await _context.OutboundOrders
+            .CountAsync(o => allShipmentOrders.Contains(o.Id) && 
+                            (o.Status == OutboundOrderStatus.Loaded || 
+                             o.Status == OutboundOrderStatus.Shipped || 
+                             o.Status == OutboundOrderStatus.Delivered));
+        int remainingOrders = totalOrders - loadedOrders;
 
         return Ok(new
         {
             success = true,
             outboundOrderId = order.Id,
-            order.OrderNo,
-            shipmentId = req.ShipmentId,
-            loadProgress = new { totalOrders, loadedOrders = totalOrders },
+            orderNo = order.OrderNo,
+            shipmentId = shipmentId,
+            shipmentNo = shipmentNo,
+            loadProgress = new { totalOrders, loadedOrders, remainingOrders },
             newStatus = "Loaded"
         });
     }
@@ -719,33 +749,21 @@ public class QrCodeController : ApiControllerBase
     public async Task<IActionResult> ShipAndRelease([FromBody] ShipAndReleaseRequest req)
     {
         var orderParsed = QrPayloadFormat.Parse(req.ScannedOrder);
-        if (!orderParsed.IsValid) return BadRequest(Err("QR.InvalidFormat", "QR đơn hàng không hợp lệ."));
+        var orderNo = orderParsed.IsValid ? orderParsed.Value : req.ScannedOrder;
 
-        var order = await _context.OutboundOrders.FirstOrDefaultAsync(o => o.OrderNo == orderParsed.Value);
-        if (order == null) return NotFound(Err("QR.EntityNotFound", $"Đơn '{orderParsed.Value}' không tìm thấy."));
-
-        if (order.Status != OutboundOrderStatus.Packed && order.Status != OutboundOrderStatus.Loaded)
-            return Conflict(Err("QR.InvalidState", $"Đơn đang '{order.Status}', cần Packed/Loaded."));
-
-        // Ship qua handler
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? "sys";
-        var result = await Mediator.Send(new ShipOrderCommand(order.Id, operatorSub, req.ShipmentId));
+        var result = await Mediator.Send(new ShipAndReleaseBinCommand(orderNo, operatorSub));
         if (!result.IsSuccess) return BadRequest(Err(result.Error.Code, result.Error.Message));
 
-        // Release bins
-        var bins = await _context.Bins.Where(b => b.CurrentOrderId == order.Id).ToListAsync();
-        var releasedCodes = new List<string>();
-        foreach (var bin in bins) { bin.Release(); releasedCodes.Add(bin.BinCode); }
-        if (releasedCodes.Count > 0) await _context.SaveChangesAsync(default);
-
+        var r = result.Value!;
         return Ok(new
         {
             success = true,
-            orderId = order.Id,
-            order.OrderNo,
-            newStatus = "Shipped",
-            releasedBinCodes = releasedCodes,
-            message = $"Xuất kho thành công. Giải phóng {releasedCodes.Count} ô kệ."
+            orderId = r.OrderId,
+            orderNo = r.OrderNo,
+            newStatus = r.NewStatus,
+            releasedBinCodes = r.ReleasedBinCodes,
+            message = r.Message
         });
     }
 
@@ -797,23 +815,20 @@ public class QrCodeController : ApiControllerBase
             return UnprocessableEntity(Err("QR.BinMismatch",
                 $"Bin đích scan '{dstParsed.Value}' không khớp '{dstBin.BinCode}'."));
 
-        // Complete + move inventory
-        var tenantId = CurrentUserClaims.GetTenantId(User) ?? "default";
+        // Complete via Command
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? "sys";
-        task.Complete();
-
-        await _inventoryService.MoveAsync(
-            tenantId, task.WarehouseId, task.SourceBinId, task.DestinationBinId,
-            task.Sku, task.RequestedQty, task.Id.ToString(), operatorSub, default);
-
-        await _context.SaveChangesAsync(default);
+        
+        var result = await Mediator.Send(new Warehouse.Application.Features.Inventory.Commands.Replenishment.CompleteReplenishmentTaskCommand(req.TaskId, operatorSub, req.Quantity));
+        
+        if (!result.IsSuccess) return BadRequest(Err(result.Error.Code, result.Error.Message));
 
         return Ok(new
         {
             success = true,
             taskId = task.Id,
             task.Sku,
-            task.RequestedQty,
+            requestedQty = task.RequestedQty,
+            actualQty = req.Quantity ?? task.RequestedQty,
             SourceBin = srcBin?.BinCode,
             DestBin = dstBin?.BinCode
         });
@@ -848,4 +863,4 @@ public record ScanSortRequest(string ScannedOrder, Guid? DestinationWarehouseId 
 public record ScanLoadRequest(string ScannedOrder, Guid? ShipmentId = null);
 public record ShipAndReleaseRequest(string ScannedOrder, Guid? ShipmentId = null);
 public record CycleCountStartRequest(Guid CountTaskId, string ScannedBin);
-public record ConfirmReplenishRequest(Guid TaskId, string ScannedSourceBin, string ScannedDestBin);
+public record ConfirmReplenishRequest(Guid TaskId, string ScannedSourceBin, string ScannedDestBin, int? Quantity = null);

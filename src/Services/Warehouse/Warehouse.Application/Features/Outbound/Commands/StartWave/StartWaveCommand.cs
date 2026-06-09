@@ -24,8 +24,14 @@ public sealed class StartWaveCommandHandler : IRequestHandler<StartWaveCommand, 
 
         wave.StartPicking();
 
-        // Update pick tasks to InProgress or keep them Pending but wave is Picking
-        // For now just starting wave is enough
+        var pickTasks = await _context.PickTasks
+            .Where(pt => pt.WaveId == request.WaveId.ToString())
+            .ToListAsync(cancellationToken);
+            
+        foreach (var task in pickTasks)
+        {
+            task.Start(wave.AssignedOperatorId ?? "");
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
         return Result<bool>.Success(true);

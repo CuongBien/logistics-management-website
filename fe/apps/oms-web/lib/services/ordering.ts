@@ -38,6 +38,8 @@ export async function getOrderById(id: string): Promise<ApiResult<Order>> {
         proofOfDeliveryUrl: o.proofOfDeliveryUrl,
         failureReason: o.failureReason,
         deliveryAttempts: o.deliveryAttempts || 0,
+        fulfillment: o.fulfillment || 'Pickup',
+        sourceWarehouseCode: o.warehouseId,
         items: (o.items || []).map((it: any) => ({
           id: it.id,
           orderId: o.id,
@@ -134,8 +136,9 @@ export async function createOrder(data: CreateOrderRequest, correlationId?: stri
       shippingFee: data.shippingFee,
       weight: data.weight,
       note: data.note,
-      fulfillmentMode: 1, // Pickup
-      orderType: 1 // Parcel
+      fulfillmentMode: data.fulfillmentMode ?? 1, // Dynamic fulfillment mode
+      orderType: 1, // Parcel
+      sourceWarehouseCode: data.sourceWarehouseCode
     };
     const res = await fetchApi<any>('oms', '/orders', {
       method: 'POST',

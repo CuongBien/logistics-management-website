@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 using Logistics.Core;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -6,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Warehouse.Api.Controllers;
-using Warehouse.Application.Features.Inventory.Commands.CreateInventoryItem;
+using Warehouse.Application.Features.Inventory.Commands.CreateSku;
 using Xunit;
 
 namespace Warehouse.Api.Tests;
@@ -14,50 +18,34 @@ namespace Warehouse.Api.Tests;
 public class InventoryControllerTests
 {
     [Fact]
-    public async Task Create_ReturnsBadRequest_WhenTenantOrCustomerClaimMissing()
+    public async Task CreateSku_UsesTenantClaimToPopulateTenantId()
     {
-        var senderMock = new Mock<ISender>(MockBehavior.Strict);
-        var controller = BuildController(senderMock.Object, Array.Empty<Claim>());
-
-        var result = await controller.Create(new CreateInventoryItemCommand("SKU-RED-TSHIRT", 10, null, null));
-
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-        senderMock.Verify(
-            x => x.Send(It.IsAny<CreateInventoryItemCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task Create_UsesClaimsToPopulateTenantAndCustomer()
-    {
-        var senderMock = new Mock<ISender>();
-        senderMock
-            .Setup(x => x.Send(It.IsAny<CreateInventoryItemCommand>(), It.IsAny<CancellationToken>()))
+        var mediatorMock = new Mock<IMediator>();
+        mediatorMock
+            .Setup(x => x.Send(It.IsAny<CreateSkuCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<Guid>.Success(Guid.NewGuid()));
 
         var claims = new[]
         {
-            new Claim("tenant_id", "tenant-a"),
-            new Claim("sub", "customer-a")
+            new Claim("tenant_id", "tenant-a")
         };
-        var controller = BuildController(senderMock.Object, claims);
+        var controller = BuildController(mediatorMock.Object, claims);
 
-        await controller.Create(new CreateInventoryItemCommand("SKU-RED-TSHIRT", 10, null, null));
+        await controller.CreateSku(new CreateSkuCommand("SKU-RED-TSHIRT", "Red T-Shirt", "PCS", "active"));
 
-        senderMock.Verify(
+        mediatorMock.Verify(
             x => x.Send(
-                It.Is<CreateInventoryItemCommand>(c =>
+                It.Is<CreateSkuCommand>(c =>
                     c.TenantId == "tenant-a" &&
-                    c.CustomerId == "customer-a" &&
-                    c.Sku == "SKU-RED-TSHIRT"),
+                    c.SkuCode == "SKU-RED-TSHIRT"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
-    private static InventoryController BuildController(ISender sender, IReadOnlyCollection<Claim> claims)
+    private static InventoryController BuildController(IMediator mediator, IReadOnlyCollection<Claim> claims)
     {
         var services = new ServiceCollection();
-        services.AddSingleton(sender);
+        services.AddSingleton(mediator);
 
         var httpContext = new DefaultHttpContext
         {
@@ -65,7 +53,7 @@ public class InventoryControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
         };
 
-        return new InventoryController
+        return new InventoryController(mediator)
         {
             ControllerContext = new ControllerContext
             {

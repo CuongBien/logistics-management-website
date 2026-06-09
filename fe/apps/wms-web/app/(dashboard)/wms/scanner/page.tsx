@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@repo/ui/components/progress"
 import { toast } from "sonner"
 import * as qrService from "@/lib/services/qrcode"
+import { useSession } from "next-auth/react"
 import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 
 // Define history log interface
@@ -29,6 +30,7 @@ interface ScanLog {
 }
 
 export default function QrScannerPage() {
+  const { data: session } = useSession()
   // Sound & Input State
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [inputValue, setInputValue] = useState("")
@@ -546,7 +548,7 @@ export default function QrScannerPage() {
   // Load Printable QR Code
   const loadPrintQr = async (type: any, id: string, title: string) => {
     try {
-      const url = await qrService.getQrImageUrl(type, id)
+      const url = await qrService.getQrImageUrl(type, id, session?.accessToken)
       setPrintQrUrl(url)
       setPrintQrTitle(title)
     } catch (e) {
@@ -940,7 +942,7 @@ export default function QrScannerPage() {
 
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold text-foreground/90 flex items-center gap-1.5"><Package className="h-3.5 w-3.5" /> Hàng hóa đang nằm trong kệ</h4>
-                        <div className="border border-border rounded-lg overflow-hidden">
+                        <div className="border border-border rounded-lg overflow-x-auto">
                           <Table>
                             <TableHeader className="bg-muted/50"><TableRow>
                               <TableHead className="text-[9px] uppercase h-8 text-muted-foreground font-bold">Mã SKU</TableHead>
@@ -980,7 +982,7 @@ export default function QrScannerPage() {
 
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold text-foreground/90 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Phân bố tồn kho tại các ô kệ</h4>
-                        <div className="border border-border rounded-lg overflow-hidden">
+                        <div className="border border-border rounded-lg overflow-x-auto">
                           <Table>
                             <TableHeader className="bg-muted/50"><TableRow>
                               <TableHead className="text-[9px] uppercase h-8 text-muted-foreground font-bold">Mã Kệ (Bin)</TableHead>
@@ -1019,7 +1021,7 @@ export default function QrScannerPage() {
 
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold text-foreground/90 flex items-center gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Chi tiết mặt hàng đơn xuất</h4>
-                        <div className="border border-border rounded-lg overflow-hidden">
+                        <div className="border border-border rounded-lg overflow-x-auto">
                           <Table>
                             <TableHeader className="bg-muted/50"><TableRow>
                               <TableHead className="text-[9px] uppercase h-8 text-muted-foreground font-bold">Mã SKU</TableHead>
@@ -1068,7 +1070,7 @@ export default function QrScannerPage() {
 
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold text-foreground/90 flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" /> Danh sách các đơn xuất kho trong lô</h4>
-                        <div className="border border-border rounded-lg overflow-hidden">
+                        <div className="border border-border rounded-lg overflow-x-auto">
                           <Table>
                             <TableHeader className="bg-muted/50"><TableRow>
                               <TableHead className="text-[9px] uppercase h-8 text-muted-foreground font-bold">Mã Đơn</TableHead>
@@ -1174,7 +1176,7 @@ export default function QrScannerPage() {
                         <span className="text-[10px] text-muted-foreground">Đơn: <span className="font-mono text-foreground font-semibold">{verifyPackOrderNo}</span></span>
                       </div>
                       
-                      <div className="border border-border rounded-lg overflow-hidden">
+                      <div className="border border-border rounded-lg overflow-x-auto">
                         <Table>
                           <TableHeader className="bg-muted/50"><TableRow>
                             <TableHead className="text-[9px] uppercase h-8 text-muted-foreground font-bold">Mã SKU</TableHead>

@@ -5,7 +5,12 @@ using Warehouse.Application.Common.Interfaces;
 
 namespace Warehouse.Application.Features.Inventory.Queries.GetCycleCountTasksList;
 
-public record GetCycleCountTasksListQuery(string OperatorSub, Guid? WarehouseId = null) : IRequest<Result<List<CycleCountTaskDto>>>;
+public record GetCycleCountTasksListQuery(
+    string OperatorSub, 
+    Guid? WarehouseId = null,
+    bool? AssignedToMe = null,
+    bool? Unassigned = null
+) : IRequest<Result<List<CycleCountTaskDto>>>;
 
 public class CycleCountTaskDto
 {
@@ -67,6 +72,16 @@ public class GetCycleCountTasksListQueryHandler : IRequestHandler<GetCycleCountT
             {
                 return Result<List<CycleCountTaskDto>>.Success(new List<CycleCountTaskDto>());
             }
+        }
+
+        if (request.AssignedToMe == true)
+        {
+            query = query.Where(t => t.AssignedTo == request.OperatorSub);
+        }
+
+        if (request.Unassigned == true)
+        {
+            query = query.Where(t => string.IsNullOrEmpty(t.AssignedTo));
         }
 
         var tasks = await query

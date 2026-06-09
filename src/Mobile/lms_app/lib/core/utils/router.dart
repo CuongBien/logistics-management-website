@@ -11,10 +11,13 @@ import '../../features/wms/outbound/presentation/pick_task_list_screen.dart';
 import '../../features/wms/outbound/presentation/put_to_wall_screen.dart';
 import '../../features/wms/outbound/presentation/pack_order_screen.dart';
 import '../../features/wms/outbound/presentation/dispatch_load_screen.dart';
+import '../../features/wms/outbound/presentation/ship_release_screen.dart';
 import '../../features/wms/putaway/presentation/putaway_execution_screen.dart';
 import '../../features/wms/inventory/presentation/inventory_search_screen.dart';
-import '../../features/wms/inventory/presentation/warehouse_layout_screen.dart';
 import '../../features/wms/inventory/presentation/cycle_count_screen.dart';
+import '../../features/wms/inventory/presentation/cycle_count_execution_screen.dart';
+import '../../features/wms/inventory/presentation/replenishment_execution_screen.dart';
+import '../../features/wms/inventory/presentation/warehouse_layout_screen.dart';
 import '../../features/wms/inbound/presentation/transit_receive_screen.dart';
 import '../../features/wms/outbound/presentation/sort_screen.dart';
 import '../../features/wms/returns/presentation/receive_return_screen.dart';
@@ -23,6 +26,7 @@ import '../../features/wms/putaway/presentation/putaway_tasks_list_screen.dart';
 import '../../features/wms/outbound/presentation/picking_waves_list_screen.dart';
 import '../../features/wms/outbound/presentation/shipments_list_screen.dart';
 import '../../features/home/presentation/developer_tools_screen.dart';
+import '../../features/delivery/presentation/shipper_pickup_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -161,10 +165,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ShipmentsListScreen(),
       ),
       GoRoute(
+        path: '/wms/ship_release',
+        builder: (context, state) => const ShipReleaseScreen(),
+      ),
+      GoRoute(
         path: '/wms/dispatch_execution/:shipmentId',
         builder: (context, state) {
           final shipmentId = state.pathParameters['shipmentId'];
-          return DispatchLoadScreen(shipmentId: shipmentId);
+          final initialOrder = state.uri.queryParameters['initialOrder'];
+          return DispatchLoadScreen(
+            shipmentId: (shipmentId == 'new' || shipmentId == 'empty') ? null : shipmentId,
+            initialOrder: initialOrder,
+          );
         },
       ),
       GoRoute(
@@ -178,6 +190,36 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/wms/count',
         builder: (context, state) => const CycleCountScreen(),
+      ),
+      GoRoute(
+        path: '/wms/cycle_count_execution/:taskId',
+        builder: (context, state) {
+          final taskId = state.pathParameters['taskId'] ?? '';
+          final binCode = state.uri.queryParameters['binCode'] ?? '';
+          final sku = state.uri.queryParameters['sku'] ?? 'Tất cả';
+          return CycleCountExecutionScreen(
+            taskId: taskId,
+            targetBinCode: binCode,
+            targetSku: sku,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/wms/replenishment_execution',
+        builder: (context, state) {
+          final taskId = state.uri.queryParameters['taskId'] ?? '';
+          final sku = state.uri.queryParameters['sku'] ?? '';
+          final quantity = int.tryParse(state.uri.queryParameters['quantity'] ?? '0') ?? 0;
+          final sourceBin = state.uri.queryParameters['sourceBin'] ?? '';
+          final destBin = state.uri.queryParameters['destBin'] ?? '';
+          return ReplenishmentExecutionScreen(
+            taskId: taskId,
+            sku: sku,
+            quantity: quantity,
+            sourceBin: sourceBin,
+            destBin: destBin,
+          );
+        },
       ),
       GoRoute(
         path: '/wms/crossdock',
@@ -198,6 +240,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationListScreen(),
+      ),
+      GoRoute(
+        path: '/delivery/pickup',
+        builder: (context, state) => const ShipperPickupScreen(),
       ),
     ],
   );

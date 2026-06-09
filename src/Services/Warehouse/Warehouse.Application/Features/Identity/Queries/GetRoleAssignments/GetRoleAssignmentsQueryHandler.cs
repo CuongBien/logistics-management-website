@@ -33,7 +33,11 @@ public class GetRoleAssignmentsQueryHandler : IRequestHandler<GetRoleAssignments
                 a.WarehouseId.ToString(),
                 a.Warehouse.Name,
                 a.Role.Name,
-                a.Role.Code
+                a.Role.Code,
+                a.OperatorProfile.FullName,
+                a.OperatorProfile.Email,
+                a.OperatorProfile.Phone,
+                a.OperatorProfile.EmployeeCode
             ))
             .ToListAsync(cancellationToken);
 

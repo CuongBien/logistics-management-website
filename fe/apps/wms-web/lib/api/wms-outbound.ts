@@ -13,7 +13,7 @@ function mapStatus(status: number | string): OutboundOrderStatus {
       case 7: return 'Picked'; // Picked
       case 8: return 'Packing'; // Packing
       case 9: return 'Packed'; // Packed
-      case 10: return 'Packed'; // Loaded
+      case 10: return 'Loaded'; // Loaded
       case 11: return 'Shipped'; // Shipped
       case 12: return 'Shipped'; // Delivered
       case 13: return 'Cancelled'; // Cancelled
@@ -30,7 +30,7 @@ function mapStatus(status: number | string): OutboundOrderStatus {
     case 'Picked': return 'Picked';
     case 'Packing': return 'Packing';
     case 'Packed': return 'Packed';
-    case 'Loaded': return 'Packed';
+    case 'Loaded': return 'Loaded';
     case 'Shipped': return 'Shipped';
     case 'Delivered': return 'Shipped';
     case 'Cancelled': return 'Cancelled';
@@ -82,7 +82,14 @@ export const getOrderTimeline = async (id: string): Promise<OutboundOrderTimelin
   const timeline = res?.value?.timeline || res?.timeline || [];
   return timeline.map((t: any, idx: number) => ({
     id: `tl-${id}-${idx}`,
-    status: t.eventType === 'OrderCreated' ? 'New' : t.eventType === 'ShipmentLoaded' ? 'Picked' : t.eventType === 'ShipmentDispatched' ? 'Shipped' : 'New',
+    status: t.eventType === 'OrderCreated' ? 'New' : 
+            t.eventType === 'Allocated' ? 'Allocated' :
+            t.eventType === 'Picking' ? 'Picking' :
+            t.eventType === 'Picked' ? 'Picked' :
+            t.eventType === 'Packing' ? 'Packing' :
+            t.eventType === 'Packed' ? 'Packed' :
+            t.eventType === 'ShipmentLoaded' ? 'Loaded' : 
+            t.eventType === 'ShipmentDispatched' ? 'Shipped' : 'New',
     occurredAt: t.timestamp,
     notes: t.description,
     operatorId: t.location

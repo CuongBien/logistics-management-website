@@ -23,6 +23,8 @@ export interface OperatorDto {
   fullName: string;
   email: string;
   username: string;
+  phone?: string;
+  employeeCode?: string;
   roles: {
     id?: string;
     warehouseId: string;

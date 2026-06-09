@@ -51,31 +51,29 @@ class AppException implements Exception {
         );
       }
 
-      // Xử lý body lỗi có cấu trúc {isSuccess: false, error: {code, message}}
+      // Xử lý body lỗi có cấu trúc {isSuccess: false, error: {code, message}} hoặc {code, message}
       final data = response.data;
       if (data is Map<String, dynamic>) {
-        final isSuccess = data['isSuccess'] as bool? ?? true;
+        final isSuccess = data['isSuccess'] as bool? ?? (data.containsKey('message') || data.containsKey('Message') ? false : true);
         if (!isSuccess) {
-          final error = data['error'] as Map<String, dynamic>?;
-          if (error != null) {
-            final errorCode = error['code'] as String? ?? '';
-            final errorMessage = error['message'] as String? ?? 'Đã có lỗi xảy ra';
+          final error = data['error'] as Map<String, dynamic>? ?? data;
+          final errorCode = (error['code'] ?? error['Code'])?.toString() ?? '';
+          final errorMessage = (error['message'] ?? error['Message'])?.toString() ?? 'Đã có lỗi xảy ra';
 
-            // Map các mã lỗi QR code cụ thể
-            if (_isQrErrorCode(errorCode)) {
-              return QrException(
-                errorMessage,
-                code: errorCode,
-                statusCode: statusCode,
-              );
-            }
-
-            return AppException(
+          // Map các mã lỗi QR code cụ thể
+          if (_isQrErrorCode(errorCode)) {
+            return QrException(
               errorMessage,
               code: errorCode,
               statusCode: statusCode,
             );
           }
+
+          return AppException(
+            errorMessage,
+            code: errorCode,
+            statusCode: statusCode,
+          );
         }
       }
 

@@ -220,7 +220,10 @@ const formSchema = z.object({
   width: z.coerce.number().min(0).optional(),
   height: z.coerce.number().min(0).optional(),
   productType: z.enum(['Document', 'Fragile', 'Electronic', 'Food', 'Clothing', 'Other']),
-  items: z.array(z.object({ sku: z.string().min(1, 'Vui lòng nhập SKU') })).min(1, 'Phải có ít nhất 1 sản phẩm'),
+  items: z.array(z.object({
+    sku: z.string().min(1, 'Vui lòng nhập SKU'),
+    quantity: z.coerce.number().min(1, 'Số lượng tối thiểu là 1').max(100, 'Số lượng tối đa là 100')
+  })).min(1, 'Phải có ít nhất 1 sản phẩm'),
   codAmount: z.coerce.number().min(0, 'Số tiền COD không hợp lệ'),
   notes: z.string().optional(),
 });
@@ -276,12 +279,12 @@ function AddressFields({
   saveToContacts,
   onSaveToContactsChange,
 }: AddressFieldsProps) {
-  const nameField = `${prefix}Name` as keyof FormValues;
-  const phoneField = `${prefix}Phone` as keyof FormValues;
-  const provinceField = `${prefix}Province` as keyof FormValues;
-  const districtField = `${prefix}District` as keyof FormValues;
-  const wardField = `${prefix}Ward` as keyof FormValues;
-  const addressField = `${prefix}Address` as keyof FormValues;
+  const nameField = `${prefix}Name` as 'senderName' | 'receiverName';
+  const phoneField = `${prefix}Phone` as 'senderPhone' | 'receiverPhone';
+  const provinceField = `${prefix}Province` as 'senderProvince' | 'receiverProvince';
+  const districtField = `${prefix}District` as 'senderDistrict' | 'receiverDistrict';
+  const wardField = `${prefix}Ward` as 'senderWard' | 'receiverWard';
+  const addressField = `${prefix}Address` as 'senderAddress' | 'receiverAddress';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -489,9 +492,13 @@ function AddressFields({
 function ReviewStep({
   v,
   estimatedFee,
+  fulfillmentMode,
+  selectedWarehouse,
 }: {
   v: FormValues;
   estimatedFee: number;
+  fulfillmentMode: number;
+  selectedWarehouse: any | null;
 }) {
   const senderFullAddress = [
     v.senderAddress,
@@ -521,9 +528,20 @@ function ReviewStep({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="text-muted-foreground">Họ tên:</span> {v.senderName}</p>
-            <p><span className="text-muted-foreground">SĐT:</span> {v.senderPhone}</p>
-            <p><span className="text-muted-foreground">Địa chỉ:</span> {senderFullAddress}</p>
+            {fulfillmentMode === 2 ? (
+              <>
+                <p><span className="text-indigo-600 font-bold bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-full text-xs">Xuất từ kho lưu trữ</span></p>
+                <p><span className="text-muted-foreground">Tên kho:</span> {selectedWarehouse?.name}</p>
+                <p><span className="text-muted-foreground">Mã kho:</span> {selectedWarehouse?.code}</p>
+                <p><span className="text-muted-foreground">Địa chỉ:</span> {selectedWarehouse?.locationText || 'Chưa cập nhật địa chỉ'}</p>
+              </>
+            ) : (
+              <>
+                <p><span className="text-muted-foreground">Họ tên:</span> {v.senderName}</p>
+                <p><span className="text-muted-foreground">SĐT:</span> {v.senderPhone}</p>
+                <p><span className="text-muted-foreground">Địa chỉ:</span> {senderFullAddress}</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -615,6 +633,7 @@ export default function CreateOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: session } = useSession();
+  const userId = (session?.user as any)?.id;
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [saveToContacts, setSaveToContacts] = useState(false);
   const [savedSenderAddresses, setSavedSenderAddresses] = useState<any[]>([]);
@@ -622,6 +641,12 @@ export default function CreateOrderPage() {
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<{id: string, waybillCode: string} | null>(null);
   const [availableSkus, setAvailableSkus] = useState<any[]>([]);
+
+  const [fulfillmentMode, setFulfillmentMode] = useState<number>(1);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<any | null>(null);
+  const [warehouseStock, setWarehouseStock] = useState<Record<string, number>>({});
+  const [loadingStock, setLoadingStock] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -643,7 +668,7 @@ export default function CreateOrderPage() {
       width: '' as any,
       height: '' as any,
       productType: 'Other',
-      items: [{ sku: '' }],
+      items: [{ sku: '', quantity: 1 }],
       codAmount: '' as any,
       notes: '',
     },
@@ -655,6 +680,61 @@ export default function CreateOrderPage() {
     name: 'items'
   });
 
+  const skuCountsInForm: Record<string, number> = {};
+  watchedValues.items?.forEach(item => {
+    if (item.sku) {
+      skuCountsInForm[item.sku] = (skuCountsInForm[item.sku] || 0) + 1;
+    }
+  });
+
+  const handleWarehouseChange = (warehouseCode: string) => {
+    const wh = warehouses.find(w => w.code === warehouseCode);
+    if (!wh) return;
+    
+    setSelectedWarehouse(wh);
+    
+    // Resolve location info for validation
+    let province = 'HCM';
+    let district = 'Q1';
+    let ward = 'BN';
+    
+    const code = wh.code.toUpperCase();
+    if (code.includes('-SG-') || code.includes('-HCM-')) {
+      province = 'HCM';
+      district = 'Q1';
+      ward = 'BN';
+    } else if (code.includes('-HN-')) {
+      province = 'HN';
+      district = 'BD';
+      ward = 'TP';
+    } else if (code.includes('-HP-')) {
+      province = 'HP';
+      district = 'HB';
+      ward = 'QLO';
+    } else if (code.includes('-CT-')) {
+      province = 'CT';
+      district = 'NK';
+      ward = 'XK';
+    } else if (code.includes('-DN-')) {
+      province = 'DN';
+      district = 'HC';
+      ward = 'TN';
+    }
+    
+    form.setValue('senderName', wh.name);
+    form.setValue('senderPhone', '0901234567'); // Default valid phone to satisfy validation
+    form.setValue('senderProvince', province);
+    
+    setTimeout(() => {
+      form.setValue('senderDistrict', district);
+      setTimeout(() => {
+        form.setValue('senderWard', ward);
+      }, 50);
+    }, 50);
+    
+    form.setValue('senderAddress', wh.locationText || wh.name);
+  };
+
   const senderDistrictList = districts[watchedValues.senderProvince] ?? [];
   const senderWardList = wards[watchedValues.senderDistrict] ?? [];
   const receiverDistrictList = districts[watchedValues.receiverProvince] ?? [];
@@ -664,10 +744,10 @@ export default function CreateOrderPage() {
 
   useEffect(() => {
     async function loadAddresses() {
-      if (!session?.user?.id) return;
+      if (!userId) return;
       try {
         setLoadingAddresses(true);
-        const res = await fetchApi<any>('masterdata', `/Partners?tenantId=${session.user.id}&pageSize=100`);
+        const res = await fetchApi<any>('masterdata', `/Partners?tenantId=${userId}&pageSize=100`);
         const items = res?.value?.items || res?.items || res || [];
         const consignees = items.filter((p: any) => p.type === 1 || p.type === 'Consignee');
         const consignors = items.filter((p: any) => p.type === 0 || p.type === 'Consignor');
@@ -684,6 +764,14 @@ export default function CreateOrderPage() {
         } catch (skuErr) {
           console.error("Failed to load SKUs:", skuErr);
         }
+
+        try {
+          const whRes = await fetchApi<any>('wms', '/warehouse?all=true');
+          const whList = whRes?.value || whRes || [];
+          setWarehouses(whList);
+        } catch (whErr) {
+          console.error("Failed to load warehouses:", whErr);
+        }
       } catch (err) {
         console.error("Failed to load saved addresses:", err);
       } finally {
@@ -692,6 +780,34 @@ export default function CreateOrderPage() {
     }
     loadAddresses();
   }, [session]);
+
+  useEffect(() => {
+    async function loadWarehouseStock() {
+      if (fulfillmentMode !== 2 || !selectedWarehouse) {
+        setWarehouseStock({});
+        return;
+      }
+      try {
+        setLoadingStock(true);
+        const res = await fetchApi<any>('wms', `/inventory?warehouseId=${selectedWarehouse.id}`);
+        const list = res?.value || res || [];
+        const stockMap: Record<string, number> = {};
+        if (Array.isArray(list)) {
+          list.forEach((item: any) => {
+            const sku = item.sku;
+            const qty = item.availableQty ?? item.availableQuantity ?? item.quantityOnHand ?? 0;
+            stockMap[sku] = (stockMap[sku] || 0) + qty;
+          });
+        }
+        setWarehouseStock(stockMap);
+      } catch (err) {
+        console.error("Failed to load warehouse stock:", err);
+      } finally {
+        setLoadingStock(false);
+      }
+    }
+    loadWarehouseStock();
+  }, [fulfillmentMode, selectedWarehouse]);
 
   function handleSelectAddress(addr: any) {
     if (!addr) return;
@@ -737,6 +853,28 @@ export default function CreateOrderPage() {
       const valid = await form.trigger(fields);
       if (!valid) return;
     }
+
+    if (currentStep === 2 && fulfillmentMode === 2) {
+      let stockError = false;
+      const skuCounts: Record<string, number> = {};
+      watchedValues.items?.forEach(item => {
+        if (item.sku) {
+          skuCounts[item.sku] = (skuCounts[item.sku] || 0) + 1;
+        }
+      });
+
+      for (const [sku, count] of Object.entries(skuCounts)) {
+        const available = warehouseStock[sku] ?? 0;
+        if (count > available) {
+          toast.error(`Sản phẩm ${sku} không đủ hàng trong kho (Cần: ${count}, Sẵn có: ${available})`);
+          stockError = true;
+          break;
+        }
+      }
+
+      if (stockError) return;
+    }
+
     setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
   }
 
@@ -748,7 +886,7 @@ export default function CreateOrderPage() {
     setIsSubmitting(true);
     
     const payload = {
-      skuCodes: data.items.map(i => i.sku),
+      skuCodes: data.items.flatMap(i => Array(Number(i.quantity) || 1).fill(i.sku)),
       consignee: {
         fullName: data.receiverName,
         phone: data.receiverPhone,
@@ -775,8 +913,9 @@ export default function CreateOrderPage() {
       shippingFee: estimatedFee || 0,
       weight: data.weight || 0.1,
       note: data.notes || "",
-      fulfillmentMode: 1,
-      orderType: 1
+      fulfillmentMode: fulfillmentMode,
+      orderType: 1,
+      sourceWarehouseCode: selectedWarehouse?.code || null
     };
 
     try {
@@ -785,18 +924,18 @@ export default function CreateOrderPage() {
         toast.success('Đơn hàng đã được tạo thành công!');
 
         // Save new sender to Master Data address book if enabled
-        if (saveSenderToContacts && session?.user?.id) {
+        if (saveSenderToContacts && userId) {
           try {
             const addressJson = JSON.stringify({ street: data.senderAddress, district: data.senderDistrict, ward: data.senderWard, province: data.senderProvince });
             await fetchApi('masterdata', '/Partners', {
               method: 'POST',
-              body: { tenantId: session.user.id, code: `SNDR-${Date.now()}`, name: data.senderName, type: 0, phone: data.senderPhone, address: addressJson, city: data.senderProvince }
+              body: { tenantId: userId, code: `SNDR-${Date.now()}`, name: data.senderName, type: 0, phone: data.senderPhone, address: addressJson, city: data.senderProvince }
             });
           } catch (contactErr) {}
         }
 
         // Save new receiver to Master Data address book if enabled
-        if (saveToContacts && session?.user?.id) {
+        if (saveToContacts && userId) {
           try {
             const addressJson = JSON.stringify({
               street: data.receiverAddress,
@@ -808,7 +947,7 @@ export default function CreateOrderPage() {
             await fetchApi('masterdata', '/Partners', {
               method: 'POST',
               body: {
-                tenantId: session.user.id,
+                tenantId: userId,
                 code: `ADDR-${Date.now()}`,
                 name: data.receiverName,
                 type: 1, // Consignee
@@ -861,16 +1000,102 @@ export default function CreateOrderPage() {
     switch (currentStep) {
       case 0:
         return (
-          <AddressFields
-            form={form}
-            prefix="sender"
-            districtList={senderDistrictList}
-            wardList={senderWardList}
-            savedAddresses={savedSenderAddresses}
-            onSelectAddress={handleSelectAddress}
-            saveToContacts={saveSenderToContacts}
-            onSaveToContactsChange={setSaveSenderToContacts}
-          />
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Fulfillment Mode selector */}
+            <div className="bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center shadow-sm">
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">Phương thức gửi hàng</h3>
+                <p className="text-xs text-muted-foreground">Chọn gửi từ địa chỉ của bạn hoặc xuất từ kho lưu trữ</p>
+              </div>
+              <div className="flex gap-2 w-full md:w-auto bg-slate-200/60 dark:bg-slate-800/80 p-1 rounded-xl">
+                <button
+                  type="button"
+                  className={`flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    fulfillmentMode === 1
+                      ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow'
+                      : 'text-muted-foreground hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                  onClick={() => {
+                    setFulfillmentMode(1);
+                    setSelectedWarehouse(null);
+                    form.setValue('senderName', '');
+                    form.setValue('senderPhone', '');
+                    form.setValue('senderProvince', '');
+                    form.setValue('senderDistrict', '');
+                    form.setValue('senderWard', '');
+                    form.setValue('senderAddress', '');
+                  }}
+                >
+                  Tài xế đến lấy (Pickup)
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    fulfillmentMode === 2
+                      ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow'
+                      : 'text-muted-foreground hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                  onClick={() => {
+                    setFulfillmentMode(2);
+                    if (warehouses.length > 0) {
+                      handleWarehouseChange(warehouses[0].code);
+                    }
+                  }}
+                >
+                  Giao từ kho lưu trữ
+                </button>
+              </div>
+            </div>
+
+            {fulfillmentMode === 1 ? (
+              <AddressFields
+                form={form}
+                prefix="sender"
+                districtList={senderDistrictList}
+                wardList={senderWardList}
+                savedAddresses={savedSenderAddresses}
+                onSelectAddress={handleSelectAddress}
+                saveToContacts={saveSenderToContacts}
+                onSaveToContactsChange={setSaveSenderToContacts}
+              />
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <FormLabel className="mb-2 block">Chọn kho nguồn xuất hàng</FormLabel>
+                    <Select
+                      value={selectedWarehouse?.code || ''}
+                      onValueChange={(val) => handleWarehouseChange(val)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Chọn kho hàng" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {warehouses.map((w) => (
+                          <SelectItem key={w.id} value={w.code}>
+                            {w.name} ({w.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {selectedWarehouse && (
+                  <Card className="bg-indigo-50/30 border-indigo-100/50 shadow-sm mt-2 rounded-2xl overflow-hidden">
+                    <div className="p-5 flex items-start gap-4">
+                      <div className="size-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">WH</div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-indigo-950">{selectedWarehouse.name}</h4>
+                        <p className="text-xs text-indigo-900/80"><span className="font-semibold">Mã kho:</span> {selectedWarehouse.code}</p>
+                        <p className="text-xs text-indigo-900/80"><span className="font-semibold">Địa chỉ:</span> {selectedWarehouse.locationText || 'Chưa cập nhật địa chỉ'}</p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+          </div>
         );
       case 1:
         return (
@@ -891,45 +1116,95 @@ export default function CreateOrderPage() {
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <FormLabel className="text-base">Danh sách sản phẩm (SKUs)</FormLabel>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ sku: '' })} className="h-8">
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ sku: '', quantity: 1 })} className="h-8">
                   <Plus className="size-3.5 mr-1.5" /> Thêm sản phẩm
                 </Button>
               </div>
+              
+              {/* Product list header labels */}
+              <div className="grid grid-cols-12 gap-3 mb-2 text-xs font-bold text-muted-foreground hidden sm:grid">
+                <div className="col-span-8">Sản phẩm (SKU)</div>
+                <div className="col-span-3">Số lượng</div>
+                <div className="col-span-1"></div>
+              </div>
+
               <div className="space-y-3">
                 {fields.map((field, index) => (
-                  <div key={field.id} className="flex items-start gap-3 animate-in fade-in duration-200">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.sku`}
-                      render={({ field: inputField }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <Select value={inputField.value} onValueChange={inputField.onChange}>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Chọn sản phẩm (SKU)" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableSkus.length > 0 ? (
-                                  availableSkus.map(sku => (
-                                    <SelectItem key={sku.id || sku.skuCode} value={sku.skuCode}>
-                                      {sku.name || sku.skuCode} ({sku.skuCode})
-                                    </SelectItem>
-                                  ))
-                                ) : (
-                                  <div className="p-2 text-sm text-muted-foreground text-center">Không có sản phẩm nào</div>
+                  <div key={field.id} className="grid grid-cols-12 gap-3 items-start animate-in fade-in duration-200">
+                    <div className="col-span-12 sm:col-span-8">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.sku`}
+                        render={({ field: inputField }) => (
+                          <FormItem className="w-full">
+                            <FormControl>
+                              <Select value={inputField.value} onValueChange={inputField.onChange}>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Chọn sản phẩm (SKU)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableSkus.length > 0 ? (
+                                    availableSkus.map(sku => {
+                                      const stock = warehouseStock[sku.skuCode] ?? 0;
+                                      const stockText = fulfillmentMode === 2 ? ` - Tồn kho: ${stock}` : '';
+                                      return (
+                                        <SelectItem key={sku.id || sku.skuCode} value={sku.skuCode}>
+                                          {sku.name || sku.skuCode} ({sku.skuCode}){stockText}
+                                        </SelectItem>
+                                      );
+                                    })
+                                  ) : (
+                                    <div className="p-2 text-sm text-muted-foreground text-center">Không có sản phẩm nào</div>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            {fulfillmentMode === 2 && inputField.value && (
+                              <div className="mt-1 text-xs flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Tồn kho: <strong className="text-indigo-600">{warehouseStock[inputField.value] ?? 0}</strong>
+                                </span>
+                                {(skuCountsInForm[inputField.value] || 0) > (warehouseStock[inputField.value] ?? 0) && (
+                                  <span className="text-rose-500 font-semibold">
+                                    Vượt quá giới hạn! (Chọn: {skuCountsInForm[inputField.value]})
+                                  </span>
                                 )}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="col-span-9 sm:col-span-3">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field: qtyField }) => (
+                          <FormItem className="w-full">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="100"
+                                placeholder="1"
+                                {...qtyField}
+                                value={qtyField.value ?? 1}
+                                onChange={(e) => qtyField.onChange(Number(e.target.value) || 1)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="col-span-3 sm:col-span-1 flex justify-end">
+                      {fields.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" className="text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => remove(index)}>
+                          <Trash2 className="size-4" />
+                        </Button>
                       )}
-                    />
-                    {fields.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" className="text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => remove(index)}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1048,7 +1323,14 @@ export default function CreateOrderPage() {
           </div>
         );
       case 3:
-        return <ReviewStep v={watchedValues} estimatedFee={estimatedFee} />;
+        return (
+          <ReviewStep
+            v={watchedValues}
+            estimatedFee={estimatedFee}
+            fulfillmentMode={fulfillmentMode}
+            selectedWarehouse={selectedWarehouse}
+          />
+        );
       case 4:
         if (!createdOrder) return null;
         return (
@@ -1099,7 +1381,7 @@ export default function CreateOrderPage() {
                         <strong>Người nhận:</strong> ${watchedValues.receiverName} (${watchedValues.receiverPhone})<br/>
                         ${watchedValues.receiverAddress}<br/>
                         <hr style="margin: 10px 0" />
-                        <strong>Hàng hóa:</strong> ${watchedValues.items.map(i => i.sku).join(', ')}<br/>
+                        <strong>Hàng hóa:</strong> ${watchedValues.items.map(i => `${i.sku} (x${i.quantity || 1})`).join(', ')}<br/>
                         <strong>Trọng lượng:</strong> ${watchedValues.weight} kg
                       </div>
                       <div class="cod">
@@ -1148,7 +1430,15 @@ export default function CreateOrderPage() {
 
           {/* Step content */}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form 
+              onSubmit={form.handleSubmit(onSubmit)} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+                  e.preventDefault();
+                }
+              }}
+              className="space-y-6"
+            >
               <div className="min-h-[320px]">
                 {renderStep()}
               </div>

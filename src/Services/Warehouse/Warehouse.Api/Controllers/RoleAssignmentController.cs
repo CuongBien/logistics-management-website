@@ -224,4 +224,50 @@ public class RoleAssignmentController : ControllerBase
             Roles = roles
         }));
     }
+
+    /// <summary>
+    /// Lấy chi tiết hiệu suất của một operator cụ thể
+    /// </summary>
+    [HttpGet("Operator/{operatorSub}/Performance")]
+    public async Task<IActionResult> GetOperatorPerformance(string operatorSub)
+    {
+        var currentSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (!await HasRoleManagePermissionInAnyWarehouseAsync(currentSub))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { Code = "Operator.Forbidden", Message = $"Operator '{currentSub}' does not have permission to view operator performance." });
+        }
+
+        var result = await _mediator.Send(new Warehouse.Application.Features.Identity.Queries.GetOperatorPerformance.GetOperatorPerformanceQuery(operatorSub));
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>
+    /// Lấy danh sách Operator Audit Logs (activity, override history, approvals)
+    /// </summary>
+    [HttpGet("Operator/audit-logs")]
+    public async Task<IActionResult> GetOperatorAuditLogs(
+        [FromQuery] string? operatorId,
+        [FromQuery] string? taskType,
+        [FromQuery] string? logType,
+        [FromQuery] DateTime? fromDate,
+        [FromQuery] DateTime? toDate,
+        [FromQuery] Guid? warehouseId)
+    {
+        var currentSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (!await HasRoleManagePermissionInAnyWarehouseAsync(currentSub))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { Code = "Operator.Forbidden", Message = $"Operator '{currentSub}' does not have permission to view operator audit logs." });
+        }
+
+        var query = new Warehouse.Application.Features.Identity.Queries.GetOperatorAuditLogs.GetOperatorAuditLogsQuery(
+            operatorId,
+            taskType,
+            logType,
+            fromDate,
+            toDate,
+            warehouseId
+        );
+        var result = await _mediator.Send(query);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
 }

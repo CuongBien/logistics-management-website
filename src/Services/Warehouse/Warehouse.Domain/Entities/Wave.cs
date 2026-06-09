@@ -51,7 +51,7 @@ public class Wave : Entity<Guid>, IAggregateRoot
 
     public void StartPicking()
     {
-        if (Status != WaveStatus.New)
+        if (Status != WaveStatus.New && Status != WaveStatus.Picking)
             throw new InvalidOperationException($"Cannot start picking from status {Status}");
             
         Status = WaveStatus.Picking;

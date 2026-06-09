@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -137,7 +138,7 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
             final sku = line['sku']?.toString() ?? '';
             if (sku == cleanSku) {
               foundSku = true;
-              final targetQty = line['quantity'] ?? 0;
+              final targetQty = line['requestedQty'] ?? line['quantity'] ?? 0;
               final currentPacked = _packedQuantities[sku] ?? 0;
               if (currentPacked < targetQty) {
                 _packedQuantities[sku] = currentPacked + 1;
@@ -206,7 +207,7 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
     bool isFullyPacked = true;
     for (var line in _orderLines) {
       final sku = line['sku']?.toString() ?? '';
-      final target = line['quantity'] ?? 0;
+      final target = line['requestedQty'] ?? line['quantity'] ?? 0;
       final current = _packedQuantities[sku] ?? 0;
       if (current < target) {
         isFullyPacked = false;
@@ -235,8 +236,14 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
       final repo = ref.read(outboundRepositoryProvider);
       
       await repo.packOrder(_orderId);
-      // Remove auto-ship here! Load step will handle shipment
-      // await repo.shipOrder(_orderId);
+
+      Uint8List? qrBytes;
+      try {
+        final qrService = ref.read(qrActionServiceProvider);
+        qrBytes = await qrService.getOutboundOrderQr(_orderId);
+      } catch (e) {
+        // ignore error
+      }
 
       setState(() => _isLoading = false);
 
@@ -258,7 +265,7 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
                 Text('Đơn hàng $_orderNo đã được đóng gói đủ số lượng. Vui lòng in tem dán lên thùng:'),
                 const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border.all(color: Colors.grey.shade300),
@@ -266,7 +273,15 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Icon(Icons.qr_code_2, size: 100),
+                      if (qrBytes != null)
+                        Image.memory(
+                          qrBytes,
+                          width: 150,
+                          height: 150,
+                          fit: BoxFit.contain,
+                        )
+                      else
+                        const Icon(Icons.qr_code_2, size: 100),
                       const SizedBox(height: 8),
                       Text('OB:$_orderNo', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
@@ -473,7 +488,7 @@ class _PackOrderScreenState extends ConsumerState<PackOrderScreen> {
                                   itemBuilder: (context, index) {
                                     final line = _orderLines[index];
                                     final sku = line['sku']?.toString() ?? 'N/A';
-                                    final target = line['quantity'] ?? 0;
+                                    final target = line['requestedQty'] ?? line['quantity'] ?? 0;
                                     final current = _packedQuantities[sku] ?? 0;
                                     final progress = target > 0 ? current / target : 0.0;
 

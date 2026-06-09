@@ -39,6 +39,8 @@ export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaff
   const [lastName, setLastName] = useState('');
   const [roleCode, setRoleCode] = useState<string>('');
   const [warehouseId, setWarehouseId] = useState<string>('');
+  const [phone, setPhone] = useState('');
+  const [employeeCode, setEmployeeCode] = useState('');
 
   // Try to use shadcn toast, fallback to sonner
   let toastFn: any;
@@ -71,6 +73,8 @@ export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaff
       setLastName('');
       setRoleCode('');
       setWarehouseId('');
+      setPhone('');
+      setEmployeeCode('');
 
       const loadWarehouses = async () => {
         try {
@@ -150,7 +154,9 @@ export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaff
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           roleCode,
-          warehouseId
+          warehouseId,
+          phone: phone.trim(),
+          employeeCode: employeeCode.trim()
         })
       });
 
@@ -185,7 +191,7 @@ export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaff
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-2">
+        <div className="grid gap-4 py-2 col-span-2">
           {/* User Credentials & Info Section */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2 col-span-2">
@@ -254,6 +260,32 @@ export function CreateStaffDialog({ open, onOpenChange, onSuccess }: CreateStaff
                 placeholder="Ví dụ: Khoa"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                className="h-10"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-employeecode" className="text-sm font-medium">
+                Mã nhân viên (Employee Code)
+              </Label>
+              <Input
+                id="create-employeecode"
+                placeholder="Ví dụ: EMP-004"
+                value={employeeCode}
+                onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
+                className="h-10"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-phone" className="text-sm font-medium">
+                Số điện thoại (Phone)
+              </Label>
+              <Input
+                id="create-phone"
+                placeholder="Ví dụ: 0987654321"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 className="h-10"
               />
             </div>

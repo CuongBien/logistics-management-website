@@ -1,0 +1,432 @@
+﻿[09:32:44 INF] Executed DbCommand (48ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+[09:32:45 INF] Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[09:32:45 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+[09:32:45 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+[09:32:45 INF] Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[09:32:45 INF] No migrations were applied. The database is already up to date.
+[09:32:45 INF] Cleaning WMS layout and transactional tables for fresh seed...
+[09:32:45 INF] Executed DbCommand (739ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+TRUNCATE TABLE "ShipmentItems", "ShipmentOrders", "Shipments", "OutboundOrderLines", "OutboundOrders", "OutboundReturns", "InboundReceiptLines", "InboundReceipts", "InboundBinAllocations", "InventoryItems", "inventory_reservations", "InventoryLedgers", "InventoryReconciliationReports", "Waves", "PickTasks", "PutawayTasks", "ReplenishmentTasks", "CountTasks", "CrossDockTasks", "PackVerifications", "InboundDiscrepancies", "TransitDiscrepancies", "Notifications" CASCADE;
+[09:32:46 INF] Executed DbCommand (291ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+TRUNCATE TABLE "Bins", "Zones", "Blocks", "WarehouseRoutes", "OperatorRoleAssignments" CASCADE;
+[09:32:46 INF] Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "Roles" AS r
+    WHERE r."Code" = 'WMS_ADMIN')
+[09:32:46 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT p."Id", p."Action", p."Code", p."IsActive", p."Resource"
+FROM "Permissions" AS p
+[09:32:46 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT t."Id", t."Code", t."IsActive", t."Name", r0."RoleId", r0."PermissionId"
+FROM (
+    SELECT r."Id", r."Code", r."IsActive", r."Name"
+    FROM "Roles" AS r
+    WHERE r."Code" = 'WMS_ADMIN'
+    LIMIT 1
+) AS t
+LEFT JOIN "RolePermissions" AS r0 ON t."Id" = r0."RoleId"
+ORDER BY t."Id", r0."RoleId"
+[09:32:46 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT t."Id", t."Code", t."IsActive", t."Name", r0."RoleId", r0."PermissionId"
+FROM (
+    SELECT r."Id", r."Code", r."IsActive", r."Name"
+    FROM "Roles" AS r
+    WHERE r."Code" = 'WMS_SUPERVISOR'
+    LIMIT 1
+) AS t
+LEFT JOIN "RolePermissions" AS r0 ON t."Id" = r0."RoleId"
+ORDER BY t."Id", r0."RoleId"
+[09:32:46 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT t."Id", t."Code", t."IsActive", t."Name", r0."RoleId", r0."PermissionId"
+FROM (
+    SELECT r."Id", r."Code", r."IsActive", r."Name"
+    FROM "Roles" AS r
+    WHERE r."Code" = 'WMS_OPERATOR'
+    LIMIT 1
+) AS t
+LEFT JOIN "RolePermissions" AS r0 ON t."Id" = r0."RoleId"
+ORDER BY t."Id", r0."RoleId"
+[09:32:46 ERR] An error occurred while seeding the Warehouse database.
+System.FormatException: Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).
+   at System.Guid.GuidResult.SetFailure(ParseFailure failureKind)
+   at System.Guid.TryParseExactD(ReadOnlySpan`1 guidString, GuidResult& result)
+   at System.Guid.TryParseGuid(ReadOnlySpan`1 guidString, GuidResult& result)
+   at System.Guid.Parse(ReadOnlySpan`1 input)
+   at System.Guid.Parse(String input)
+   at Warehouse.Infrastructure.Persistence.WMSDbContextSeed.SeedAsync(WMSDbContext context, ILogger logger) in /src/src/Services/Warehouse/Warehouse.Infrastructure/Persistence/WMSDbContextSeed.cs:line 99
+[09:32:46 INF] Configured endpoint shipment-received, Consumer: Warehouse.Application.Features.Outbound.Consumers.ShipmentReceivedConsumer
+[09:32:46 INF] Configured endpoint shipment-received, Consumer: Warehouse.Application.Features.Inbound.Consumers.ShipmentReceivedConsumer
+[09:32:46 INF] Configured endpoint order-created, Consumer: Warehouse.Application.Features.Inventory.Consumers.OrderCreatedConsumer
+[09:32:46 INF] Configured endpoint shipment-sorted, Consumer: Warehouse.Application.Features.Inbound.Consumers.ShipmentSortedConsumer
+[09:32:46 WRN] Storing keys in a directory '/home/app/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+[09:32:46 INF] User profile is available. Using '/home/app/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+[09:32:46 INF] ExpiredReservationCleanupWorker starting...
+[09:32:47 INF] Creating key {e9d34409-c221-4ebc-8763-b74e7a38030b} with creation date 2026-06-07 09:32:47Z, activation date 2026-06-07 09:32:47Z, and expiration date 2026-09-05 09:32:47Z.
+[09:32:47 WRN] The query uses a row limiting operator ('Skip'/'Take') without an 'OrderBy' operator. This may lead to unpredictable results. If the 'Distinct' operator is used after 'OrderBy', then make sure to use the 'OrderBy' operator after 'Distinct' as the ordering would otherwise get erased.
+[09:32:47 WRN] No XML encryptor configured. Key {e9d34409-c221-4ebc-8763-b74e7a38030b} may be persisted to storage in unencrypted form.
+[09:32:47 INF] Writing data to file '/home/app/.aspnet/DataProtection-Keys/key-e9d34409-c221-4ebc-8763-b74e7a38030b.xml'.
+[09:32:47 INF] Executed DbCommand (40ms) [Parameters=[@__tenantId_0='?', @__entityType_1='?'], CommandType='Text', CommandTimeout='30']
+SELECT e."Id", e."EntityType", e."LastSuccessCursor", e."LastSyncedAt", e."TenantId"
+FROM erp_sync_checkpoints AS e
+WHERE e."TenantId" = @__tenantId_0 AND e."EntityType" = @__entityType_1
+LIMIT 1
+[09:32:47 INF] Executed DbCommand (39ms) [Parameters=[@__p_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."CorrelationId", i."CreatedAt", i."ExpiresAt", i."InventoryItemId", i."Quantity", i."ReferenceId", i."ReferenceType", i."Status"
+FROM inventory_reservations AS i
+WHERE i."Status" = 1 AND i."ExpiresAt" < now()
+LIMIT @__p_0
+[09:32:47 INF] Start processing HTTP request GET http://masterdata.api:8080/skus?*
+[09:32:47 INF] Sending HTTP request GET http://masterdata.api:8080/skus?*
+[09:32:47 INF] Now listening on: http://[::]:8080
+[09:32:47 INF] Application started. Press Ctrl+C to shut down.
+[09:32:47 INF] Hosting environment: Development
+[09:32:47 INF] Content root path: /app
+[09:32:47 INF] Received HTTP response headers after 23.597ms - 404
+[09:32:47 INF] End processing HTTP request after 44.4036ms - 404
+[09:32:47 ERR] ERP sync failed for tenant default-tenant
+System.InvalidOperationException: ERP SKU sync request failed with status 404 for tenant default-tenant.
+   at Warehouse.Infrastructure.ErpSync.ErpMasterDataClient.GetSkusAsync(String tenantId, String updatedAfterCursor, Int32 batchSize, CancellationToken cancellationToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpMasterDataClient.cs:line 28
+   at Warehouse.Infrastructure.ErpSync.ErpSyncWorker.SyncSkusAsync(String tenantId, WMSDbContext dbContext, IErpMasterDataClient erpClient, CancellationToken cancellationToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpSyncWorker.cs:line 67
+   at Warehouse.Infrastructure.ErpSync.ErpSyncWorker.SyncTenantAsync(String tenantId, CancellationToken cancellationToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpSyncWorker.cs:line 60
+   at Warehouse.Infrastructure.ErpSync.ErpSyncWorker.ExecuteAsync(CancellationToken stoppingToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpSyncWorker.cs:line 34
+[09:32:47 INF] Bus started: rabbitmq://rabbitmq/
+[09:32:48 INF] Executed DbCommand (3ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:48 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:49 INF] Executed DbCommand (2ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:49 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:50 INF] Executed DbCommand (2ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:50 INF] Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:51 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:51 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:52 INF] Executed DbCommand (2ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:52 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:53 INF] Executed DbCommand (3ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:53 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:57 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:57 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:58 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:58 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:32:59 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:32:59 INF] Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:00 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:00 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:01 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:01 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:02 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:02 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:03 INF] Executed DbCommand (3ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:03 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:04 INF] Executed DbCommand (2ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:04 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:05 INF] Executed DbCommand (2ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:05 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:06 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:06 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:07 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:07 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:08 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:08 INF] Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:09 INF] Executed DbCommand (2ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:09 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:10 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:10 INF] Executed DbCommand (2ms) [Parameters=[@__tenantId_0='?', @__entityType_1='?'], CommandType='Text', CommandTimeout='30']
+SELECT e."Id", e."EntityType", e."LastSuccessCursor", e."LastSyncedAt", e."TenantId"
+FROM erp_sync_checkpoints AS e
+WHERE e."TenantId" = @__tenantId_0 AND e."EntityType" = @__entityType_1
+LIMIT 1
+[09:33:10 INF] Start processing HTTP request GET http://masterdata.api:8080/skus?*
+[09:33:10 INF] Sending HTTP request GET http://masterdata.api:8080/skus?*
+[09:33:10 INF] Received HTTP response headers after 2.1006ms - 404
+[09:33:10 INF] End processing HTTP request after 2.5825ms - 404
+[09:33:10 ERR] ERP sync failed for tenant default-tenant
+System.InvalidOperationException: ERP SKU sync request failed with status 404 for tenant default-tenant.
+   at Warehouse.Infrastructure.ErpSync.ErpMasterDataClient.GetSkusAsync(String tenantId, String updatedAfterCursor, Int32 batchSize, CancellationToken cancellationToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpMasterDataClient.cs:line 28
+   at Warehouse.Infrastructure.ErpSync.ErpSyncWorker.SyncSkusAsync(String tenantId, WMSDbContext dbContext, IErpMasterDataClient erpClient, CancellationToken cancellationToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpSyncWorker.cs:line 67
+   at Warehouse.Infrastructure.ErpSync.ErpSyncWorker.SyncTenantAsync(String tenantId, CancellationToken cancellationToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpSyncWorker.cs:line 60
+   at Warehouse.Infrastructure.ErpSync.ErpSyncWorker.ExecuteAsync(CancellationToken stoppingToken) in /src/src/Services/Warehouse/Warehouse.Infrastructure/ErpSync/ErpSyncWorker.cs:line 34
+[09:33:10 INF] Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:11 INF] Executed DbCommand (2ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:11 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:12 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:12 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:13 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:13 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:14 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:14 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2
+[09:33:15 INF] Executed DbCommand (1ms) [Parameters=[@__removeTimestamp_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT i."Id", i."Consumed", i."ConsumerId", i."Delivered", i."ExpirationTime", i."LastSequenceNumber", i."LockId", i."MessageId", i."ReceiveCount", i."Received", i."RowVersion"
+FROM "InboxState" AS i
+WHERE i."Delivered" IS NOT NULL AND i."Delivered" < @__removeTimestamp_0
+ORDER BY i."Delivered"
+LIMIT @__p_1
+[09:33:15 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT m."OutboxId", m."Created", m."Delivered", m."LastSequenceNumber", m."LockId", m."RowVersion"
+FROM (
+    SELECT * FROM "OutboxState" ORDER BY "Created" LIMIT 1 FOR UPDATE SKIP LOCKED
+) AS m
+LIMIT 2

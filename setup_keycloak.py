@@ -1,5 +1,6 @@
 import requests
 import time
+import subprocess
 
 KC_URL = 'http://127.0.0.1:18080'
 ADMIN_USER = 'admin'
@@ -55,7 +56,7 @@ def setup_keycloak():
     else:
         print(f"Client {CLIENT_ID} already exists.")
         
-    # Create users with fixed UUIDs
+    # Create users with fixed UUIDs and attributes
     users_to_create = [
         {
             "id": "2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8",
@@ -63,7 +64,11 @@ def setup_keycloak():
             "firstName": "System",
             "lastName": "Admin",
             "email": "admin@shiphub.vn",
-            "password": "admin"
+            "password": "admin",
+            "attributes": {
+                "phone": ["0987654321"],
+                "employee_code": ["EMP-001"]
+            }
         },
         {
             "id": "1a382041-9098-4351-ab71-d3939f8368dd",
@@ -71,7 +76,23 @@ def setup_keycloak():
             "firstName": "Nguyen",
             "lastName": "Staff",
             "email": "staff1@shiphub.vn",
-            "password": "staff"
+            "password": "staff",
+            "attributes": {
+                "phone": ["0912345678"],
+                "employee_code": ["EMP-002"]
+            }
+        },
+        {
+            "id": "3b382041-9098-4351-ab71-d3939f8368de",
+            "username": "manager1",
+            "firstName": "Nguyen",
+            "lastName": "Manager",
+            "email": "manager1@shiphub.vn",
+            "password": "manager",
+            "attributes": {
+                "phone": ["0909090909"],
+                "employee_code": ["EMP-003"]
+            }
         },
         {
             "id": "5107728a-5b22-49dd-a608-718ed99dbaeb",
@@ -93,6 +114,14 @@ def setup_keycloak():
             existing_user = existing_users[0]
             print(f"User {u['username']} already exists with ID {existing_user['id']}.")
             user_ids[u['username']] = existing_user['id']
+            # Update user attributes and name
+            update_payload = {
+                "firstName": u['firstName'],
+                "lastName": u['lastName'],
+                "email": u['email'],
+                "attributes": u.get("attributes", {})
+            }
+            requests.put(f"{KC_URL}/admin/realms/{REALM}/users/{existing_user['id']}", headers=headers, json=update_payload).raise_for_status()
         else:
             print(f"Creating user {u['username']}...")
             payload = {
@@ -101,6 +130,7 @@ def setup_keycloak():
                 "lastName": u['lastName'],
                 "email": u['email'],
                 "enabled": True,
+                "attributes": u.get("attributes", {}),
                 "credentials": [{
                     "type": "password",
                     "value": u['password'],
@@ -148,25 +178,139 @@ def setup_keycloak():
         else:
             print(f"User {user_id} already has role {role_name}.")
 
+    # 2. Add Roles "manager" and "operator" and assign to appropriate users
+    for r_name in ["manager", "operator"]:
+        r = requests.get(f"{KC_URL}/admin/realms/{REALM}/roles/{r_name}", headers=headers)
+        if r.status_code == 404:
+            print(f"Creating role {r_name}...")
+            requests.post(f"{KC_URL}/admin/realms/{REALM}/roles", headers=headers, json={
+                "name": r_name,
+                "description": f"{r_name} role"
+            }).raise_for_status()
+            
+    role_assignments = {
+        "admin": "manager",
+        "manager1": "manager",
+        "staff1": "operator"
+    }
+    
+    for username, role_name in role_assignments.items():
+        uid = user_ids.get(username)
+        if not uid:
+            continue
+        role_res = requests.get(f"{KC_URL}/admin/realms/{REALM}/roles/{role_name}", headers=headers)
+        role_res.raise_for_status()
+        role_obj = role_res.json()
+        
+        mappings_r = requests.get(f"{KC_URL}/admin/realms/{REALM}/users/{uid}/role-mappings/realm", headers=headers)
+        mappings_r.raise_for_status()
+        current_roles = [role["name"] for role in mappings_r.json()]
+        if role_name not in current_roles:
+            print(f"Assigning role {role_name} to user {username}...")
+            requests.post(f"{KC_URL}/admin/realms/{REALM}/users/{uid}/role-mappings/realm", headers=headers, json=[role_obj]).raise_for_status()
+
+    # 3. Create Protocol Mappers for custom attributes
+    r = requests.get(f"{KC_URL}/admin/realms/{REALM}/clients?clientId={CLIENT_ID}", headers=headers)
+    r.raise_for_status()
+    clients_list = r.json()
+    if clients_list:
+        client_uuid = clients_list[0]['id']
+        mappers_r = requests.get(f"{KC_URL}/admin/realms/{REALM}/clients/{client_uuid}/protocol-mappers/models", headers=headers)
+        mappers_r.raise_for_status()
+        existing_mappers = [m["name"] for m in mappers_r.json()]
+        
+        custom_mappers = [
+            {
+                "name": "employee_code",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-usermodel-attribute-mapper",
+                "consentRequired": False,
+                "config": {
+                    "user.attribute": "employee_code",
+                    "claim.name": "employee_code",
+                    "jsonType.label": "String",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
+            },
+            {
+                "name": "phone",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-usermodel-attribute-mapper",
+                "consentRequired": False,
+                "config": {
+                    "user.attribute": "phone",
+                    "claim.name": "phone",
+                    "jsonType.label": "String",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
+            }
+        ]
+        
+        for m in custom_mappers:
+            if m["name"] not in existing_mappers:
+                print(f"Creating protocol mapper for {m['name']}...")
+                requests.post(f"{KC_URL}/admin/realms/{REALM}/clients/{client_uuid}/protocol-mappers/models", headers=headers, json=m).raise_for_status()
+
     # Sync PostgreSQL test data
     customer1_id = user_ids.get("customer1")
     admin_id = user_ids.get("admin")
     staff1_id = user_ids.get("staff1")
+    manager1_id = user_ids.get("manager1")
     
     print("Syncing DB test data with actual Keycloak IDs...")
-    import subprocess
     
-    # WMS Database cleanup: Delete duplicate/stale operator profiles to prevent unique key violation
-    print("Cleaning up stale operator profiles in WMS DB...")
-    if admin_id or staff1_id:
-        ids_to_clean = []
-        if admin_id:
-            ids_to_clean.append(f"'{admin_id}'")
-        if staff1_id:
-            ids_to_clean.append(f"'{staff1_id}'")
-        clean_list = ", ".join(ids_to_clean)
-        sql_clean_operators = f'DELETE FROM operator_profiles WHERE "OperatorSub" IN ({clean_list});'
-        subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", sql_clean_operators])
+    # WMS Database cleanup: Delete duplicate/stale operator profiles and ensure seeded role assignments in WMS DB
+    print("Cleaning up stale operator profiles and ensuring seeded role assignments in WMS DB...")
+    if admin_id and staff1_id and manager1_id:
+        wms_user_sync_queries = [
+            # 1. Delete any auto-provisioned profiles with dynamic UUIDs if they have different IDs than our fixed ones
+            f'DELETE FROM operator_profiles WHERE "OperatorSub" IN (\'{admin_id}\', \'{staff1_id}\', \'{manager1_id}\') AND "Id" NOT IN (\'78fac894-240a-44a6-b83f-aec783b138a1\', \'bc474069-1431-4a35-ab96-575aceb418ae\', \'cd8423bb-f76c-456a-bc2d-b8f96a42f60f\');',
+            
+            # 2. Update existing seeded fixed UUID profiles to dynamic UUIDs
+            f'UPDATE operator_profiles SET "OperatorSub" = \'{admin_id}\' WHERE "OperatorSub" = \'2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8\';',
+            f'UPDATE operator_profiles SET "OperatorSub" = \'{staff1_id}\' WHERE "OperatorSub" = \'1a382041-9098-4351-ab71-d3939f8368dd\';',
+            f'UPDATE operator_profiles SET "OperatorSub" = \'{manager1_id}\' WHERE "OperatorSub" = \'3b382041-9098-4351-ab71-d3939f8368de\';',
+            
+            # 3. Insert profiles with dynamic UUIDs if they don't exist
+            f'INSERT INTO operator_profiles ("Id", "TenantId", "OperatorSub", "DisplayName", "IsActive", "FullName", "Email", "Phone", "EmployeeCode") VALUES (\'78fac894-240a-44a6-b83f-aec783b138a1\', \'default-tenant\', \'{admin_id}\', \'System Admin\', true, \'System Admin\', \'admin@shiphub.vn\', \'0987654321\', \'EMP-001\') ON CONFLICT ("TenantId", "OperatorSub") DO NOTHING;',
+            f'INSERT INTO operator_profiles ("Id", "TenantId", "OperatorSub", "DisplayName", "IsActive", "FullName", "Email", "Phone", "EmployeeCode") VALUES (\'bc474069-1431-4a35-ab96-575aceb418ae\', \'default-tenant\', \'{staff1_id}\', \'Nguyen Staff\', true, \'Nguyen Staff\', \'staff1@shiphub.vn\', \'0912345678\', \'EMP-002\') ON CONFLICT ("TenantId", "OperatorSub") DO NOTHING;',
+            f'INSERT INTO operator_profiles ("Id", "TenantId", "OperatorSub", "DisplayName", "IsActive", "FullName", "Email", "Phone", "EmployeeCode") VALUES (\'cd8423bb-f76c-456a-bc2d-b8f96a42f60f\', \'default-tenant\', \'{manager1_id}\', \'Nguyen Manager\', true, \'Nguyen Manager\', \'manager1@shiphub.vn\', \'0909090909\', \'EMP-003\') ON CONFLICT ("TenantId", "OperatorSub") DO NOTHING;',
+            
+            # 4. Insert role assignments for admin (WMS_ADMIN)
+            f'INSERT INTO "OperatorRoleAssignments" ("Id", "OperatorProfileId", "RoleId", "WarehouseId", "ZoneId", "Status", "EffectiveFrom") '
+            f'SELECT gen_random_uuid(), p."Id", r."Id", w."Id", NULL, 1, NOW() '
+            f'FROM operator_profiles p CROSS JOIN "Roles" r CROSS JOIN "Warehouses" w '
+            f'WHERE p."OperatorSub" = \'{admin_id}\' AND r."Code" = \'WMS_ADMIN\' '
+            f'ON CONFLICT ("OperatorProfileId", "WarehouseId", "RoleId", "ZoneId") DO NOTHING;',
+            
+            # 5. Insert role assignments for manager1 (WMS_SUPERVISOR)
+            f'INSERT INTO "OperatorRoleAssignments" ("Id", "OperatorProfileId", "RoleId", "WarehouseId", "ZoneId", "Status", "EffectiveFrom") '
+            f'SELECT gen_random_uuid(), p."Id", r."Id", w."Id", NULL, 1, NOW() '
+            f'FROM operator_profiles p CROSS JOIN "Roles" r CROSS JOIN "Warehouses" w '
+            f'WHERE p."OperatorSub" = \'{manager1_id}\' AND r."Code" = \'WMS_SUPERVISOR\' '
+            f'ON CONFLICT ("OperatorProfileId", "WarehouseId", "RoleId", "ZoneId") DO NOTHING;',
+            
+            # 6. Insert role assignments for staff1 (WMS_OPERATOR)
+            f'INSERT INTO "OperatorRoleAssignments" ("Id", "OperatorProfileId", "RoleId", "WarehouseId", "ZoneId", "Status", "EffectiveFrom") '
+            f'SELECT gen_random_uuid(), p."Id", r."Id", w."Id", NULL, 1, NOW() '
+            f'FROM operator_profiles p CROSS JOIN "Roles" r CROSS JOIN "Warehouses" w '
+            f'WHERE p."OperatorSub" = \'{staff1_id}\' AND r."Code" = \'WMS_OPERATOR\' '
+            f'ON CONFLICT ("OperatorProfileId", "WarehouseId", "RoleId", "ZoneId") DO NOTHING;',
+            
+            # 7. Update historical OperatorActivityLogs
+            f'UPDATE "OperatorActivityLogs" SET "OperatorId" = \'{admin_id}\' WHERE "OperatorId" = \'2036019c-ad5e-4610-9e4f-3e8fb9dfc4e8\';',
+            f'UPDATE "OperatorActivityLogs" SET "OperatorId" = \'{staff1_id}\' WHERE "OperatorId" = \'1a382041-9098-4351-ab71-d3939f8368dd\';',
+            f'UPDATE "OperatorActivityLogs" SET "OperatorId" = \'{manager1_id}\' WHERE "OperatorId" = \'3b382041-9098-4351-ab71-d3939f8368de\';'
+        ]
+        for query in wms_user_sync_queries:
+            subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", query])
+
+
+
 
     # OMS update (using static ID if available, but it's already aligned with the seed)
     if customer1_id:
@@ -184,24 +328,13 @@ def setup_keycloak():
         for sql_wms in wms_queries:
             subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", sql_wms])
     
-    if admin_id:
-        sql_wms_admin = f'UPDATE operator_profiles SET "OperatorSub" = \'{admin_id}\' WHERE "OperatorSub" = \'e8426038-ce83-4e21-a754-f1834a77267e\';'
-        subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", sql_wms_admin])
-        
-    if staff1_id:
-        sql_wms_staff = f'UPDATE operator_profiles SET "OperatorSub" = \'{staff1_id}\' WHERE "OperatorSub" = \'709e4a86-7a8e-4b46-a4c3-63162ff054ba\';'
-        subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", sql_wms_staff])
-        
     # Ensure 'role:manage' permission and role permissions mapping exist in WMS database
     print("Ensuring 'role:manage' permission exists in WMS DB...")
     sql_insert_perm = 'INSERT INTO "Permissions" ("Id", "Code", "Resource", "Action", "IsActive") VALUES (\'00000000-0000-0000-0000-000000000030\', \'role:manage\', \'role\', \'manage\', true) ON CONFLICT ("Code") DO NOTHING;'
     subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", sql_insert_perm])
     
-    sql_link_wms_admin = 'INSERT INTO "RolePermissions" ("RoleId", "PermissionId") VALUES (\'6fd0023b-ed50-41df-af96-250cb376d659\', \'00000000-0000-0000-0000-000000000030\') ON CONFLICT DO NOTHING;'
+    sql_link_wms_admin = 'INSERT INTO "RolePermissions" ("RoleId", "PermissionId") SELECT "Id", \'00000000-0000-0000-0000-000000000030\' FROM "Roles" WHERE "Name" = \'WMS_ADMIN\' ON CONFLICT DO NOTHING;'
     subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", sql_link_wms_admin])
-    
-    sql_link_admin_role = 'INSERT INTO "RolePermissions" ("RoleId", "PermissionId") VALUES (\'67ed1b0e-5a60-4d25-9c9c-f17df168f59a\', \'00000000-0000-0000-0000-000000000030\') ON CONFLICT DO NOTHING;'
-    subprocess.run(["docker", "exec", "lms-postgres", "psql", "-U", "postgres", "-d", "lms_wms_dev", "-c", sql_link_admin_role])
     
     print("DB synced successfully.")
 

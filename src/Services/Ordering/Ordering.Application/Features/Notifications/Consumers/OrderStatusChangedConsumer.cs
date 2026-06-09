@@ -41,7 +41,7 @@ public class OrderStatusChangedConsumer :
             }
             else if (context.Message.FulfillmentMode == 2) // Dropoff
             {
-                order.SetInWarehouseDirectly();
+                order.SetInWarehouseDirectly(context.Message.SourceWarehouseCode);
             }
             
             // Prevent event-loop: this sync is triggered by an integration event

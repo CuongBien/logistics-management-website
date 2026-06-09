@@ -216,6 +216,15 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("MaxQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("MaxVolume")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("MaxWeight")
+                        .HasColumnType("double precision");
+
                     b.Property<int>("PickSequence")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1153,6 +1162,18 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("EmployeeCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("FullName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1160,6 +1181,10 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -1681,6 +1706,9 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ActualFromBinId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("AssignedOperatorId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1717,6 +1745,8 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ActualFromBinId");
 
                     b.HasIndex("FromBinId");
 
@@ -1802,6 +1832,9 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ActualDestinationBinId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("AssignedTo")
                         .HasColumnType("text");
 
@@ -1844,6 +1877,8 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ActualDestinationBinId");
 
                     b.HasIndex("DestinationBinId");
 
@@ -2000,6 +2035,67 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.HasIndex("ShipmentId");
 
                     b.ToTable("ShipmentOrders", (string)null);
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Entities.TaskOverrideLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActualBinCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OperatorId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("OriginalBinCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TaskType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("WarehouseId", "OperatorId");
+
+                    b.ToTable("TaskOverrideLogs", (string)null);
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Entities.TransitDiscrepancy", b =>
@@ -2350,6 +2446,10 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Warehouse.Domain.Entities.PickTask", b =>
                 {
+                    b.HasOne("Warehouse.Domain.Entities.Bin", "ActualFromBin")
+                        .WithMany()
+                        .HasForeignKey("ActualFromBinId");
+
                     b.HasOne("Warehouse.Domain.Entities.Bin", "FromBin")
                         .WithMany()
                         .HasForeignKey("FromBinId")
@@ -2361,6 +2461,8 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OutboundOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("ActualFromBin");
 
                     b.Navigation("FromBin");
 
@@ -2395,6 +2497,10 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Warehouse.Domain.Entities.ReplenishmentTask", b =>
                 {
+                    b.HasOne("Warehouse.Domain.Entities.Bin", "ActualDestinationBin")
+                        .WithMany()
+                        .HasForeignKey("ActualDestinationBinId");
+
                     b.HasOne("Warehouse.Domain.Entities.Bin", "DestinationBin")
                         .WithMany()
                         .HasForeignKey("DestinationBinId")
@@ -2406,6 +2512,8 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .HasForeignKey("SourceBinId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ActualDestinationBin");
 
                     b.Navigation("DestinationBin");
 

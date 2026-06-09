@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -6,9 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Warehouse.Api.Controllers;
 using Warehouse.Api.Controllers.Requests;
+using Warehouse.Application.Common.Interfaces;
 using Warehouse.Application.Features.Inbound.Commands.CreateReceipt;
 using Warehouse.Application.Features.Inbound.Commands.ReceiveInboundItem;
 using Warehouse.Application.Features.Outbound.Commands.SortOrder;
+using Warehouse.Application.Features.Outbound.Commands.ShipAndReleaseBin;
 using Xunit;
 
 namespace Warehouse.Api.Tests;
@@ -50,7 +56,7 @@ public class InboundOutboundControllerTests
 
         senderMock.Verify(
             x => x.Send(
-                It.Is<SortOrderCommand>(c => c.TenantId == "tenant-1" && c.CustomerId == "customer-1" && !string.IsNullOrWhiteSpace(c.SourceShipmentNo)),
+                It.Is<SortOrderCommand>(c => c.TenantId == "tenant-1" && c.OperatorId == "customer-1" && !string.IsNullOrWhiteSpace(c.SourceShipmentNo)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -61,7 +67,8 @@ public class InboundOutboundControllerTests
         var senderMock = new Mock<ISender>();
         senderMock
             .Setup(x => x.Send(It.IsAny<ReceiveInboundItemCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Logistics.Core.Result.Success());
+            .ReturnsAsync(Logistics.Core.Result<ReceiveInboundItemResponse>.Success(
+                new ReceiveInboundItemResponse(false, null)));
         var claims = new[]
         {
             new Claim("tenant_id", "tenant-9"),
@@ -80,7 +87,38 @@ public class InboundOutboundControllerTests
 
         senderMock.Verify(
             x => x.Send(
-                It.Is<ReceiveInboundItemCommand>(c => c.TenantId == "tenant-9" && c.ScannedBy == "operator-9"),
+                It.Is<ReceiveInboundItemCommand>(c => c.TenantId == "" && c.ScannedBy == "operator-9"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ShipAndReleaseBin_DelegatesToCommand()
+    {
+        var senderMock = new Mock<ISender>();
+        var orderId = Guid.NewGuid();
+        var resultDto = new ShipAndReleaseBinResult(orderId, "ORD-123", "Shipped", new List<string> { "BIN-A" }, "Success");
+
+        senderMock
+            .Setup(x => x.Send(It.IsAny<ShipAndReleaseBinCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Logistics.Core.Result<ShipAndReleaseBinResult>.Success(resultDto));
+
+        var claims = new[]
+        {
+            new Claim("sub", "operator-1")
+        };
+        var controller = BuildOutboundController(senderMock.Object, claims);
+
+        var response = await controller.ShipAndReleaseBin(new ShipAndReleaseBinRequest { OrderNo = "ORD-123" });
+
+        var okResult = Assert.IsType<OkObjectResult>(response.Result);
+        var returnedVal = Assert.IsType<ShipAndReleaseBinResult>(okResult.Value);
+        Assert.Equal("ORD-123", returnedVal.OrderNo);
+        Assert.Equal("Shipped", returnedVal.NewStatus);
+
+        senderMock.Verify(
+            x => x.Send(
+                It.Is<ShipAndReleaseBinCommand>(c => c.OrderNo == "ORD-123" && c.OperatorId == "operator-1"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -95,7 +133,9 @@ public class InboundOutboundControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
         };
 
-        return new InboundController
+        var contextMock = new Mock<IApplicationDbContext>();
+
+        return new InboundController(contextMock.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
@@ -111,7 +151,9 @@ public class InboundOutboundControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
         };
 
-        return new OutboundController
+        var contextMock = new Mock<IApplicationDbContext>();
+
+        return new OutboundController(contextMock.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };

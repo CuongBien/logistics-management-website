@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/app_colors.dart';
-import '../../../../../core/constants/app_config.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../providers/outbound_provider.dart';
 
 class PickTaskListScreen extends ConsumerStatefulWidget {
@@ -30,6 +30,17 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
 
   Future<void> _loadWave(String waveId) async {
     if (waveId.isEmpty) return;
+    
+    // E2E DEMO CHANGE: Strip OB:, ORD: or WAVE: prefixes if scanned/typed
+    String cleanWaveId = waveId.trim();
+    if (cleanWaveId.toUpperCase().startsWith('OB:')) {
+      cleanWaveId = cleanWaveId.substring(3);
+    } else if (cleanWaveId.toUpperCase().startsWith('ORD:')) {
+      cleanWaveId = cleanWaveId.substring(4);
+    } else if (cleanWaveId.toUpperCase().startsWith('WAVE:')) {
+      cleanWaveId = cleanWaveId.substring(5);
+    }
+
     setState(() {
       _isLoading = true;
       _activeWaveId = '';
@@ -37,23 +48,22 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
 
     try {
       final repo = ref.read(outboundRepositoryProvider);
-      final tasks = await repo.getPickTasksForWave(waveId);
+      final tasks = await repo.getPickTasksForWave(cleanWaveId);
       
-      // Bỏ qua chặn kho để tránh lỗi parse khi tasks trả về cấu trúc khác
       setState(() {
         _tasks = tasks;
-        _activeWaveId = waveId;
+        _activeWaveId = cleanWaveId;
         _isLoading = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('✅ Đã tải ${tasks.length} lệnh nhặt từ Wave: $waveId'),
+        content: Text('✅ Đã tải ${tasks.length} lệnh nhặt từ mã: $cleanWaveId'),
         backgroundColor: AppColors.success,
       ));
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('❌ Lỗi tải Wave: ${e.toString().replaceAll('Exception: ', '')}'),
+        content: Text('❌ Lỗi tải thông tin lấy hàng: ${e.toString().replaceAll('Exception: ', '')}'),
         backgroundColor: AppColors.error,
       ));
     }
@@ -69,6 +79,48 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get current operator sub
+    final authState = ref.watch(authProvider);
+    String? operatorSub;
+    if (authState is AuthAuthenticated) {
+      operatorSub = authState.user.id;
+    }
+
+    // Look up wave assignment in waves list
+    final wavesAsync = ref.watch(wavesProvider);
+    final wave = wavesAsync.value?.firstWhere(
+      (w) => w['id']?.toString() == _activeWaveId || w['waveNo']?.toString() == _activeWaveId,
+      orElse: () => null,
+    );
+
+    final ordersAsync = ref.watch(outboundOrdersProvider);
+    final relatedOrder = ordersAsync.value?.firstWhere(
+      (o) => o['id']?.toString() == _activeWaveId || o['orderNo']?.toString() == _activeWaveId,
+      orElse: () => null,
+    );
+
+    // If it is an order picking task rather than a wave, check tasks to see if they are assigned to current operator
+    final bool isOrderPick = relatedOrder != null;
+    
+    // Find assignment operator ID. Dotnet returns JSON fields in camelCase, so read 'assignedOperatorId'
+    String? taskOperator;
+    if (_tasks.isNotEmpty) {
+      final firstTask = _tasks.first;
+      taskOperator = (firstTask['assignedOperatorId'] ?? firstTask['AssignedOperatorId'])?.toString();
+    }
+    final bool anyTaskAssigned = taskOperator != null && taskOperator.trim().isNotEmpty;
+
+    final assignedTo = wave != null 
+        ? wave['assignedTo']?.toString() 
+        : (isOrderPick ? taskOperator : null);
+
+    debugPrint('Outbound picking: activeId=$_activeWaveId, operatorSub=$operatorSub, taskOperator=$taskOperator, anyTaskAssigned=$anyTaskAssigned, assignedTo=$assignedTo');
+
+    final bool isAssignedToOther = assignedTo != null && assignedTo.trim().isNotEmpty && assignedTo != operatorSub;
+    final bool isUnassigned = wave != null 
+        ? (assignedTo == null || assignedTo.trim().isEmpty)
+        : (isOrderPick && !anyTaskAssigned);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Danh sách Lấy Hàng (Outbound)'),
@@ -146,12 +198,67 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
                                     'Danh sách nhặt (Wave: $_activeWaveId):',
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                   ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      context.push('/wms/pick_execution/$_activeWaveId');
-                                    },
-                                    child: const Text('BẮT ĐẦU NHẶT'),
-                                  )
+                                  if (isUnassigned)
+                                    ElevatedButton.icon(
+                                      onPressed: () async {
+                                        setState(() => _isLoading = true);
+                                        try {
+                                          await ref.read(outboundRepositoryProvider).assignWave(_activeWaveId);
+                                          ref.invalidate(wavesProvider);
+                                          ref.invalidate(outboundOrdersProvider);
+                                          // Reload list locally to fetch new assignedOperatorId values
+                                          await _loadWave(_activeWaveId);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Nhận nhiệm vụ thành công')),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Lỗi nhận nhiệm vụ: ${e.toString().replaceAll('Exception: ', '')}')),
+                                            );
+                                          }
+                                        } finally {
+                                          setState(() => _isLoading = false);
+                                        }
+                                      },
+                                      icon: const Icon(Icons.check),
+                                      label: const Text('NHẬN VIỆC'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.warning,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    )
+                                  else if (isAssignedToOther)
+                                    ElevatedButton.icon(
+                                      onPressed: null,
+                                      icon: const Icon(Icons.lock),
+                                      label: const Text('ĐÃ ĐƯỢC GIAO'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.grey.shade400,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    )
+                                  else
+                                    ElevatedButton.icon(
+                                      onPressed: () async {
+                                        try {
+                                          await ref.read(outboundRepositoryProvider).startWave(_activeWaveId);
+                                        } catch (e) {
+                                          debugPrint('Start wave error: $e');
+                                        }
+                                        if (context.mounted) {
+                                          context.push('/wms/pick_execution/$_activeWaveId');
+                                        }
+                                      },
+                                      icon: const Icon(Icons.play_arrow),
+                                      label: const Text('BẮT ĐẦU'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.success,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    )
                                 ],
                               ),
                             ),
@@ -165,22 +272,36 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
                                     final qty = task['quantity'] ?? 0;
                                     final status = task['status']?.toString() ?? 'Pending';
 
-                                    return Card(
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.03),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ],
+                                        border: Border.all(color: Colors.grey.shade200),
+                                      ),
                                       child: ListTile(
                                         onTap: () {
                                           _showTaskDetails(context, task);
                                         },
                                         leading: CircleAvatar(
                                           backgroundColor: status.toLowerCase() == 'completed' 
-                                            ? AppColors.success.withOpacity(0.2) 
-                                            : AppColors.primary.withOpacity(0.2),
+                                            ? AppColors.success.withValues(alpha: 0.2) 
+                                            : AppColors.primary.withValues(alpha: 0.2),
                                           child: Icon(
                                             status.toLowerCase() == 'completed' ? Icons.check : Icons.assignment,
                                             color: status.toLowerCase() == 'completed' ? AppColors.success : AppColors.primary,
                                           ),
                                         ),
                                         title: Text('Kệ: $bin • SKU: $sku', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        subtitle: Text('Số lượng: $qty PCS • Trạng thái: $status'),
+                                        subtitle: Text('Số lượng: $qty PCS • Trạng thái: ${status.toLowerCase() == 'completed' ? 'Hoàn thành' : 'Đang chờ'}'),
+                                        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                                       ),
                                     );
                                 },
@@ -196,6 +317,7 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
   }
 
   void _showTaskDetails(BuildContext context, Map<String, dynamic> task) {
+    final status = task['status']?.toString() ?? 'Pending';
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -213,7 +335,7 @@ class _PickTaskListScreenState extends ConsumerState<PickTaskListScreen> {
               _buildDetailRow('Sản phẩm (SKU)', task['sku'] ?? 'N/A'),
               _buildDetailRow('Số lượng', '${task['quantity'] ?? 0} PCS'),
               _buildDetailRow('Vị trí Kệ', task['binCode'] ?? 'N/A'),
-              _buildDetailRow('Trạng thái', task['status']?.toString() ?? 'Pending'),
+              _buildDetailRow('Trạng thái', status.toLowerCase() == 'completed' ? 'Hoàn thành' : 'Đang chờ'),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

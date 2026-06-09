@@ -195,11 +195,16 @@ export default function WarehousePage() {
                             <span className="bg-purple-50 text-purple-700 text-[9px] px-1.5 py-0.5 font-medium">{zoneTypeNames[zone.zoneType]}</span>
                           </button>
                           {expandedZones.has(zone.id) && (zone.bins||[]).map(bin => (
-                            <div key={bin.id} className="ml-12 flex items-center gap-2 px-2 py-1 text-xs">
+                            <div key={bin.id} className="ml-12 flex items-center gap-2 px-2 py-1 text-xs group hover:bg-muted/30">
                               <Box className={`h-3 w-3 ${bin.isOccupied?"text-red-500":"text-green-500"}`} />
                               <span className="font-mono">{bin.binCode}</span>
                               {bin.isOccupied && <span className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5">Occupied</span>}
                               {bin.currentOrderId && <span className="text-[9px] text-blue-600 font-mono">{bin.currentOrderId.slice(0,8)}...</span>}
+                              <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                <Button variant="outline" className="h-5 px-2 text-[10px]" onClick={() => window.open(`/api/wms/qrcode/bin/${bin.id}`, '_blank')}>
+                                  In QR
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>

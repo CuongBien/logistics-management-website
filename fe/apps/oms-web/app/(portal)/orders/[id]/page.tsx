@@ -201,7 +201,9 @@ export default function OrderDetailPage() {
     .filter(Boolean)
     .join(', ');
 
-  const fulfillmentLabel = order.fulfillment === 'Pickup' ? 'Lấy tại nhà' : 'Gửi tại kho';
+  const fulfillmentLabel = order.fulfillment === 'Pickup' 
+    ? 'Lấy tại nhà (Pickup)' 
+    : (order.fulfillment === 'Warehouse' ? 'Xuất từ kho lưu trữ' : 'Gửi tại kho');
   const typeLabel = order.type === 'Parcel' ? 'Kiện hàng thường' : 'Gửi vào kho';
 
   return (
@@ -369,7 +371,11 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent className="space-y-0">
                 {order.warehouseId && (
-                  <InfoRow icon={MapPin} label="Kho xử lý" value={order.warehouseId} />
+                  <InfoRow
+                    icon={MapPin}
+                    label={order.fulfillment === 'Warehouse' ? 'Kho xuất hàng' : 'Kho xử lý'}
+                    value={order.warehouseId}
+                  />
                 )}
                 {order.destinationWarehouseId && (
                   <InfoRow icon={MapPin} label="Kho đích" value={order.destinationWarehouseId} />

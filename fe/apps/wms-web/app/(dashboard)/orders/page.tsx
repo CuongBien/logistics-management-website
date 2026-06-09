@@ -43,6 +43,7 @@ import { Textarea } from "@repo/ui/components/textarea"
 import { toast } from "sonner"
 import * as orderingService from "@/lib/services/ordering"
 import { getQrImageUrl } from "@/lib/services/qrcode"
+import { useSession } from "next-auth/react"
 import { Order, OrderStatusHistory, OrderStatus } from "@/lib/types"
 import { format } from "date-fns"
 import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
@@ -68,6 +69,7 @@ const createOrderSchema = z.object({
 type CreateOrderFormValues = z.infer<typeof createOrderSchema>
 
 export default function OrdersPage() {
+  const { data: session } = useSession()
   const [orders, setOrders] = useState<Order[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState("")
@@ -91,7 +93,7 @@ export default function OrdersPage() {
   const loadPrintQr = async (waybillCode: string) => {
     if (!selectedOrder) return
     try {
-      const url = await getQrImageUrl('order', selectedOrder.id)
+      const url = await getQrImageUrl('order', selectedOrder.id, session?.accessToken)
       setPrintQrUrl(url)
       setPrintQrTitle(`Đơn hàng OMS: ${waybillCode}`)
     } catch (e) {

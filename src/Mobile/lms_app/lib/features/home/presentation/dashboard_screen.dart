@@ -205,6 +205,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
         // Áp dụng bộ lọc
         var filteredTasks = tasks.where((t) {
+          // Ẩn hoàn toàn các task đã được giao cho người khác
+          final isAssignedToOther = t.assignedTo != null && t.assignedTo!.trim().isNotEmpty && t.assignedTo != operatorSub;
+          if (isAssignedToOther) return false;
+
           final matchFilter = _selectedFilter == null || t.type == _selectedFilter;
           final matchMyTasks = !_showMyTasksOnly || (t.assignedTo == operatorSub);
           final matchSearch = _searchQuery.isEmpty || 
@@ -399,13 +403,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
+      builder: (sheetContext) {
         return SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.only(
@@ -445,21 +449,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             try {
                               await ref.read(putawayRepositoryProvider).assignPutawayTask(taskId);
                               ref.invalidate(unifiedTasksProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã nhận việc thành công. Hãy bấm Tiến hành khi sẵn sàng.')));
+                              }
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                              return;
                             }
-                          }
-                          if (context.mounted) {
-                            context.push(
-                              Uri(
-                                path: '/wms/putaway_execution',
-                                queryParameters: {
-                                  'taskId': taskId,
-                                  'targetBin': targetBin,
-                                },
-                              ).toString(),
-                            );
+                          } else {
+                            if (context.mounted) {
+                              context.push(
+                                Uri(
+                                  path: '/wms/putaway_execution',
+                                  queryParameters: {
+                                    'taskId': taskId,
+                                    'targetBin': targetBin,
+                                  },
+                                ).toString(),
+                              );
+                            }
                           }
                         },
                         child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
@@ -481,8 +488,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
     
     final pickTasks = task['pickTasks'] as List<dynamic>? ?? [];
 
@@ -490,7 +497,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
+      builder: (sheetContext) {
         return SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.only(
@@ -559,7 +566,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(sheetContext),
                       child: const Text('Đóng'),
                     ),
                   ),
@@ -568,18 +575,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                           if (!isAssignedToMe) {
                             try {
                               await ref.read(outboundRepositoryProvider).assignWave(taskId);
                               ref.invalidate(unifiedTasksProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã nhận việc thành công. Hãy bấm Tiến hành khi sẵn sàng.')));
+                              }
                             } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                              return;
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                              }
                             }
-                          }
-                          if (context.mounted) {
-                            context.push('/wms/pick_tasks/$taskId');
+                          } else {
+                            try {
+                              await ref.read(outboundRepositoryProvider).startWave(taskId);
+                              ref.invalidate(unifiedTasksProvider);
+                            } catch (e) {
+                              debugPrint('Start wave error: $e');
+                            }
+                            if (context.mounted) {
+                              context.push('/wms/pick_execution/$taskId');
+                            }
                           }
                         },
                         child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
@@ -601,13 +619,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
+      builder: (sheetContext) {
         return SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.only(
@@ -646,13 +664,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             try {
                               await ref.read(inventoryRepositoryProvider).assignReplenishmentTask(taskId);
                               ref.invalidate(unifiedTasksProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã nhận việc thành công. Hãy bấm Tiến hành khi sẵn sàng.')));
+                              }
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                              return;
+                            }
+                          } else {
+                            if (context.mounted) {
+                              try {
+                                await ref.read(inventoryRepositoryProvider).startReplenishmentTask(taskId);
+                                ref.invalidate(unifiedTasksProvider);
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                                return;
+                              }
+                              if (context.mounted) {
+                                context.push(
+                                  Uri(
+                                    path: '/wms/replenishment_execution',
+                                    queryParameters: {
+                                      'taskId': taskId,
+                                      'sku': task['sku'] ?? '',
+                                      'quantity': task['quantity']?.toString() ?? '0',
+                                      'sourceBin': task['fromBinId'] ?? '',
+                                      'destBin': task['toBinId'] ?? '',
+                                    },
+                                  ).toString(),
+                                );
+                              }
                             }
                           }
-                          // Replenishment execution is not fully implemented yet in the example, so we just pop
-                          // context.push('/wms/replenishment_execution/$taskId');
                         },
                         child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
                       ),
@@ -673,13 +715,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final operatorSub = authState is AuthAuthenticated ? authState.user.id : null;
     final assignedTo = internalTask.assignedTo;
     
-    final bool isAssignedToMe = assignedTo != null && assignedTo.isNotEmpty && assignedTo == operatorSub;
-    final bool isAssignedToOther = assignedTo != null && assignedTo.isNotEmpty && assignedTo != operatorSub;
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo != operatorSub;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
+      builder: (sheetContext) {
         return SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.only(
@@ -704,28 +746,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(sheetContext),
                       child: const Text('Đóng'),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   const SizedBox(width: 12),
                   if (!isAssignedToOther)
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                           if (!isAssignedToMe) {
                             try {
                               await ref.read(inventoryRepositoryProvider).assignCycleCountTask(taskId);
                               ref.invalidate(unifiedTasksProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã nhận việc thành công. Hãy bấm Tiến hành khi sẵn sàng.')));
+                              }
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                              return;
                             }
-                          }
-                          if (context.mounted) {
-                            context.push('/wms/count?binCode=${task['binCode']}');
+                          } else {
+                            if (context.mounted) {
+                              try {
+                                await ref.read(inventoryRepositoryProvider).startCycleCountTask(taskId);
+                                ref.invalidate(unifiedTasksProvider);
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                                return;
+                              }
+                              if (context.mounted) {
+                                context.push(
+                                  Uri(
+                                    path: '/wms/cycle_count_execution/$taskId',
+                                    queryParameters: {
+                                      'binCode': task['binId'] ?? '',
+                                      'sku': task['sku'] ?? 'Tất cả',
+                                    },
+                                  ).toString(),
+                                );
+                              }
+                            }
                           }
                         },
                         child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),

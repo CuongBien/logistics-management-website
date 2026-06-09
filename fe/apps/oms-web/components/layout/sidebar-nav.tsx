@@ -52,6 +52,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Dashboard", href: "/", icon: <LayoutDashboard className="h-4 w-4" /> },
       { label: "Orders (OMS)", href: "/orders", icon: <ShoppingCart className="h-4 w-4" /> },
+      { label: "Yêu Cầu Nhập Kho", href: "/inbound/requests", icon: <PackageOpen className="h-4 w-4" /> },
       { label: "Scanner (QR)", href: "/wms/scanner", icon: <QrCode className="h-4 w-4" /> },
       { label: "Reports", href: "/reports", icon: <BarChart3 className="h-4 w-4" /> },
     ]

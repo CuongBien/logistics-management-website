@@ -188,8 +188,12 @@ export async function confirmReplenish(data: ConfirmReplenishRequest): Promise<a
 }
 
 // A1 - A7: Helper to get QR image URL as object URL from blob (including auth header)
-export async function getQrImageUrl(type: 'bin' | 'order' | 'outbound-order' | 'shipment' | 'receipt' | 'sku', idOrCode: string): Promise<string> {
-  const token = await getStoredToken();
+export async function getQrImageUrl(
+  type: 'bin' | 'order' | 'outbound-order' | 'shipment' | 'receipt' | 'sku', 
+  idOrCode: string,
+  tokenOverride?: string | null
+): Promise<string> {
+  const token = tokenOverride !== undefined ? tokenOverride : await getStoredToken();
   const path = `/qrcode/${type}/${idOrCode}`;
   
   const headers: Record<string, string> = {};
@@ -204,6 +208,11 @@ export async function getQrImageUrl(type: 'bin' | 'order' | 'outbound-order' | '
   
   if (!response.ok) {
     throw new Error(`Failed to fetch QR image: ${response.statusText}`);
+  }
+  
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('image/')) {
+    throw new Error(`Expected image, but got content-type: ${contentType}`);
   }
   
   const blob = await response.blob();

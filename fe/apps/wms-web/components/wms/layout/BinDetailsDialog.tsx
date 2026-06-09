@@ -8,6 +8,8 @@ import { Button } from "@repo/ui/components/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/components/select"
 import { updateBinStatus } from "@/lib/api/wms-layout"
 import { getInventoryList } from "@/lib/api/wms-inventory"
+import { getQrImageUrl } from "@/lib/services/qrcode"
+import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@repo/ui/components/form"
 import { useForm } from "react-hook-form"
@@ -28,8 +30,10 @@ interface BinDetailsDialogProps {
 }
 
 export function BinDetailsDialog({ bin, open, onOpenChange, onUpdated, isWmsAdmin }: BinDetailsDialogProps) {
+  const { data: session } = useSession()
   const [items, setItems] = useState<InventoryItemDto[]>([])
   const [loadingItems, setLoadingItems] = useState(false)
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,13 +41,33 @@ export function BinDetailsDialog({ bin, open, onOpenChange, onUpdated, isWmsAdmi
   })
 
   useEffect(() => {
+    let active = true
     if (bin && open) {
       form.reset({ status: bin.status })
-      fetchItems(bin.warehouseId, bin.id)
+      fetchItems(bin.warehouseId || "", bin.id)
+      
+      const token = session?.accessToken;
+      // Fetch authenticated QR image URL
+      getQrImageUrl('bin', bin.id, token)
+        .then(url => {
+          if (active) setQrUrl(url)
+        })
+        .catch(err => {
+          console.error("Failed to load QR image URL", err)
+          if (active) setQrUrl(null)
+        })
     } else {
       setItems([])
+      if (qrUrl) {
+        URL.revokeObjectURL(qrUrl)
+      }
+      setQrUrl(null)
     }
-  }, [bin, open, form])
+
+    return () => {
+      active = false
+    }
+  }, [bin, open, form, session])
 
   const fetchItems = async (warehouseId: string, binId: string) => {
     setLoadingItems(true)
@@ -83,6 +107,44 @@ export function BinDetailsDialog({ bin, open, onOpenChange, onUpdated, isWmsAdmi
         </DialogHeader>
 
         <div className="space-y-6 mt-2">
+          {/* QR Code Section */}
+          <div className="border rounded-xl bg-slate-50/50 p-4 overflow-hidden flex flex-col gap-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-b pb-2 flex items-center gap-1.5">
+              <span className="p-1 bg-[#C41E3A]/10 rounded text-[#C41E3A]">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM14 14h2v2h-2zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg>
+              </span>
+              Mã QR Ô Kệ (Bin QR Code)
+            </h4>
+            <div className="flex flex-col sm:flex-row items-center gap-4 pt-1">
+              {qrUrl ? (
+                <img 
+                  src={qrUrl} 
+                  alt={`Mã QR của ${bin.binCode}`}
+                  className="w-28 h-28 border-2 p-1.5 rounded-lg bg-white shadow-sm shrink-0"
+                />
+              ) : (
+                <div className="w-28 h-28 border-2 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Quét trực tiếp mã QR này trên màn hình bằng điện thoại để giả lập PDA, hoặc tải ảnh lớn để in ấn.
+                </p>
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  size="sm" 
+                  className="w-fit text-xs font-semibold h-8 text-indigo-600 hover:text-indigo-700"
+                  onClick={() => qrUrl && window.open(qrUrl, '_blank')}
+                  disabled={!qrUrl}
+                >
+                  Mở ảnh QR mới
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* Location Details Section */}
           <div className="border rounded-xl bg-slate-50/50 overflow-hidden">
             <div className="bg-slate-100 px-3 py-2 border-b flex items-center gap-2">

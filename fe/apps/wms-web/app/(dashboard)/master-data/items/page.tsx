@@ -6,6 +6,9 @@ import { ItemDto } from "@/types/master-data"
 import { ItemMasterForm } from "@/components/wms/masterdata/ItemMasterForm"
 import { Button } from "@repo/ui/components/button"
 import { Input } from "@repo/ui/components/input"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@repo/ui/components/dialog"
+import { useSession } from "next-auth/react"
+import { getQrImageUrl } from "@/lib/services/qrcode"
 import {
   Table,
   TableBody,
@@ -33,12 +36,14 @@ import {
   CheckCircle2,
   XCircle,
   Database,
-  ArrowRight
+  ArrowRight,
+  QrCode
 } from "lucide-react"
 import { toast } from "sonner"
 import { Skeleton } from "@repo/ui/components/skeleton"
 
 export default function ItemMasterPage() {
+  const { data: session } = useSession()
   const [items, setItems] = useState<ItemDto[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -46,6 +51,45 @@ export default function ItemMasterPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ItemDto | null>(null)
   
+  // Printable QR Code Dialog states
+  const [printQrUrl, setPrintQrUrl] = useState<string | null>(null)
+  const [printQrTitle, setPrintQrTitle] = useState("")
+
+  const loadPrintQr = async (skuCode: string) => {
+    try {
+      const url = await getQrImageUrl('sku', skuCode, session?.accessToken)
+      setPrintQrUrl(url)
+      setPrintQrTitle(`Mã sản phẩm SKU: ${skuCode}`)
+    } catch (e) {
+      toast.error("Không thể sinh ảnh QR Code cho SKU này.")
+    }
+  }
+
+  const handlePrint = () => {
+    if (!printQrUrl) return
+    const win = window.open("", "_blank")
+    if (win) {
+      win.document.write(`
+        <html>
+          <head>
+            <title>In nhãn QR - ${printQrTitle}</title>
+            <style>
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: monospace; }
+              img { width: 300px; height: 300px; }
+              .title { font-size: 24px; font-weight: bold; margin-top: 15px; }
+              .footer { font-size: 14px; color: #555; margin-top: 5px; }
+            </style>
+          </head>
+          <body>
+            <img src="${printQrUrl}" onload="window.print(); window.close();" />
+            <div class="title">${printQrTitle}</div>
+            <div class="footer">Hệ thống Logistics Management System (LMS)</div>
+          </body>
+        </html>
+      `)
+      win.document.close()
+    }
+  }
   // Tracking intermediate status change loaders per-row
   const [togglingRows, setTogglingRows] = useState<Record<string, boolean>>({})
 
@@ -338,6 +382,17 @@ export default function ItemMasterPage() {
                     {/* Actions */}
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {/* QR Code Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => loadPrintQr(item.sku)}
+                          className="h-7 w-7 rounded-md hover:bg-slate-100 text-muted-foreground hover:text-[#C41E3A] transition-colors"
+                          title="Xem mã QR của SKU"
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                        </Button>
+
                         {/* Edit Button */}
                         <Button
                           variant="ghost"
@@ -385,6 +440,41 @@ export default function ItemMasterPage() {
         selectedItem={selectedItem}
         onSuccess={fetchItemData}
       />
+
+      {/* Printable QR Code Dialog */}
+      {printQrUrl && (
+        <Dialog open={!!printQrUrl} onOpenChange={(open) => !open && setPrintQrUrl(null)}>
+          <DialogContent className="max-w-xs w-full bg-slate-900 border-slate-800 shadow-2xl text-white">
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-[#C41E3A]" />
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-sm font-bold text-slate-100">Tem Nhãn QR Code SKU</DialogTitle>
+              <DialogDescription className="text-[10px] text-slate-400 font-mono mt-0.5">{printQrTitle}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="bg-white p-3 rounded-lg flex items-center justify-center border border-slate-800">
+                <img src={printQrUrl} className="w-48 h-48 block" alt="Printable QR Code" />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  onClick={() => setPrintQrUrl(null)}
+                >
+                  Đóng
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-[#C41E3A] hover:bg-[#a01830] text-white font-bold"
+                  onClick={handlePrint}
+                >
+                  In mã QR
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

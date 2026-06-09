@@ -88,6 +88,11 @@ public class InboundController : ApiControllerBase
     public async Task<ActionResult<Guid>> CreateReceipt([FromBody] CreateInboundReceiptCommand command)
     {
         var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(operatorId))
+        {
+            return BadRequest(new { Code = "Operator.MissingClaim", Message = "Missing operator claim (sub) in access token." });
+        }
+
         var finalCommand = command with { OperatorId = operatorId };
         var result = await Mediator.Send(finalCommand);
         return ToActionResult(result);

@@ -12,7 +12,8 @@ namespace Warehouse.Application.Features.Outbound.Commands.PickStock;
 public record ConfirmPickCommand(
     Guid PickTaskId, 
     string OperatorId,
-    int? PickedQuantity = null) : IRequest<Result<bool>>;
+    int? PickedQuantity = null,
+    Guid? ActualFromBinId = null) : IRequest<Result<bool>>;
 
 public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickCommand, Result<bool>>
 {
@@ -59,8 +60,14 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
         if (pickTask.Status == PickTaskStatus.Completed)
             return Result<bool>.Success(true); // Idempotent
 
+        // Resolve actual pick bin
+        Guid fromBinId = request.ActualFromBinId ?? pickTask.FromBinId;
+        var fromBin = await _context.Bins.FirstOrDefaultAsync(b => b.Id == fromBinId, cancellationToken);
+        if (fromBin == null)
+            return Result<bool>.Failure(Error.NotFound("PickTask.FromBinNotFound", "Source bin not found"));
+
         // Complete the task
-        pickTask.Complete(request.OperatorId);
+        pickTask.Complete(request.OperatorId, fromBinId);
 
         // Update Line
         var line = pickTask.OutboundOrderLine;
@@ -78,8 +85,6 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
                 cancellationToken: cancellationToken);
         }
 
-        // Check if all lines are fully picked
-        
         // Update Order Status
         var allFullyPicked = order.Lines.All(l => l.PickedQty >= l.RequestedQty);
         var anyPicked = order.Lines.Any(l => l.PickedQty > 0);
@@ -107,6 +112,66 @@ public sealed class ConfirmPickCommandHandler : IRequestHandler<ConfirmPickComma
             pickTask.PickedAt ?? DateTime.UtcNow
         );
         _context.OperatorActivityLogs.Add(activityLog);
+
+        // Log override if source bin differs
+        if (fromBinId != pickTask.FromBinId)
+        {
+            var origBin = await _context.Bins.FirstOrDefaultAsync(b => b.Id == pickTask.FromBinId, cancellationToken);
+            var origCode = origBin?.BinCode ?? "UNKNOWN";
+
+            var overrideLog = new TaskOverrideLog(
+                order.TenantId,
+                order.WarehouseId,
+                request.OperatorId,
+                "Pick",
+                pickTask.Id,
+                pickTask.OutboundOrderLine.Sku,
+                actualPickedQty,
+                origCode,
+                fromBin.BinCode,
+                "Operator overrode picking source bin"
+            );
+            _context.TaskOverrideLogs.Add(overrideLog);
+        }
+
+        if (!string.IsNullOrEmpty(pickTask.WaveId))
+        {
+            Guid? waveIdGuid = null;
+            if (Guid.TryParse(pickTask.WaveId, out var parsedGuid))
+            {
+                waveIdGuid = parsedGuid;
+            }
+
+            var wave = await _context.Waves.FirstOrDefaultAsync(w => 
+                (waveIdGuid.HasValue && w.Id == waveIdGuid.Value) || 
+                w.WaveNo == pickTask.WaveId, cancellationToken);
+            if (wave != null && wave.Status != WaveStatus.Completed && wave.Status != WaveStatus.Cancelled)
+            {
+                var waveIdStr = wave.Id.ToString();
+                var waveNoStr = wave.WaveNo;
+                var allTasks = await _context.PickTasks
+                    .Where(pt => pt.WaveId == waveIdStr || pt.WaveId == waveNoStr)
+                    .ToListAsync(cancellationToken);
+
+                var allTerminal = allTasks.All(t =>
+                    t.Status == PickTaskStatus.Completed ||
+                    t.Status == PickTaskStatus.Cancelled ||
+                    t.Status == PickTaskStatus.Failed);
+
+                if (allTerminal)
+                {
+                    if (wave.Status == WaveStatus.New)
+                    {
+                        wave.StartPicking();
+                    }
+                    if (wave.Status == WaveStatus.Picking)
+                    {
+                        wave.Complete();
+                        _logger.LogInformation("Wave {WaveNo} is fully completed because all sibling pick tasks are terminal", wave.WaveNo);
+                    }
+                }
+            }
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("PickTask {TaskId} completed by {Operator}", pickTask.Id, request.OperatorId);

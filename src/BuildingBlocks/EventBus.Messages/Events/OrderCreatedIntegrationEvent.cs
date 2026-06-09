@@ -14,7 +14,10 @@ public record OrderCreatedIntegrationEvent(
     string? TenantId = null,
     string? SourceWarehouseCode = null,
     string? ConsignorCity = null,
-    string? ConsignorAddress = null) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
+    string? ConsignorAddress = null,
+    string? ConsigneeCity = null,
+    string? ConsigneeAddress = null,
+    string? ConsigneeName = null) : IntegrationEvent(Guid.NewGuid(), DateTime.UtcNow);
 
 public record OrderItemEventDto(string SkuCode, int Quantity);
 

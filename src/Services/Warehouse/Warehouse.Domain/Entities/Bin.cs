@@ -19,13 +19,28 @@ public class Bin : Entity<Guid>, ISoftDelete
     public string? Shelf { get; private set; }
     public int PickSequence { get; private set; }
     
+    public double? MaxWeight { get; private set; }
+    public double? MaxVolume { get; private set; }
+    public int? MaxQuantity { get; private set; }
+    
     // Navigation
     public Zone Zone { get; private set; } = default!;
 
     // EF Core
     private Bin() { }
 
-    public Bin(Guid warehouseId, Guid zoneId, string binCode, BinStatus status = BinStatus.Available, string? aisle = null, string? rack = null, string? shelf = null, int pickSequence = 0)
+    public Bin(
+        Guid warehouseId, 
+        Guid zoneId, 
+        string binCode, 
+        BinStatus status = BinStatus.Available, 
+        string? aisle = null, 
+        string? rack = null, 
+        string? shelf = null, 
+        int pickSequence = 0,
+        double? maxWeight = null,
+        double? maxVolume = null,
+        int? maxQuantity = null)
     {
         Id = Guid.NewGuid();
         WarehouseId = warehouseId;
@@ -39,6 +54,17 @@ public class Bin : Entity<Guid>, ISoftDelete
         Rack = rack;
         Shelf = shelf;
         PickSequence = pickSequence;
+        MaxWeight = maxWeight;
+        MaxVolume = maxVolume;
+        MaxQuantity = maxQuantity;
+    }
+
+    public void SetCapacity(double? maxWeight, double? maxVolume, int? maxQuantity)
+    {
+        MaxWeight = maxWeight;
+        MaxVolume = maxVolume;
+        MaxQuantity = maxQuantity;
+        Version++;
     }
 
     public void UpdateLocation(string? aisle, string? rack, string? shelf, int pickSequence)

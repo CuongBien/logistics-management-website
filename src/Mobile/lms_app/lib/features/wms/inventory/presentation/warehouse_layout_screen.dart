@@ -76,27 +76,42 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
           String shelf = (bin['shelf']?.toString() ?? bin['Shelf']?.toString() ?? '').trim();
 
           // Bộ phân tách dự phòng thông minh dùng Regex & Tách chuỗi: Parse từ BinCode nếu các cột bị rỗng
+          final normalizedBinCode = binCode.toUpperCase().trim();
           if (aisle.isEmpty || rack.isEmpty || shelf.isEmpty) {
-            String code = binCode;
-            if (code.toUpperCase().startsWith('BIN-')) {
-              code = code.substring(4);
-            }
-            
-            final parts = code.split('-');
-            if (parts.length >= 3) {
-              if (shelf.isEmpty) shelf = parts[parts.length - 1];
-              if (rack.isEmpty) rack = parts[parts.length - 2];
-              if (aisle.isEmpty) aisle = parts.sublist(0, parts.length - 2).join('-');
-            } else if (parts.length == 2) {
-              final firstPart = parts[0];
-              final secondPart = parts[1];
+            if (normalizedBinCode == 'BIN-RETURN' || normalizedBinCode == 'RETURN') {
+              aisle = 'ĐẶC BIỆT';
+              rack = 'RETURN';
+              shelf = '01';
+            } else if (normalizedBinCode == 'BIN-SCRAP' || normalizedBinCode == 'SCRAP') {
+              aisle = 'ĐẶC BIỆT';
+              rack = 'SCRAP';
+              shelf = '01';
+            } else if (normalizedBinCode.contains('STAGING') || normalizedBinCode.contains('WALL') || normalizedBinCode.contains('DOCK')) {
+              aisle = 'PHỤ TRỢ';
+              rack = normalizedBinCode.replaceFirst('BIN-', '').replaceFirst('WALL-', '');
+              shelf = '01';
+            } else {
+              String code = binCode;
+              if (code.toUpperCase().startsWith('BIN-')) {
+                code = code.substring(4);
+              }
               
-              final regex = RegExp(r'^([A-Za-z]+)(\d+)$');
-              final match = regex.firstMatch(firstPart);
-              if (match != null) {
-                if (aisle.isEmpty) aisle = match.group(1) ?? '';
-                if (rack.isEmpty) rack = match.group(2) ?? '';
-                if (shelf.isEmpty) shelf = secondPart;
+              final parts = code.split('-');
+              if (parts.length >= 3) {
+                if (shelf.isEmpty) shelf = parts[parts.length - 1];
+                if (rack.isEmpty) rack = parts[parts.length - 2];
+                if (aisle.isEmpty) aisle = parts.sublist(0, parts.length - 2).join('-');
+              } else if (parts.length == 2) {
+                final firstPart = parts[0];
+                final secondPart = parts[1];
+                
+                final regex = RegExp(r'^([A-Za-z]+)(\d+)$');
+                final match = regex.firstMatch(firstPart);
+                if (match != null) {
+                  if (aisle.isEmpty) aisle = match.group(1) ?? '';
+                  if (rack.isEmpty) rack = match.group(2) ?? '';
+                  if (shelf.isEmpty) shelf = secondPart;
+                }
               }
             }
           }
@@ -104,8 +119,21 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
           aisle = aisle.toUpperCase().trim();
           rack = rack.trim();
           shelf = shelf.trim();
+
+          // Fallback final safety defaults so we never drop any bins
+          if (aisle.isEmpty) {
+            if (normalizedBinCode.contains('RETURN') || normalizedBinCode.contains('SCRAP')) {
+              aisle = 'ĐẶC BIỆT';
+            } else if (normalizedBinCode.contains('STAGING') || normalizedBinCode.contains('WALL') || normalizedBinCode.contains('DOCK')) {
+              aisle = 'PHỤ TRỢ';
+            } else {
+              aisle = 'KHÁC';
+            }
+          }
+          if (rack.isEmpty) rack = normalizedBinCode.isNotEmpty ? normalizedBinCode : '01';
+          if (shelf.isEmpty) shelf = '01';
+
           if (binCode.isNotEmpty) {
-            final normalizedBinCode = binCode.toUpperCase().trim();
             final Map<String, dynamic> binInfo = {
               'id': bin['id'] ?? bin['Id'],
               'binCode': normalizedBinCode,
@@ -333,7 +361,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             )
@@ -425,8 +453,8 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildLegendItem(Colors.grey.shade300, 'Trống (Sẵn sàng)'),
-                    _buildLegendItem(AppColors.primary.withOpacity(0.25), 'Có hàng'),
-                    _buildLegendItem(Colors.amber.withOpacity(0.35), 'Đầy'),
+                    _buildLegendItem(AppColors.primary.withValues(alpha: 0.25), 'Có hàng'),
+                    _buildLegendItem(Colors.amber.withValues(alpha: 0.35), 'Đầy'),
                     _buildLegendItem(Colors.green.shade600, 'Chứa SKU'),
                   ],
                 ),
@@ -552,7 +580,9 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
               return Expanded(
                 child: Center(
                   child: Text(
-                    'Kệ $rackStr',
+                    _selectedAisle == 'ĐẶC BIỆT' || _selectedAisle == 'PHỤ TRỢ' || _selectedAisle == 'KHÁC'
+                        ? rackStr
+                        : 'Kệ $rackStr',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ),
@@ -637,9 +667,9 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
     if (fillState == 'AVAILABLE' || fillState == 'EMPTY') {
       bgColor = Colors.grey.shade100;
     } else if (fillState == 'OCCUPIED') {
-      bgColor = AppColors.primary.withOpacity(0.12);
+      bgColor = AppColors.primary.withValues(alpha: 0.12);
     } else if (fillState == 'FULL') {
-      bgColor = Colors.amber.withOpacity(0.18);
+      bgColor = Colors.amber.withValues(alpha: 0.18);
     }
 
     if (isHighlighted) {
@@ -649,8 +679,10 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
       bgColor = Colors.blue.shade100;
     }
 
-    // Hiển thị nhãn vị trí gọn gàng, ví dụ: "01-02"
-    final labelText = '$rack-$shelf';
+    // Hiển thị nhãn vị trí gọn gàng, ví dụ: "01-02" hoặc "BIN-RETURN" cho dãy đặc biệt
+    final labelText = _selectedAisle == 'ĐẶC BIỆT' || _selectedAisle == 'PHỤ TRỢ' || _selectedAisle == 'KHÁC'
+        ? binCode
+        : '$rack-$shelf';
 
     return InkWell(
       onTap: () => _showBinDetails(binId, binCode),
@@ -666,7 +698,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
                   ? Border.all(color: AppColors.primary, width: 2.5)
                   : Border.all(color: Colors.grey.shade300, width: 0.8),
           boxShadow: isHighlighted
-              ? [BoxShadow(color: Colors.green.withOpacity(0.4), blurRadius: 6, spreadRadius: 1)]
+              ? [BoxShadow(color: Colors.green.withValues(alpha: 0.4), blurRadius: 6, spreadRadius: 1)]
               : null,
         ),
         alignment: Alignment.center,
@@ -694,9 +726,11 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
               )
             : Text(
                 labelText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 10, 
-                  color: isSuggestedEmpty ? AppColors.primary : textColor.withOpacity(0.8),
+                  fontSize: _selectedAisle == 'ĐẶC BIỆT' || _selectedAisle == 'PHỤ TRỢ' || _selectedAisle == 'KHÁC' ? 8 : 10, 
+                  color: isSuggestedEmpty ? AppColors.primary : textColor.withValues(alpha: 0.8),
                   fontWeight: isSuggestedEmpty ? FontWeight.bold : FontWeight.normal
                 ),
               ),
@@ -708,7 +742,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
     if (_searchedSku.isNotEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
-        color: AppColors.success.withOpacity(0.08),
+        color: AppColors.success.withValues(alpha: 0.08),
         child: Row(
           children: [
             const Icon(Icons.info_outline, color: AppColors.success),
@@ -732,7 +766,7 @@ class _WarehouseLayoutScreenState extends ConsumerState<WarehouseLayoutScreen> {
     if (_showEmptySuggestions) {
       return Container(
         padding: const EdgeInsets.all(16),
-        color: AppColors.primary.withOpacity(0.08),
+        color: AppColors.primary.withValues(alpha: 0.08),
         child: Row(
           children: [
             const Icon(Icons.lightbulb_outline, color: AppColors.primary),

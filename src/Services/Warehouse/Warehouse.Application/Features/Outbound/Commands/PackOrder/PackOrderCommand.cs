@@ -75,6 +75,16 @@ public sealed class PackOrderCommandHandler : IRequestHandler<PackOrderCommand, 
         }
 
         order.UpdateStatus(OutboundOrderStatus.Packed);
+
+        // Clean up transient PackVerifications
+        var pvs = await _context.PackVerifications
+            .Where(p => p.OutboundOrderId == order.Id)
+            .ToListAsync(cancellationToken);
+        if (pvs.Any())
+        {
+            _context.PackVerifications.RemoveRange(pvs);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Order {OrderId} packed successfully by {Operator}", order.Id, request.OperatorId);

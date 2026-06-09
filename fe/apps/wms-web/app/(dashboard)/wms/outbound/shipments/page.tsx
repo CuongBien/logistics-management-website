@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { ShipmentDto, getShipments, dispatchShipment, getShipmentOrders } from "@/lib/api/wms-outbound"
 import { OutboundOrderDto } from "@/types/wms-outbound"
+import { getWarehouses, getWarehouseRoutes } from "@/lib/api/wms-layout"
+import { WarehouseDto } from "@/types/wms-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/components/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@repo/ui/components/table"
 import { Loader2, Truck, Milestone, Search, RefreshCw, CheckCircle2, Navigation, Clock, AlertTriangle, Eye } from "lucide-react"
@@ -13,9 +15,12 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { useWarehouseContext } from "@/components/wms/rbac/WarehouseContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@repo/ui/components/dialog"
+import { QrActionModal } from "@/components/wms/qrcode/QrActionModal"
 
 export default function ShipmentsPage() {
   const [shipments, setShipments] = useState<ShipmentDto[]>([])
+  const [warehouses, setWarehouses] = useState<WarehouseDto[]>([])
+  const [routes, setRoutes] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -40,9 +45,64 @@ export default function ShipmentsPage() {
     }
   }
 
+  const fetchWarehousesAndRoutes = async () => {
+    try {
+      const [whData, routeData] = await Promise.all([
+        getWarehouses(true),
+        getWarehouseRoutes()
+      ])
+      setWarehouses(whData)
+      setRoutes(routeData)
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu phụ trợ:", error)
+    }
+  }
+
   useEffect(() => {
     fetchShipments()
+    fetchWarehousesAndRoutes()
   }, [activeWarehouseId])
+
+  const resolveRouteName = (routeId?: string) => {
+    if (!routeId) return "N/A"
+    const route = routes.find(r => r.id === routeId)
+    if (!route) return routeId
+
+    const srcWh = warehouses.find(w => w.id === route.sourceWarehouseId)
+    const destWh = warehouses.find(w => w.id === route.destinationWarehouseId)
+    const hopWh = warehouses.find(w => w.id === route.nextHopWarehouseId)
+
+    const srcStr = srcWh ? srcWh.code : "Unknown"
+    const hopStr = hopWh && route.nextHopWarehouseId !== route.destinationWarehouseId ? ` ➔ ${hopWh.code}` : ""
+    const destStr = destWh ? ` ➔ ${destWh.code}` : ""
+    
+    return (
+      <div className="flex items-center gap-1 font-semibold text-xs text-indigo-700 dark:text-indigo-400">
+        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 rounded border border-indigo-200/50">{srcStr}</span>
+        {hopStr && (
+          <>
+            <span className="text-muted-foreground text-[10px]">➔</span>
+            <span className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-950/40 rounded border border-amber-200/50 text-amber-700 dark:text-amber-400">{hopWh ? hopWh.code : "Transit"}</span>
+          </>
+        )}
+        {destStr && (
+          <>
+            <span className="text-muted-foreground text-[10px]">➔</span>
+            <span className="px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 rounded border border-emerald-200/50 text-emerald-700 dark:text-emerald-400">{destWh ? destWh.code : "End"}</span>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const resolveDestinationName = (destinationId?: string) => {
+    if (!destinationId) return "N/A"
+    const wh = warehouses.find(w => w.id === destinationId || w.code === destinationId)
+    if (wh) {
+      return `${wh.code} - ${wh.name}`
+    }
+    return destinationId
+  }
 
   const handleDispatch = async (id: string, shipmentNo: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xuất phát chuyến hàng ${shipmentNo}?`)) return
@@ -91,35 +151,77 @@ export default function ShipmentsPage() {
     switch (s) {
       case '1':
       case 'Planned':
-        return <Badge variant="outline" className="bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20 font-bold px-2 py-0.5">Planned</Badge>
+        return <Badge variant="outline" className="bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20 font-bold px-2 py-0.5">Lập kế hoạch</Badge>
       case '2':
       case 'Loading':
-        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 font-bold px-2 py-0.5">Loading</Badge>
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 font-bold px-2 py-0.5 animate-pulse">Đang bốc xếp</Badge>
       case '3':
       case 'ReadyToShip':
       case 'Ready to Ship':
-        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-bold px-2 py-0.5">Ready to Ship</Badge>
+        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-bold px-2 py-0.5">Sẵn sàng đi</Badge>
       case '4':
       case 'Shipped':
-        return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold px-2 py-0.5">Shipped</Badge>
+        return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold px-2 py-0.5">Đã xuất phát</Badge>
       case '5':
       case 'InTransit':
       case 'In Transit':
-        return <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 font-bold px-2 py-0.5 animate-pulse">In Transit</Badge>
+        return <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 font-bold px-2 py-0.5 animate-pulse">Đang đi đường</Badge>
       case '6':
       case 'Delivered':
-        return <Badge variant="outline" className="bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20 font-bold px-2 py-0.5">Delivered</Badge>
+        return <Badge variant="outline" className="bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20 font-bold px-2 py-0.5">Đã giao hàng</Badge>
       case '7':
       case 'Failed':
-        return <Badge variant="outline" className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 font-bold px-2 py-0.5">Failed</Badge>
+        return <Badge variant="outline" className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 font-bold px-2 py-0.5">Thất bại</Badge>
       case '8':
       case 'Returned':
-        return <Badge variant="outline" className="bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20 font-bold px-2 py-0.5">Returned</Badge>
+        return <Badge variant="outline" className="bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20 font-bold px-2 py-0.5">Bị trả lại</Badge>
       case '9':
       case 'Cancelled':
-        return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 font-bold px-2 py-0.5">Cancelled</Badge>
+        return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 font-bold px-2 py-0.5">Đã hủy</Badge>
       default:
-        return <Badge variant="outline">Unknown ({s})</Badge>
+        return <Badge variant="outline">Không rõ ({s})</Badge>
+    }
+  }
+
+  // Safe Date Formatter Helper
+  const formatOrderDate = (dateStr?: string) => {
+    if (!dateStr) return "N/A"
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return "N/A"
+      return format(d, "dd/MM/yyyy HH:mm")
+    } catch (e) {
+      return "N/A"
+    }
+  }
+
+  // Format Order Status Badge Helper
+  const formatOrderStatus = (status: string) => {
+    switch (status) {
+      case 'New':
+        return <Badge variant="outline" className="bg-zinc-100 text-zinc-700 border-zinc-200 font-bold px-2 py-0.5 select-none">Mới tạo (New)</Badge>;
+      case 'Allocating':
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 font-bold px-2 py-0.5 select-none animate-pulse">Cấp phát...</Badge>;
+      case 'Allocated':
+        return <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-bold px-2 py-0.5 select-none">Đã cấp phát (Allocated)</Badge>;
+      case 'AwaitingPick':
+        return <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/20 font-bold px-2 py-0.5 select-none">Chờ lấy hàng</Badge>;
+      case 'Picking':
+        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold px-2 py-0.5 select-none animate-pulse">Đang lấy hàng</Badge>;
+      case 'Picked':
+        return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20 font-bold px-2 py-0.5 select-none">Đã lấy hàng</Badge>;
+      case 'Packing':
+        return <Badge variant="outline" className="bg-violet-500/10 text-violet-600 border-violet-500/20 font-bold px-2 py-0.5 select-none">Đang đóng gói</Badge>;
+      case 'Packed':
+        return <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20 font-bold px-2 py-0.5 select-none">Đã đóng gói (Packed)</Badge>;
+      case 'Loaded':
+        return <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/20 font-bold px-2 py-0.5 select-none">Đã xếp xe (Loaded)</Badge>;
+      case 'Shipped':
+        return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold px-2 py-0.5 select-none">Đã xuất kho (Shipped)</Badge>;
+      case 'Cancelled':
+        return <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/20 font-bold px-2 py-0.5 select-none">Đã hủy (Cancelled)</Badge>;
+      default:
+        return <Badge variant="outline" className="font-bold px-2 py-0.5">{status}</Badge>;
     }
   }
 
@@ -327,12 +429,12 @@ export default function ShipmentsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{s.destinationId}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{resolveDestinationName(s.destinationId)}</span>
                           <span className="text-[10px] font-mono text-muted-foreground">{getDestinationTypeLabel(s.destinationType)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono font-semibold text-xs text-indigo-600">
-                        {s.routeId || "N/A"}
+                      <TableCell>
+                        {resolveRouteName(s.routeId)}
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(s.status)}
@@ -391,13 +493,43 @@ export default function ShipmentsPage() {
       <Dialog open={selectedShipment !== null} onOpenChange={(open) => !open && setSelectedShipment(null)}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              <Truck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              Chi Tiết Chuyến Hàng {selectedShipment?.shipmentNo}
-            </DialogTitle>
-            <DialogDescription>
-              Xem danh sách đơn hàng và các mặt hàng (SKU) thuộc chuyến hàng này.
-            </DialogDescription>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  Chi Tiết Chuyến Hàng {selectedShipment?.shipmentNo}
+                </DialogTitle>
+                <DialogDescription className="mt-1.5">
+                  Xem danh sách đơn hàng và các mặt hàng (SKU) thuộc chuyến hàng này.
+                </DialogDescription>
+              </div>
+              
+              {selectedShipment && (
+                <div className="flex items-center gap-2">
+                  <QrActionModal
+                    title="Quét Lên Xe (Load)"
+                    actionLabel="Quét Lên Xe"
+                    endpoint="/qrcode/actions/scan-load"
+                    buttonProps={{ variant: "outline", className: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200" }}
+                    payloadTemplate={{ shipmentId: selectedShipment.id }}
+                    fields={[
+                      { name: "scannedOrder", label: "Mã Đơn/Kiện Hàng", placeholder: "OB:..." }
+                    ]}
+                    suggestions={{
+                      scannedOrder: shipmentOrders[0]?.orderNo ? `OB:${shipmentOrders[0].orderNo}` : ''
+                    }}
+                    onSuccess={() => {
+                      if (selectedShipment) handleViewDetails(selectedShipment)
+                    }}
+                  />
+                  <Button variant="outline" onClick={() => {
+                    window.open(`/api/wms/qrcode/shipment/${selectedShipment.id}`, '_blank')
+                  }}>
+                    In Tem Lô Hàng
+                  </Button>
+                </div>
+              )}
+            </div>
           </DialogHeader>
 
           {selectedShipment && (
@@ -413,15 +545,15 @@ export default function ShipmentsPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-xs font-semibold uppercase">Nơi Đến (Destination)</span>
-                  <span className="font-bold text-foreground mt-0.5 block">{selectedShipment.destinationId}</span>
+                  <span className="font-bold text-foreground mt-0.5 block">{resolveDestinationName(selectedShipment?.destinationId)}</span>
                   <span className="text-xs text-muted-foreground mt-0.5 block">{getDestinationTypeLabel(selectedShipment.destinationType)}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-xs font-semibold uppercase">Lộ Trình / Trạng Thái</span>
-                  <span className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5 block">
-                    Route: {selectedShipment.routeId || "N/A"}
-                  </span>
-                  <div className="mt-1">{getStatusBadge(selectedShipment.status)}</div>
+                  <div className="mt-1 flex flex-col gap-1.5">
+                    {resolveRouteName(selectedShipment.routeId)}
+                    <div>{getStatusBadge(selectedShipment.status)}</div>
+                  </div>
                 </div>
               </div>
 
@@ -450,31 +582,31 @@ export default function ShipmentsPage() {
                             <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-base">
                               {order.orderNo}
                             </span>
-                            <Badge variant="outline" className="text-xs font-semibold">
-                              {order.status}
-                            </Badge>
+                            {formatOrderStatus(order.status)}
                           </div>
                           <div className="text-xs text-muted-foreground font-mono">
-                            Ngày tạo: {format(new Date(order.createdAt), "dd/MM/yyyy HH:mm")}
+                            Ngày tạo: {formatOrderDate(order.createdAt)}
                           </div>
                         </div>
                         <CardContent className="p-4">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="font-bold">Mã SKU</TableHead>
-                                <TableHead className="font-bold text-right">Số Lượng Yêu Cầu</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {order.lines.map((line) => (
-                                <TableRow key={line.id}>
-                                  <TableCell className="font-mono font-semibold">{line.sku}</TableCell>
-                                  <TableCell className="text-right font-mono font-bold">{line.quantity}</TableCell>
+                          <div className="w-full overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="font-bold">Mã SKU</TableHead>
+                                  <TableHead className="font-bold text-right">Số Lượng Yêu Cầu</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              </TableHeader>
+                              <TableBody>
+                                {order.lines.map((line) => (
+                                  <TableRow key={line.id}>
+                                    <TableCell className="font-mono font-semibold">{line.sku}</TableCell>
+                                    <TableCell className="text-right font-mono font-bold">{line.quantity}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}

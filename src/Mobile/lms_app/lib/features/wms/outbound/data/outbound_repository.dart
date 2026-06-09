@@ -1,10 +1,27 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/error/app_exception.dart';
 
 class OutboundRepository {
   final ApiClient _apiClient;
 
   OutboundRepository(this._apiClient);
+
+  AppException _handleError(DioException e, String fallbackMessage) {
+    try {
+      final appEx = AppException.fromDioException(e);
+      if (appEx.message.startsWith('Lỗi server:') || appEx.message.startsWith('Đã có lỗi xảy ra')) {
+        return AppException(
+          fallbackMessage,
+          code: appEx.code,
+          statusCode: appEx.statusCode,
+        );
+      }
+      return appEx;
+    } catch (_) {
+      return AppException(fallbackMessage);
+    }
+  }
 
   Future<List<dynamic>> getPickTasksForWave(String waveId) async {
     try {
@@ -13,9 +30,14 @@ class OutboundRepository {
       return response.data as List<dynamic>;
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
-        return [];
+        // Fallback: If wave not found, try retrieving by order ID/code
+        try {
+          return await getPickTasksByOrder(waveId);
+        } catch (_) {
+          return [];
+        }
       }
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi kết nối API lấy danh sách Pick Task');
+      throw _handleError(e, 'Lỗi kết nối API lấy danh sách Pick Task');
     }
   }
 
@@ -24,7 +46,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.post('/outbound/pick-tasks/$taskId/confirm');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi kết nối API xác nhận Pick');
+      throw _handleError(e, 'Lỗi kết nối API xác nhận Pick');
     }
   }
 
@@ -37,7 +59,7 @@ class OutboundRepository {
       // Trả về PutToWallResult (chứa TargetBinCode)
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi chia chọn Put-to-Wall');
+      throw _handleError(e, 'Lỗi chia chọn Put-to-Wall');
     }
   }
 
@@ -46,7 +68,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.post('/outbound/orders/$orderId/pack');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi đóng gói đơn hàng');
+      throw _handleError(e, 'Lỗi đóng gói đơn hàng');
     }
   }
 
@@ -55,7 +77,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.post('/outbound/shipments/$shipmentId/dispatch');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi xuất xe');
+      throw _handleError(e, 'Lỗi xuất xe');
     }
   }
 
@@ -93,7 +115,7 @@ class OutboundRepository {
       }
       return response.data.toString();
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi tạo đơn hàng xuất kho');
+      throw _handleError(e, 'Lỗi tạo đơn hàng xuất kho');
     }
   }
 
@@ -102,7 +124,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.post('/outbound/orders/$orderId/allocate');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi phân bổ tồn kho');
+      throw _handleError(e, 'Lỗi phân bổ tồn kho');
     }
   }
 
@@ -111,7 +133,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.post('/outbound/orders/$orderId/pick');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi kích hoạt lấy hàng');
+      throw _handleError(e, 'Lỗi kích hoạt lấy hàng');
     }
   }
 
@@ -120,14 +142,14 @@ class OutboundRepository {
       final response = await _apiClient.dio.post(
         '/outbound/waves/auto-plan',
         data: {
-          'warehouseId': warehouseId ?? 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
+          'warehouseId': warehouseId ?? 'a3a1a1a1-a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
           'maxSingleItemOrdersPerWave': 50,
           'maxMultiItemOrdersPerWave': 20,
         },
       );
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi chạy công cụ Auto-Plan Waves');
+      throw _handleError(e, 'Lỗi chạy công cụ Auto-Plan Waves');
     }
   }
 
@@ -136,7 +158,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.post('/outbound/orders/$orderId/ship');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi gán chuyến đi (Ship Order)');
+      throw _handleError(e, 'Lỗi gán chuyến đi (Ship Order)');
     }
   }
 
@@ -148,7 +170,7 @@ class OutboundRepository {
       }
       throw Exception('Không tìm thấy Shipment ID cho đơn hàng này');
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi tra cứu Shipment của đơn hàng');
+      throw _handleError(e, 'Lỗi tra cứu Shipment của đơn hàng');
     }
   }
 
@@ -157,7 +179,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.get('/outbound/orders/$orderId/pick-tasks');
       return response.data as List<dynamic>;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy danh sách Pick Task của đơn hàng');
+      throw _handleError(e, 'Lỗi lấy danh sách Pick Task của đơn hàng');
     }
   }
 
@@ -166,7 +188,7 @@ class OutboundRepository {
       final response = await _apiClient.dio.get('/outbound/orders/$orderId');
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy thông tin đơn hàng xuất kho');
+      throw _handleError(e, 'Lỗi lấy thông tin đơn hàng xuất kho');
     }
   }
 
@@ -174,6 +196,13 @@ class OutboundRepository {
     final response = await _apiClient.dio.post('/outbound/waves/$waveId/assign');
     if (response.statusCode != 200) {
       throw Exception('Failed to assign wave');
+    }
+  }
+
+  Future<void> startWave(String waveId) async {
+    final response = await _apiClient.dio.post('/outbound/waves/$waveId/start');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to start wave');
     }
   }
 
@@ -185,7 +214,7 @@ class OutboundRepository {
       );
       return response.statusCode == 200;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi hệ thống khi chia chọn (Sort)');
+      throw _handleError(e, 'Lỗi hệ thống khi chia chọn (Sort)');
     }
   }
 
@@ -200,7 +229,22 @@ class OutboundRepository {
       if (e.response?.statusCode == 404) {
         return [];
       }
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy danh sách Wave lấy hàng');
+      throw _handleError(e, 'Lỗi lấy danh sách Wave lấy hàng');
+    }
+  }
+
+  Future<List<dynamic>> getOutboundOrders(String warehouseId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/outbound/orders',
+        queryParameters: {'warehouseId': warehouseId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw _handleError(e, 'Lỗi lấy danh sách đơn hàng xuất kho');
     }
   }
 
@@ -215,7 +259,7 @@ class OutboundRepository {
       if (e.response?.statusCode == 404) {
         return [];
       }
-      throw Exception(e.response?.data['Message'] ?? 'Lỗi lấy danh sách chuyến xe (Shipments)');
+      throw _handleError(e, 'Lỗi lấy danh sách chuyến xe (Shipments)');
     }
   }
 }

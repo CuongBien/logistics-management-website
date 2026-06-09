@@ -33,6 +33,8 @@ export function OutboundOrderTable({ orders }: OutboundOrderTableProps) {
         return <Badge variant="outline" className="bg-violet-500/10 text-violet-600 border-violet-500/20 font-bold px-2 py-0.5 select-none">Đang đóng gói</Badge>;
       case 'Packed':
         return <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20 font-bold px-2 py-0.5 select-none">Đã đóng gói (Packed)</Badge>;
+      case 'Loaded':
+        return <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/20 font-bold px-2 py-0.5 select-none">Đã xếp xe (Loaded)</Badge>;
       case 'Shipped':
         return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold px-2 py-0.5 select-none">Đã xuất kho (Shipped)</Badge>;
       case 'Cancelled':

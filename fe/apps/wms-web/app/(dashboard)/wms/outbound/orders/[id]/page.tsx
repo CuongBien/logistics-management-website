@@ -3,24 +3,89 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { OutboundOrderDto, OutboundOrderTimelineDto, OutboundOrderStatus } from "@/types/wms-outbound"
-import { getOrderById, getPickTasksByOrder, getOrderTimeline } from "@/lib/api/wms-outbound"
+import { getOrderById, getPickTasksByOrder, getOrderTimeline, allocateOrder } from "@/lib/api/wms-outbound"
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@repo/ui/components/table"
 import { Button } from "@repo/ui/components/button"
 import { Badge } from "@repo/ui/components/badge"
-import { Loader2, ArrowLeft, Package, MapPin, Map, Calendar, ListChecks, CheckCircle2, Clock } from "lucide-react"
+import { Loader2, ArrowLeft, Package, MapPin, Map, Calendar, ListChecks, CheckCircle2, Clock, QrCode } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { QrActionModal } from "@/components/wms/qrcode/QrActionModal"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@repo/ui/components/dialog"
+import { useSession } from "next-auth/react"
+import { getQrImageUrl } from "@/lib/services/qrcode"
 
 export default function OutboundOrderDetailPage() {
   const params = useParams()
   const router = useRouter()
   const orderId = params.id as string
 
+  const { data: session } = useSession()
   const [order, setOrder] = useState<OutboundOrderDto | null>(null)
   const [timeline, setTimeline] = useState<OutboundOrderTimelineDto[]>([])
   const [pickTasks, setPickTasks] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isAllocating, setIsAllocating] = useState(false)
+
+  // Printable QR Code Dialog states
+  const [printQrUrl, setPrintQrUrl] = useState<string | null>(null)
+  const [printQrTitle, setPrintQrTitle] = useState("")
+
+  const loadPrintQr = async () => {
+    if (!order) return
+    try {
+      const url = await getQrImageUrl('outbound-order', order.id, session?.accessToken)
+      setPrintQrUrl(url)
+      setPrintQrTitle(`Đơn xuất kho WMS: ${order.orderNo}`)
+    } catch (e) {
+      toast.error("Không thể sinh ảnh QR Code cho đơn hàng này.")
+    }
+  }
+
+  const handlePrint = () => {
+    if (!printQrUrl) return
+    const win = window.open("", "_blank")
+    if (win) {
+      win.document.write(`
+        <html>
+          <head>
+            <title>In nhãn QR - ${printQrTitle}</title>
+            <style>
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: monospace; }
+              img { width: 300px; height: 300px; }
+              .title { font-size: 24px; font-weight: bold; margin-top: 15px; }
+              .footer { font-size: 14px; color: #555; margin-top: 5px; }
+            </style>
+          </head>
+          <body>
+            <img src="${printQrUrl}" onload="window.print(); window.close();" />
+            <div class="title">${printQrTitle}</div>
+            <div class="footer">Hệ thống Logistics Management System (LMS)</div>
+          </body>
+        </html>
+      `)
+      win.document.close()
+    }
+  }
+
+  const handleAllocate = async () => {
+    if (!orderId) return
+    setIsAllocating(true)
+    try {
+      const result = await allocateOrder(orderId)
+      if (result.success) {
+        toast.success("Cấp phát tồn kho thành công và đã tạo công việc nhặt hàng!")
+        await fetchOrderDetails()
+      } else {
+        toast.error("Không thể cấp phát tồn kho")
+      }
+    } catch (error) {
+      toast.error("Lỗi khi cấp phát tồn kho")
+    } finally {
+      setIsAllocating(false)
+    }
+  }
 
   useEffect(() => {
     if (orderId) {
@@ -56,6 +121,7 @@ export default function OutboundOrderDetailPage() {
       case 'Picked': return <Badge variant="outline" className="bg-orange-50 text-orange-600">Đã lấy hàng</Badge>;
       case 'Packing': return <Badge variant="outline" className="bg-violet-50 text-violet-600">Đang đóng gói</Badge>;
       case 'Packed': return <Badge variant="outline" className="bg-purple-50 text-purple-600">Đã đóng gói</Badge>;
+      case 'Loaded': return <Badge variant="outline" className="bg-sky-50 text-sky-600">Đã xếp xe</Badge>;
       case 'Shipped': return <Badge variant="outline" className="bg-emerald-50 text-emerald-600">Đã xuất kho</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
@@ -108,6 +174,83 @@ export default function OutboundOrderDetailPage() {
               Chủ Hàng: <span className="font-semibold text-foreground">{order.tenantId}</span>
             </p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Nút Allocate (Cấp phát tồn kho) */}
+          {order.status === 'New' && (
+            <Button
+              variant="outline"
+              className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200 font-semibold"
+              onClick={handleAllocate}
+              disabled={isAllocating}
+            >
+              {isAllocating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang cấp phát...
+                </>
+              ) : (
+                "Allocate (Cấp phát)"
+              )}
+            </Button>
+          )}
+
+          {/* Quét Lấy Hàng (Pick) */}
+          {(order.status === 'Allocated' || order.status === 'Picking' || order.status === 'PartiallyPicked') && (
+            <QrActionModal
+              title="Quét Lấy Hàng (Pick)"
+              actionLabel="Quét Lấy Hàng"
+              endpoint="/qrcode/actions/confirm-pick"
+              buttonProps={{ variant: "outline", className: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200" }}
+              payloadTemplate={{ pickTaskId: pickTasks[0]?.id }} // Lấy task đầu tiên để test
+              fields={[
+                { name: "scannedBin", label: "Mã Ô Kệ (Bin)", placeholder: "BIN:..." },
+                { name: "scannedSku", label: "Mã Sản Phẩm (SKU)", placeholder: "SKU:..." },
+                { name: "quantity", label: "Số Lượng Thực Lấy", type: "number" }
+              ]}
+              suggestions={{
+                scannedBin: pickTasks[0]?.fromBin?.binCode || 'BIN-RETURN',
+                scannedSku: pickTasks[0]?.outboundOrderLine?.sku || '',
+                quantity: pickTasks[0]?.quantity || 1
+              }}
+              onSuccess={fetchOrderDetails}
+            />
+          )}
+
+          {/* Quét Đóng Gói (Pack) */}
+          {(order.status === 'Picked' || order.status === 'PartiallyPicked' || order.status === 'Packing') && (
+            <QrActionModal
+              title="Quét Đóng Gói (Verify Pack)"
+              actionLabel="Quét Đóng Gói"
+              endpoint="/qrcode/actions/verify-pack"
+              buttonProps={{ variant: "outline", className: "bg-violet-50 text-violet-700 hover:bg-violet-100 border-violet-200" }}
+              payloadTemplate={{ outboundOrderId: order.id }}
+              fields={[
+                { name: "scannedSku", label: "Mã Sản Phẩm (SKU)", placeholder: "SKU:..." },
+                { name: "quantity", label: "Số Lượng Thực Tế", type: "number" }
+              ]}
+              suggestions={{
+                scannedSku: order.lines?.[0]?.sku || '',
+                quantity: order.lines?.[0]?.quantity || 1
+              }}
+              onSuccess={fetchOrderDetails}
+            />
+          )}
+          
+          <Button 
+            variant="outline" 
+            className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold"
+            onClick={loadPrintQr}
+          >
+            <QrCode className="h-4 w-4 mr-2" />
+            Xem mã QR
+          </Button>
+
+          <Button variant="outline" onClick={() => {
+            window.open(`/api/wms/qrcode/outbound-order/${order.id}`, '_blank')
+          }}>
+            In Tem Thùng
+          </Button>
         </div>
       </div>
 
@@ -168,6 +311,8 @@ export default function OutboundOrderDetailPage() {
                 <TableHeader className="bg-muted/5">
                   <TableRow>
                     <TableHead className="font-bold">Mã SKU</TableHead>
+                    <TableHead className="font-bold text-center">Vị trí Kệ (Bin)</TableHead>
+                    <TableHead className="font-bold text-center">Mã Sóng (Wave ID)</TableHead>
                     <TableHead className="font-bold text-center">SL Cần Lấy</TableHead>
                     <TableHead className="font-bold text-center">Trạng Thái</TableHead>
                   </TableRow>
@@ -176,19 +321,23 @@ export default function OutboundOrderDetailPage() {
                   {pickTasks.map((task, idx) => (
                     <TableRow key={task.id || idx}>
                       <TableCell className="font-mono font-semibold">{task.outboundOrderLine?.sku || 'Unknown'}</TableCell>
+                      <TableCell className="text-center font-mono font-bold text-indigo-600">{task.fromBin?.binCode || 'N/A'}</TableCell>
+                      <TableCell className="text-center font-mono">{task.waveId || 'N/A'}</TableCell>
                       <TableCell className="text-center font-mono">{task.quantity}</TableCell>
                       <TableCell className="text-center">
-                        {task.status === 2 || task.status === 'Completed' ? (
+                        {task.status === 3 || task.status === 'Completed' ? (
                           <Badge variant="outline" className="bg-emerald-50 text-emerald-600">Hoàn thành</Badge>
+                        ) : task.status === 2 || task.status === 'InProgress' ? (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-600 animate-pulse">Đang lấy</Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-600">Chờ lấy</Badge>
+                          <Badge variant="outline" className="bg-zinc-100 text-zinc-500">Chờ lấy</Badge>
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
                   {pickTasks.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground text-sm">
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground text-sm">
                         Chưa sinh tác vụ lấy hàng (Có thể đơn chưa được cấp phát).
                       </TableCell>
                     </TableRow>
@@ -231,6 +380,40 @@ export default function OutboundOrderDetailPage() {
             </CardContent>
           </Card>
         </div>
+      {/* Printable QR Code Dialog */}
+      {printQrUrl && (
+        <Dialog open={!!printQrUrl} onOpenChange={(open) => !open && setPrintQrUrl(null)}>
+          <DialogContent className="max-w-xs w-full bg-slate-900 border-slate-800 shadow-2xl text-white">
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-[#C41E3A]" />
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-sm font-bold text-slate-100">Tem Nhãn QR Code Đơn Hàng</DialogTitle>
+              <DialogDescription className="text-[10px] text-slate-400 font-mono mt-0.5">{printQrTitle}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="bg-white p-3 rounded-lg flex items-center justify-center border border-slate-800">
+                <img src={printQrUrl} className="w-48 h-48 block" alt="Printable QR Code" />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  onClick={() => setPrintQrUrl(null)}
+                >
+                  Đóng
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-[#C41E3A] hover:bg-[#a01830] text-white font-bold"
+                  onClick={handlePrint}
+                >
+                  In mã QR
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       </div>
     </div>
   )

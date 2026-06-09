@@ -123,6 +123,7 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
         scannedBin: code,
       );
       
+      HapticFeedback.lightImpact();
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('✅ Đã xác nhận cất hàng thành công!'),
@@ -133,6 +134,7 @@ class _PutawayExecutionScreenState extends ConsumerState<PutawayExecutionScreen>
         context.pop();
       }
     } catch (e) {
+      HapticFeedback.vibrate();
       setState(() => _isLoading = false);
       if (mounted) {
         ErrorHandler.showError(context, e);

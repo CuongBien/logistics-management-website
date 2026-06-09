@@ -227,12 +227,27 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
             return;
         }
 
-        // Find warehouse that has the stock for the first SKU
-        var firstSku = msg.Items.First().SkuCode;
-        var warehouseId = await _context.InventoryItems
-            .Where(x => x.TenantId == (msg.TenantId ?? "DefaultTenant") && x.Sku == firstSku && x.QuantityOnHand > 0)
-            .Select(x => x.WarehouseId)
-            .FirstOrDefaultAsync();
+        Guid warehouseId = Guid.Empty;
+        if (!string.IsNullOrWhiteSpace(msg.SourceWarehouseCode))
+        {
+            var wh = await _context.Warehouses
+                .FirstOrDefaultAsync(x => x.Code == msg.SourceWarehouseCode);
+            if (wh != null)
+            {
+                warehouseId = wh.Id;
+                _logger.LogInformation("WMS Fulfillment: Using selected SourceWarehouseCode '{SourceWarehouseCode}' -> ID {WarehouseId}", msg.SourceWarehouseCode, warehouseId);
+            }
+        }
+
+        if (warehouseId == Guid.Empty)
+        {
+            // Find warehouse that has the stock for the first SKU
+            var firstSku = msg.Items.First().SkuCode;
+            warehouseId = await _context.InventoryItems
+                .Where(x => x.TenantId == (msg.TenantId ?? "DefaultTenant") && x.Sku == firstSku && x.QuantityOnHand > 0)
+                .Select(x => x.WarehouseId)
+                .FirstOrDefaultAsync();
+        }
 
         if (warehouseId == Guid.Empty)
         {
@@ -244,30 +259,52 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
                 return;
             }
             warehouseId = fallbackWarehouse.Id;
+            var firstSku = msg.Items.First().SkuCode;
             _logger.LogWarning("WMS Fulfillment Warning: No stock found for SKU '{Sku}'. Falling back to warehouse '{Warehouse}'", firstSku, fallbackWarehouse.Code);
         }
 
         var lines = msg.Items.Select(x => new OutboundOrderLineItem(x.SkuCode, x.Quantity, "PCS")).ToList();
 
-        // Resolve Destination Warehouse Details if provided
+        // Resolve Destination Warehouse Details if provided or resolved from city
         var destAddress = "Customer Shipping Address";
         var destCity = "Customer City";
         string? partnerId = null;
         double? latitude = null;
         double? longitude = null;
 
-        if (!string.IsNullOrWhiteSpace(msg.DestinationWarehouseCode))
+        var resolvedWarehouseCode = msg.DestinationWarehouseCode;
+        if (string.IsNullOrWhiteSpace(resolvedWarehouseCode) && !string.IsNullOrWhiteSpace(msg.ConsigneeCity))
+        {
+            resolvedWarehouseCode = ResolveDestinationWarehouseCode(msg.ConsigneeCity);
+        }
+
+        if (!string.IsNullOrWhiteSpace(resolvedWarehouseCode))
         {
             var destWh = await _context.Warehouses
-                .FirstOrDefaultAsync(w => w.Code == msg.DestinationWarehouseCode);
+                .FirstOrDefaultAsync(w => w.Code == resolvedWarehouseCode);
 
             if (destWh != null)
             {
-                destAddress = destWh.Name;
-                destCity = destWh.Code;
+                destAddress = !string.IsNullOrWhiteSpace(msg.ConsigneeName) 
+                    ? $"{msg.ConsigneeName} - {msg.ConsigneeAddress}" 
+                    : (!string.IsNullOrWhiteSpace(msg.ConsigneeAddress) ? msg.ConsigneeAddress : destWh.Name);
+                destCity = !string.IsNullOrWhiteSpace(msg.ConsigneeCity) ? msg.ConsigneeCity : destWh.Code;
                 partnerId = destWh.Code;
                 latitude = destWh.Latitude;
                 longitude = destWh.Longitude;
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(msg.ConsigneeAddress))
+            {
+                destAddress = !string.IsNullOrWhiteSpace(msg.ConsigneeName) 
+                    ? $"{msg.ConsigneeName} - {msg.ConsigneeAddress}" 
+                    : msg.ConsigneeAddress;
+            }
+            if (!string.IsNullOrWhiteSpace(msg.ConsigneeCity))
+            {
+                destCity = msg.ConsigneeCity;
             }
         }
 
@@ -300,7 +337,9 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
         var outboundOrderId = outboundResult.Value;
         _logger.LogInformation("WMS: Automatically created OutboundOrder {OutboundOrderId} for order {OrderId}.", outboundOrderId, msg.OrderId);
 
-        // Allocate Stock
+        // E2E DEMO CHANGE: Disable automatic stock allocation on creation so that
+        // the WMS Admin can manually click "Allocate" on the Web Dashboard (Step 2 of the script).
+        /*
         var allocateCmd = new AllocateStockCommand(outboundOrderId, "System");
         var allocateResult = await _mediator.Send(allocateCmd);
         if (allocateResult.IsFailure)
@@ -311,5 +350,44 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedIntegrationEvent>
         {
             _logger.LogInformation("WMS: Automatically allocated stock for OutboundOrder {OutboundOrderId}.", outboundOrderId);
         }
+        */
+    }
+
+    private string? ResolveDestinationWarehouseCode(string? city)
+    {
+        if (string.IsNullOrWhiteSpace(city)) return null;
+
+        var normalized = city.ToLowerInvariant()
+            .Replace("đ", "d")
+            .Replace("á", "a").Replace("à", "a").Replace("ả", "a").Replace("ã", "a").Replace("ạ", "a")
+            .Replace("ă", "a").Replace("ắ", "a").Replace("ằ", "a").Replace("ẳ", "a").Replace("ẵ", "a").Replace("ặ", "a")
+            .Replace("â", "a").Replace("ấ", "a").Replace("ầ", "a").Replace("ẩ", "a").Replace("ẫ", "a").Replace("ậ", "a")
+            .Replace("é", "e").Replace("è", "e").Replace("ẻ", "e").Replace("ẽ", "e").Replace("ẹ", "e")
+            .Replace("ê", "e").Replace("ế", "e").Replace("ề", "e").Replace("ể", "e").Replace("ễ", "e").Replace("ệ", "e")
+            .Replace("í", "i").Replace("ì", "i").Replace("ỉ", "i").Replace("ĩ", "i").Replace("ị", "i")
+            .Replace("ó", "o").Replace("ò", "o").Replace("ỏ", "o").Replace("õ", "o").Replace("ọ", "o")
+            .Replace("ô", "o").Replace("ố", "o").Replace("ồ", "o").Replace("ổ", "o").Replace("ỗ", "o").Replace("ộ", "o")
+            .Replace("ơ", "o").Replace("ớ", "o").Replace("ờ", "o").Replace("ở", "o").Replace("ỡ", "o").Replace("ợ", "o")
+            .Replace("ú", "u").Replace("ù", "u").Replace("ủ", "u").Replace("ũ", "u").Replace("ụ", "u")
+            .Replace("ư", "u").Replace("ứ", "u").Replace("ừ", "u").Replace("ử", "u").Replace("ữ", "u").Replace("ự", "u")
+            .Replace("ý", "y").Replace("ỳ", "y").Replace("ỷ", "y").Replace("ỹ", "y").Replace("ỵ", "y")
+            .Trim();
+
+        if (normalized.Contains("ha noi") || normalized.Contains("hn"))
+            return "WH-HN-006";
+        if (normalized.Contains("ho chi minh") || normalized.Contains("hcm") || normalized.Contains("sai gon") || normalized.Contains("sg"))
+            return "WH-SG-002";
+        if (normalized.Contains("da nang") || normalized.Contains("dn"))
+            return "WH-DN-004";
+        if (normalized.Contains("can tho") || normalized.Contains("ct"))
+            return "WH-CT-001";
+        if (normalized.Contains("nha trang") || normalized.Contains("nt"))
+            return "WH-NT-003";
+        if (normalized.Contains("vinh") || normalized.Contains("v"))
+            return "WH-V-005";
+        if (normalized.Contains("hai phong") || normalized.Contains("hp"))
+            return "WH-HP-007";
+
+        return null;
     }
 }

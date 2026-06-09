@@ -14,5 +14,6 @@ public record PickTaskDto(
     string? Rack,
     string? Shelf,
     int PickSequence,
-    PickTaskStatus Status
+    PickTaskStatus Status,
+    string? AssignedOperatorId
 );

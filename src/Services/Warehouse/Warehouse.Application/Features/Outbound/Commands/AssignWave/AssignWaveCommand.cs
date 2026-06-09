@@ -36,7 +36,8 @@ public class AssignWaveCommandHandler : IRequestHandler<AssignWaveCommand, Resul
             
         foreach (var task in pickTasks)
         {
-            task.Start(request.OperatorId);
+            // Do NOT call Start() here, just assign if needed or wait until Wave starts
+            // task.Assign(...) if such method exists, otherwise just wait for StartWave
         }
 
         await _context.SaveChangesAsync(cancellationToken);

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { OperatorDto } from '@/types/wms-rbac';
 import { AssignRoleDialog } from './AssignRoleDialog';
+import { OperatorPerformanceDrawer } from './OperatorPerformanceDrawer';
 import { Avatar, AvatarFallback } from '@repo/ui/components/avatar';
 import {
   Table,
@@ -21,7 +22,7 @@ import {
   TooltipTrigger,
 } from '@repo/ui/components/tooltip';
 import {
-  ShieldPlus, ShieldCheck, ShieldAlert, Warehouse, Crown, Package, ScanLine, ClipboardList, UserCog
+  ShieldPlus, ShieldCheck, ShieldAlert, Warehouse, Crown, Package, ScanLine, ClipboardList, UserCog, TrendingUp
 } from 'lucide-react';
 
 interface OperatorDataTableProps {
@@ -98,6 +99,7 @@ function getRoleStyle(roleName: string) {
 
 export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTableProps) {
   const [selectedOperator, setSelectedOperator] = useState<OperatorDto | null>(null);
+  const [viewingOperator, setViewingOperator] = useState<OperatorDto | null>(null);
 
   return (
     <TooltipProvider>
@@ -106,9 +108,9 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
           <TableHeader className="bg-muted/40">
             <TableRow>
               <TableHead className="font-bold w-[280px]">Nhân viên</TableHead>
-              <TableHead className="font-bold">Email</TableHead>
+              <TableHead className="font-bold">Liên hệ / Email</TableHead>
               <TableHead className="font-bold">Phân quyền hiện tại</TableHead>
-              <TableHead className="font-bold text-right w-[140px]">Hành động</TableHead>
+              <TableHead className="font-bold text-right w-[200px]">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -128,7 +130,10 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
                 <TableRow key={op.operatorSub} className="hover:bg-muted/15 transition-colors group">
                   {/* Name + Avatar + Username */}
                   <TableCell>
-                    <div className="flex items-center gap-3">
+                    <div 
+                      className="flex items-center gap-3 cursor-pointer group/cell"
+                      onClick={() => setViewingOperator(op)}
+                    >
                       <Avatar className="h-9 w-9 shrink-0">
                         <AvatarFallback
                           className={`${getAvatarColor(op.fullName)} text-white text-xs font-bold`}
@@ -137,11 +142,11 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <div className="font-semibold text-foreground truncate">
+                        <div className="font-semibold text-foreground truncate group-hover/cell:text-primary group-hover/cell:underline transition-colors">
                           {op.fullName}
                         </div>
                         <div className="text-xs text-muted-foreground font-mono truncate">
-                          @{op.username}
+                          @{op.username} {op.employeeCode && `• ${op.employeeCode}`}
                         </div>
                       </div>
                     </div>
@@ -149,7 +154,12 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
 
                   {/* Email */}
                   <TableCell className="text-muted-foreground text-sm">
-                    {op.email}
+                    <div className="font-medium">{op.email}</div>
+                    {op.phone && (
+                      <div className="text-[11px] text-muted-foreground/75 font-mono mt-0.5">
+                        {op.phone}
+                      </div>
+                    )}
                   </TableCell>
 
                   {/* Roles */}
@@ -189,15 +199,26 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
 
                   {/* Actions */}
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedOperator(op)}
-                      className="h-8 text-primary hover:bg-primary/10 font-medium opacity-70 group-hover:opacity-100 transition-opacity"
-                    >
-                      <ShieldPlus className="h-3.5 w-3.5 mr-1.5" />
-                      Phân quyền
-                    </Button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewingOperator(op)}
+                        className="h-8 text-muted-foreground hover:text-foreground hover:bg-muted font-medium opacity-70 group-hover:opacity-100 transition-opacity"
+                      >
+                        <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
+                        Hiệu suất
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedOperator(op)}
+                        className="h-8 text-primary hover:bg-primary/10 font-medium opacity-70 group-hover:opacity-100 transition-opacity"
+                      >
+                        <ShieldPlus className="h-3.5 w-3.5 mr-1.5" />
+                        Phân quyền
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -214,6 +235,14 @@ export function OperatorDataTable({ data, onRoleAssigned }: OperatorDataTablePro
               setSelectedOperator(null);
               onRoleAssigned();
             }}
+          />
+        )}
+
+        {viewingOperator && (
+          <OperatorPerformanceDrawer
+            operator={viewingOperator}
+            open={!!viewingOperator}
+            onOpenChange={(open) => !open && setViewingOperator(null)}
           />
         )}
       </div>

@@ -77,13 +77,14 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "WMS backend operation failed", details: rolesData.error?.message || "Unknown error" }, { status: 400 })
       }
 
-      // 4. Merge Keycloak Users with WMS Role Assignments (only show users who have WMS role assignments, filtering out OMS customer accounts)
+      // 4. Merge Keycloak Users with WMS Role Assignments
       const result = kcUsers
         .filter((u: any) => {
           return roleAssignments.some((r: any) => r.operatorSub === u.id)
         })
         .map((u: any) => {
-          const userRoles = roleAssignments.filter((r: any) => r.operatorSub === u.id).map((r: any) => ({
+          const matchingAssignments = roleAssignments.filter((r: any) => r.operatorSub === u.id)
+          const userRoles = matchingAssignments.map((r: any) => ({
             id: r.id,
             warehouseId: r.warehouseId,
             warehouseName: r.warehouseName || r.warehouseId.split('-')[0],
@@ -91,11 +92,15 @@ export async function GET(req: Request) {
             roleCode: r.roleCode
           }))
 
+          const wmsAssignment = matchingAssignments[0] || {}
+
           return {
             operatorSub: u.id,
-            fullName: `${u.lastName || ''} ${u.firstName || ''}`.trim() || u.username,
-            email: u.email || `${u.username}@example.com`,
+            fullName: wmsAssignment.fullName || `${u.lastName || ''} ${u.firstName || ''}`.trim() || u.username,
+            email: wmsAssignment.email || u.email || `${u.username}@example.com`,
             username: u.username,
+            phone: wmsAssignment.phone || (u.attributes?.phone?.[0]) || '',
+            employeeCode: wmsAssignment.employeeCode || (u.attributes?.employee_code?.[0]) || '',
             roles: userRoles
           }
         })
@@ -122,7 +127,7 @@ export async function POST(req: Request) {
     const isCreateNewStaff = body.username && body.password
 
     if (isCreateNewStaff) {
-      const { username, password, email, firstName, lastName, roleCode, warehouseId } = body
+      const { username, password, email, firstName, lastName, roleCode, warehouseId, phone, employeeCode } = body
 
       // 1. Get Admin Token for Keycloak
       const adminUrl = `${process.env.KEYCLOAK_URL || 'http://127.0.0.1:18080'}/realms/master/protocol/openid-connect/token`
@@ -164,6 +169,10 @@ export async function POST(req: Request) {
           firstName,
           lastName,
           enabled: true,
+          attributes: {
+            phone: [phone || ''],
+            employee_code: [employeeCode || '']
+          },
           credentials: [
             {
               type: "password",
@@ -235,7 +244,11 @@ export async function POST(req: Request) {
             operatorSub,
             roleCode,
             warehouseId,
-            displayName: `${lastName} ${firstName}`.trim()
+            displayName: `${lastName} ${firstName}`.trim(),
+            fullName: `${lastName} ${firstName}`.trim(),
+            email,
+            phone,
+            employeeCode
           }),
           signal: AbortSignal.timeout(8000)
         })

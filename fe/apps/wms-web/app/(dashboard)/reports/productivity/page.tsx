@@ -13,6 +13,8 @@ import {
   Calendar,
   AlertCircle
 } from "lucide-react"
+import { OperatorPerformanceDrawer } from "@/components/wms/rbac/OperatorPerformanceDrawer"
+import { OperatorDto } from "@/types/wms-rbac"
 import { Button } from "@repo/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/components/card"
 import { Skeleton } from "@repo/ui/components/skeleton"
@@ -38,6 +40,9 @@ export default function OperatorProductivityReportPage() {
   const { activeWarehouseId } = useWarehouseContext()
   const [data, setData] = useState<OperatorProductivityHistoryDto | null>(null)
   const [loading, setLoading] = useState(true)
+  const [operators, setOperators] = useState<OperatorDto[]>([])
+  const [selectedOperator, setSelectedOperator] = useState<OperatorDto | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const loadData = async () => {
     if (!activeWarehouseId) return
@@ -53,9 +58,34 @@ export default function OperatorProductivityReportPage() {
     }
   }
 
+  const loadOperators = async () => {
+    try {
+      const res = await fetch('/api/wms/users')
+      if (res.ok) {
+        const data = await res.json()
+        setOperators(data || [])
+      }
+    } catch (e) {
+      console.error("Failed to load operators", e)
+    }
+  }
+
   useEffect(() => {
     loadData()
+    loadOperators()
   }, [activeWarehouseId])
+
+  const getOperatorDetails = (opId: string): OperatorDto => {
+    const operator = operators.find(o => o.operatorSub === opId)
+    if (operator) return operator
+    return {
+      operatorSub: opId,
+      fullName: `Nhân viên (${opId.slice(0, 8)})`,
+      username: opId,
+      email: "",
+      roles: []
+    } as OperatorDto
+  }
 
   // Derive stats
   const totalCompleted = data?.leaderboard.reduce((sum, op) => sum + op.totalCompleted, 0) || 0
@@ -161,11 +191,11 @@ export default function OperatorProductivityReportPage() {
             <Award className="h-5 w-5 text-violet-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold truncate text-slate-950">
+            <div className="text-sm font-bold truncate text-slate-950">
               {loading ? (
                 <Skeleton className="h-8 w-32" />
               ) : bestOperator ? (
-                `${bestOperator.operatorId} (${bestOperator.totalCompleted})`
+                `${getOperatorDetails(bestOperator.operatorId).fullName} (${bestOperator.totalCompleted} tasks)`
               ) : (
                 "Chưa có dữ liệu"
               )}
@@ -315,42 +345,66 @@ export default function OperatorProductivityReportPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.leaderboard.map((op, index) => (
-                    <TableRow key={op.operatorId} className="hover:bg-slate-50 transition-colors">
-                      <TableCell className="font-semibold text-slate-900 flex items-center gap-2 py-3.5">
-                        <div className="h-6 w-6 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-bold flex items-center justify-center text-[#C41E3A]">
-                          {index + 1}
-                        </div>
-                        <span className="font-mono">{op.operatorId}</span>
-                      </TableCell>
-                      <TableCell className="text-center font-bold text-slate-900 font-mono">
-                        {op.pendingTasksCount} tasks
-                      </TableCell>
-                      <TableCell className="text-center font-bold text-slate-900 font-mono">
-                        {op.totalCompleted} tasks
-                      </TableCell>
-                      <TableCell className="text-center font-bold text-slate-700 font-mono">
-                        {formatSla(op.avgDurationSeconds)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
-                          op.totalCompleted > 50 
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
-                            : op.totalCompleted > 10 
-                              ? "bg-blue-100 text-blue-800 border border-blue-200" 
-                              : "bg-slate-100 text-slate-700 border border-slate-200"
-                        }`}>
-                          {op.totalCompleted > 50 ? "Xuất Sắc (SLA Vàng)" : op.totalCompleted > 10 ? "Tốt (SLA Bạc)" : "Chờ Tăng Tốc"}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {data.leaderboard.map((op, index) => {
+                    const details = getOperatorDetails(op.operatorId);
+                    return (
+                      <TableRow 
+                        key={op.operatorId} 
+                        className="hover:bg-slate-50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSelectedOperator(details);
+                          setDrawerOpen(true);
+                        }}
+                      >
+                        <TableCell className="font-semibold text-slate-900 flex items-center gap-2 py-3.5">
+                          <div className="h-6 w-6 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-bold flex items-center justify-center text-[#C41E3A]">
+                            {index + 1}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold">{details.fullName}</span>
+                            {details.employeeCode && (
+                              <span className="text-[10px] text-muted-foreground font-mono">MSNV: {details.employeeCode}</span>
+                            )}
+                            <span className="text-[9px] text-slate-400 font-mono">{op.operatorId.slice(0, 8)}...</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-bold text-slate-900 font-mono">
+                          {op.pendingTasksCount} tasks
+                        </TableCell>
+                        <TableCell className="text-center font-bold text-slate-900 font-mono">
+                          {op.totalCompleted} tasks
+                        </TableCell>
+                        <TableCell className="text-center font-bold text-slate-700 font-mono">
+                          {formatSla(op.avgDurationSeconds)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
+                            op.totalCompleted > 50 
+                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
+                              : op.totalCompleted > 10 
+                                ? "bg-blue-100 text-blue-800 border border-blue-200" 
+                                : "bg-slate-100 text-slate-700 border border-slate-200"
+                          }`}>
+                            {op.totalCompleted > 50 ? "Xuất Sắc (SLA Vàng)" : op.totalCompleted > 10 ? "Tốt (SLA Bạc)" : "Chờ Tăng Tốc"}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {selectedOperator && (
+        <OperatorPerformanceDrawer
+          operator={selectedOperator}
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+        />
+      )}
     </div>
   )
 }

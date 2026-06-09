@@ -5,6 +5,7 @@ using Warehouse.Application.Common.Interfaces;
 using Warehouse.Api.Controllers.Requests;
 using Logistics.Core;
 using Warehouse.Domain.Entities;
+using Warehouse.Application.Features.Outbound.Commands.ShipAndReleaseBin;
 
 namespace Warehouse.Api.Controllers;
 
@@ -20,17 +21,52 @@ public class OutboundController : ApiControllerBase
         _context = context;
     }
 
-    [HttpGet("orders/{orderId:guid}")]
+    [HttpGet("orders/{orderId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> GetOutboundOrder(Guid orderId)
+    public async Task<ActionResult> GetOutboundOrder(string orderId)
     {
         var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
-        var order = await _context.OutboundOrders
-            .Include(x => x.Lines)
-            .FirstOrDefaultAsync(x => x.OrderId == orderId && x.TenantId == tenantId);
+        
+        var cleanOrderId = orderId.Trim();
+        if (cleanOrderId.StartsWith("OB:", System.StringComparison.OrdinalIgnoreCase))
+            cleanOrderId = cleanOrderId[3..];
+        else if (cleanOrderId.StartsWith("ORD:", System.StringComparison.OrdinalIgnoreCase))
+            cleanOrderId = cleanOrderId[4..];
+            
+        OutboundOrder? order = null;
+        if (Guid.TryParse(cleanOrderId, out var guidId))
+        {
+            order = await _context.OutboundOrders
+                .Include(x => x.Lines)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => (x.OrderId == guidId || x.Id == guidId) && x.TenantId == tenantId);
+        }
+        else
+        {
+            order = await _context.OutboundOrders
+                .Include(x => x.Lines)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.OrderNo == cleanOrderId && x.TenantId == tenantId);
+        }
 
         if (order == null) return NotFound(new { Message = $"Outbound order for OrderId {orderId} not found." });
+
+        // Merge PackVerifications progress into the returned lines' PackedQty for active session display
+        var pvs = await _context.PackVerifications
+            .Where(p => p.OutboundOrderId == order.Id)
+            .AsNoTracking()
+            .ToListAsync();
+
+        foreach (var line in order.Lines)
+        {
+            var pv = pvs.FirstOrDefault(p => p.Sku == line.Sku);
+            if (pv != null)
+            {
+                line.UpdatePacked(pv.ScannedQty);
+            }
+        }
+
         return Ok(order);
     }
 
@@ -57,8 +93,26 @@ public class OutboundController : ApiControllerBase
         }
 
         var shipments = await query
+            .Include(x => x.Orders)
             .OrderByDescending(x => x.CreatedAt)
             .Take(1000)
+            .Select(x => new
+            {
+                x.Id,
+                x.TenantId,
+                x.CustomerId,
+                x.ShipmentNo,
+                x.WarehouseId,
+                x.DestinationType,
+                x.DestinationId,
+                x.Carrier,
+                x.RouteId,
+                x.TrackingNo,
+                x.Status,
+                orderCount = x.Orders.Count,
+                x.CreatedAt,
+                x.ShippedAt
+            })
             .ToListAsync();
 
         return Ok(shipments);
@@ -148,16 +202,66 @@ public class OutboundController : ApiControllerBase
         return ToActionResult(await Mediator.Send(command));
     }
 
-    [HttpGet("orders/{id:guid}/pick-tasks")]
-    public async Task<ActionResult<List<PickTask>>> GetPickTasksByOrder(Guid id)
+    [HttpGet("orders/{orderId}/pick-tasks")]
+    public async Task<ActionResult<List<Warehouse.Application.Features.Outbound.Queries.GetOptimizedPickTasks.PickTaskDto>>> GetPickTasksByOrder(string orderId)
     {
-        // Query trực tiếp từ DbContext để đơn giản hóa việc test
+        var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+        var cleanOrderId = orderId.Trim();
+        if (cleanOrderId.StartsWith("OB:", System.StringComparison.OrdinalIgnoreCase))
+            cleanOrderId = cleanOrderId[3..];
+        else if (cleanOrderId.StartsWith("ORD:", System.StringComparison.OrdinalIgnoreCase))
+            cleanOrderId = cleanOrderId[4..];
+
+        Guid? resolvedOrderId = null;
+        if (Guid.TryParse(cleanOrderId, out var guidId))
+        {
+            resolvedOrderId = guidId;
+        }
+        else
+        {
+            var order = await _context.OutboundOrders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.OrderNo == cleanOrderId && x.TenantId == tenantId);
+            if (order != null)
+            {
+                resolvedOrderId = order.Id;
+            }
+        }
+
+        if (resolvedOrderId == null)
+        {
+            return NotFound(new { Message = $"Outbound order {orderId} not found." });
+        }
+
         var tasks = await _context.PickTasks
-            .Include(pt => pt.OutboundOrderLine)
-            .Where(pt => pt.OutboundOrderLine.OutboundOrderId == id)
+            .Include(pt => pt.OutboundOrderLine).ThenInclude(ol => ol.OutboundOrder)
+            .Include(pt => pt.FromBin)
+            .Where(pt => pt.OutboundOrderLine.OutboundOrderId == resolvedOrderId.Value)
             .ToListAsync();
-            
-        return Ok(tasks);
+
+        var skus = tasks.Select(pt => pt.OutboundOrderLine.Sku).Distinct().ToList();
+        var skuDetails = await _context.ErpSkuMirrors
+            .Where(s => skus.Contains(s.SkuCode))
+            .ToDictionaryAsync(s => s.SkuCode, s => s);
+
+        var dtos = tasks
+            .Select(pt => new Warehouse.Application.Features.Outbound.Queries.GetOptimizedPickTasks.PickTaskDto(
+                pt.Id,
+                pt.OutboundOrderLine.OutboundOrder.OrderNo,
+                pt.OutboundOrderLine.Sku,
+                skuDetails.ContainsKey(pt.OutboundOrderLine.Sku) ? skuDetails[pt.OutboundOrderLine.Sku].Name : null,
+                skuDetails.ContainsKey(pt.OutboundOrderLine.Sku) ? skuDetails[pt.OutboundOrderLine.Sku].UnitOfMeasure : null,
+                pt.Quantity,
+                pt.FromBin.BinCode,
+                pt.FromBin.Aisle,
+                pt.FromBin.Rack,
+                pt.FromBin.Shelf,
+                pt.FromBin.PickSequence,
+                pt.Status,
+                pt.AssignedOperatorId
+            )).ToList();
+
+        return Ok(dtos);
     }
 
     [HttpPost("orders/{id:guid}/pack")]
@@ -178,6 +282,16 @@ public class OutboundController : ApiControllerBase
             request?.ShipmentId);
             
         return ToActionResult(await Mediator.Send(command));
+    }
+
+    [HttpPost("orders/ship-and-release")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ShipAndReleaseBinResult>> ShipAndReleaseBin([FromBody] ShipAndReleaseBinRequest request)
+    {
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+        var command = new ShipAndReleaseBinCommand(request.OrderNo, operatorId);
+        var result = await Mediator.Send(command);
+        return ToActionResult(result);
     }
 
     [HttpGet("orders/{id:guid}/shipment")]
@@ -333,12 +447,51 @@ public class OutboundController : ApiControllerBase
         });
     }
 
-    [HttpPost("waves/{id:guid}/start")]
+    [HttpPost("waves/{id}/start")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<bool>> StartWave(Guid id)
+    public async Task<ActionResult<bool>> StartWave(string id)
     {
-        var command = new Warehouse.Application.Features.Outbound.Commands.StartWave.StartWaveCommand(id);
-        return ToActionResult(await Mediator.Send(command));
+        var cleanId = id.Trim();
+        if (cleanId.StartsWith("OB:", System.StringComparison.OrdinalIgnoreCase))
+            cleanId = cleanId[3..];
+        else if (cleanId.StartsWith("ORD:", System.StringComparison.OrdinalIgnoreCase))
+            cleanId = cleanId[4..];
+
+        if (Guid.TryParse(cleanId, out var waveGuid))
+        {
+            var command = new Warehouse.Application.Features.Outbound.Commands.StartWave.StartWaveCommand(waveGuid);
+            return ToActionResult(await Mediator.Send(command));
+        }
+        else
+        {
+            // Direct Order Assignment fallback
+            var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+            var operatorId = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
+            var order = await _context.OutboundOrders
+                .FirstOrDefaultAsync(x => x.OrderNo == cleanId && x.TenantId == tenantId);
+            if (order == null)
+            {
+                return NotFound(new { Message = $"Wave/Order {id} not found." });
+            }
+
+            if (order.Status == OutboundOrderStatus.Allocated || order.Status == OutboundOrderStatus.PartiallyAllocated)
+            {
+                order.UpdateStatus(OutboundOrderStatus.Picking);
+            }
+
+            var tasks = await _context.PickTasks
+                .Include(pt => pt.OutboundOrderLine)
+                .Where(pt => pt.OutboundOrderLine.OutboundOrderId == order.Id && pt.Status == Warehouse.Domain.Entities.PickTaskStatus.Pending)
+                .ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                task.Start(operatorId);
+            }
+
+            await _context.SaveChangesAsync(default);
+            return Ok(true);
+        }
     }
 
     [HttpPost("waves/{id:guid}/release")]
@@ -374,14 +527,58 @@ public class OutboundController : ApiControllerBase
         return ToActionResult(await Mediator.Send(command));
     }
     [HttpPost("waves/{id}/assign")]
-    public async Task<IActionResult> AssignWave(Guid id)
+    public async Task<IActionResult> AssignWave(string id)
     {
         var operatorSub = CurrentUserClaims.GetCustomerId(User) ?? string.Empty;
         if (string.IsNullOrEmpty(operatorSub)) return Unauthorized();
 
-        var result = await Mediator.Send(new Warehouse.Application.Features.Outbound.Commands.AssignWave.AssignWaveCommand(id, operatorSub));
+        var cleanId = id.Trim();
+        if (cleanId.StartsWith("OB:", System.StringComparison.OrdinalIgnoreCase))
+            cleanId = cleanId[3..];
+        else if (cleanId.StartsWith("ORD:", System.StringComparison.OrdinalIgnoreCase))
+            cleanId = cleanId[4..];
+
+        if (Guid.TryParse(cleanId, out var waveGuid))
+        {
+            var result = await Mediator.Send(new Warehouse.Application.Features.Outbound.Commands.AssignWave.AssignWaveCommand(waveGuid, operatorSub));
+            if (!result.IsSuccess) return BadRequest(result.Error);
+            return Ok();
+        }
+        else
+        {
+            // Direct Order Assignment fallback
+            var tenantId = CurrentUserClaims.GetTenantId(User) ?? string.Empty;
+            var order = await _context.OutboundOrders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.OrderNo == cleanId && x.TenantId == tenantId);
+            if (order == null)
+            {
+                return NotFound(new { Message = $"Wave/Order {id} not found." });
+            }
+
+            var tasks = await _context.PickTasks
+                .Include(pt => pt.OutboundOrderLine)
+                .Where(pt => pt.OutboundOrderLine.OutboundOrderId == order.Id && pt.Status == Warehouse.Domain.Entities.PickTaskStatus.Pending)
+                .ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                task.Assign(operatorSub);
+            }
+
+            await _context.SaveChangesAsync(default);
+            return Ok();
+        }
+    }
+
+    [HttpPost("pick-tasks/{id}/claim")]
+    public async Task<IActionResult> ClaimPickTask(Guid id)
+    {
+        var operatorId = CurrentUserClaims.GetCustomerId(User) ?? "sys";
+        var command = new Warehouse.Application.Features.Outbound.Commands.AssignPickTask.AssignPickTaskCommand(id, operatorId);
+        var result = await Mediator.Send(command);
         if (!result.IsSuccess) return BadRequest(result.Error);
-        return Ok();
+        return Ok(new { Success = true });
     }
 }
 

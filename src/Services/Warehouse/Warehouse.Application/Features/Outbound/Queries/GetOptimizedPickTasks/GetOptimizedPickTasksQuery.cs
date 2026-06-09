@@ -25,7 +25,15 @@ public sealed class GetOptimizedPickTasksQueryHandler : IRequestHandler<GetOptim
         // For safety, you might want to query which warehouse this wave belongs to.
         // However, we just check if the user is authorized. We'll find the WarehouseId from one of the PickTasks or just assume they have access to the records if the wave exists.
         // Or we can query the tasks directly.
-        var wave = await _context.Waves.FirstOrDefaultAsync(w => w.Id.ToString() == request.WaveId || w.WaveNo == request.WaveId, cancellationToken);
+        Guid? waveIdGuid = null;
+        if (Guid.TryParse(request.WaveId, out var parsedGuid))
+        {
+            waveIdGuid = parsedGuid;
+        }
+
+        var wave = await _context.Waves.FirstOrDefaultAsync(w => 
+            (waveIdGuid.HasValue && w.Id == waveIdGuid.Value) || 
+            w.WaveNo == request.WaveId, cancellationToken);
         var searchWaveId = wave != null ? wave.Id.ToString() : request.WaveId;
         var searchWaveNo = wave != null ? wave.WaveNo : request.WaveId;
 
@@ -38,6 +46,28 @@ public sealed class GetOptimizedPickTasksQueryHandler : IRequestHandler<GetOptim
             .ThenBy(pt => pt.FromBin.Rack)
             .ThenBy(pt => pt.FromBin.Shelf)
             .ToListAsync(cancellationToken);
+
+        // Self-heal completed waves that were finished before auto-completion code was deployed
+        if (wave != null && wave.Status != WaveStatus.Completed && wave.Status != WaveStatus.Cancelled && pickTasks.Any())
+        {
+            var allTerminal = pickTasks.All(t => 
+                t.Status == PickTaskStatus.Completed || 
+                t.Status == PickTaskStatus.Cancelled || 
+                t.Status == PickTaskStatus.Failed);
+
+            if (allTerminal)
+            {
+                if (wave.Status == WaveStatus.New)
+                {
+                    wave.StartPicking();
+                }
+                if (wave.Status == WaveStatus.Picking)
+                {
+                    wave.Complete();
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+            }
+        }
 
         if (!pickTasks.Any())
         {
@@ -59,13 +89,25 @@ public sealed class GetOptimizedPickTasksQueryHandler : IRequestHandler<GetOptim
             return Result<List<PickTaskDto>>.Failure(new Error("Forbidden", $"Operator '{request.OperatorId}' does not have permission 'outbound:pick' for warehouse '{warehouseId}'."));
         }
 
-        // Auto-claim all Pending tasks in the Wave for the requesting operator
+        // Auto-claim all Pending tasks in the Wave
         var pendingTasks = pickTasks.Where(pt => pt.Status == PickTaskStatus.Pending).ToList();
         if (pendingTasks.Any())
         {
+            var claimOperatorId = wave != null && !string.IsNullOrEmpty(wave.AssignedOperatorId) 
+                ? wave.AssignedOperatorId 
+                : request.OperatorId;
+
             foreach (var task in pendingTasks)
             {
-                task.Start(request.OperatorId);
+                task.Start(claimOperatorId);
+
+                // E2E DEMO CHANGE: Transition the order status from Allocated/PartiallyAllocated to Picking
+                // so that subsequent ConfirmPick transitions are valid within the state machine.
+                var order = task.OutboundOrderLine?.OutboundOrder;
+                if (order != null && (order.Status == OutboundOrderStatus.Allocated || order.Status == OutboundOrderStatus.PartiallyAllocated))
+                {
+                    order.UpdateStatus(OutboundOrderStatus.Picking);
+                }
             }
             await _context.SaveChangesAsync(cancellationToken);
         }
@@ -76,9 +118,8 @@ public sealed class GetOptimizedPickTasksQueryHandler : IRequestHandler<GetOptim
             .Where(s => skus.Contains(s.SkuCode))
             .ToDictionaryAsync(s => s.SkuCode, s => s, cancellationToken);
 
-        // Return only InProgress tasks claimed by the current operator
+        // Return all tasks in the wave (letting frontend check status and assignment)
         var dtos = pickTasks
-            .Where(pt => pt.Status == PickTaskStatus.InProgress && pt.AssignedOperatorId == request.OperatorId)
             .Select(pt => new PickTaskDto(
                 pt.Id,
                 pt.OutboundOrderLine.OutboundOrder.OrderNo,
@@ -91,7 +132,8 @@ public sealed class GetOptimizedPickTasksQueryHandler : IRequestHandler<GetOptim
                 pt.FromBin.Rack,
                 pt.FromBin.Shelf,
                 pt.FromBin.PickSequence,
-                pt.Status
+                pt.Status,
+                pt.AssignedOperatorId
             )).ToList();
 
         return Result<List<PickTaskDto>>.Success(dtos);

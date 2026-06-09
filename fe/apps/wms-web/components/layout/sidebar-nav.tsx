@@ -101,6 +101,7 @@ const navGroups: NavGroup[] = [
       { label: "Master Data", href: "/masterdata", icon: <Users className="h-4 w-4" /> },
       { label: "Staff Management", href: "/wms/staff", icon: <Users className="h-4 w-4" /> },
       { label: "Role Management", href: "/wms/roles", icon: <Settings className="h-4 w-4" /> },
+      { label: "Audit Logs", href: "/wms/audit-logs", icon: <History className="h-4 w-4" /> },
     ]
   }
 ]
@@ -117,7 +118,7 @@ export function SidebarNav() {
   // This means they want the menu to ONLY expand on hover. We'll enforce a thin sidebar.
   const [collapsed, setCollapsed] = useState(true)
   const { data: session } = useSession()
-  const { hasPermissionInAnyWarehouse, hasWmsAccess } = usePermissions()
+  const { hasPermissionInAnyWarehouse, hasWmsAccess, isWmsManager } = usePermissions()
   const { activeWarehouseId } = useWarehouseContext()
   const router = useRouter()
 
@@ -217,6 +218,23 @@ export function SidebarNav() {
 
             // Filter out items based on user role manage permissions
             const visibleItems = group.items.filter(item => {
+              if (!isWmsManager) {
+                const restrictedHrefs = [
+                  "/",
+                  "/orders",
+                  "/reports",
+                  "/reports/productivity",
+                  "/wms/layout",
+                  "/wms/layout/routes",
+                  "/wms/staff",
+                  "/wms/roles",
+                  "/wms/audit-logs"
+                ]
+                if (restrictedHrefs.includes(item.href)) {
+                  return false
+                }
+              }
+
               if (item.href === "/wms/staff" || item.href === "/wms/roles") {
                 return hasPermissionInAnyWarehouse("role:manage")
               }

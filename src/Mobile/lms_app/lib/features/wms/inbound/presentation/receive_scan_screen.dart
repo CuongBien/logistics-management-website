@@ -339,6 +339,7 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
           );
         }
       } else {
+        HapticFeedback.lightImpact();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('✅ Nhận thành công SKU: $sku (Pre-dock: BIN-DOCK-01)'),
           backgroundColor: AppColors.success,
@@ -423,6 +424,7 @@ class _ReceiveScanScreenState extends ConsumerState<ReceiveScanScreen> {
         }
       }
     } catch (e) {
+      HapticFeedback.vibrate();
       setState(() => _isLoading = false);
       if (mounted) {
         ErrorHandler.showError(context, e);

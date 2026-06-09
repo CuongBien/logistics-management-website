@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_config.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../providers/putaway_providers.dart';
 
 class PutawayTasksListScreen extends ConsumerWidget {
@@ -13,9 +14,16 @@ class PutawayTasksListScreen extends ConsumerWidget {
     final tasksAsync = ref.watch(putawayTasksProvider);
     final activeWarehouse = ref.watch(warehouseContextProvider);
 
+    // Get current operator sub
+    final authState = ref.watch(authProvider);
+    String? operatorSub;
+    if (authState is AuthAuthenticated) {
+      operatorSub = authState.user.id;
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Hàng đợi Cất Hàng (Putaway Queue)'),
+        title: const Text('Hàng đợi Cất Hàng (Putaway Queue)'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -46,8 +54,14 @@ class PutawayTasksListScreen extends ConsumerWidget {
           Expanded(
             child: tasksAsync.when(
               data: (tasks) {
-                // Chỉ hiển thị tasks chưa hoàn thành (Pending)
-                final pendingTasks = tasks.where((t) => t['status']?.toString().toLowerCase() == 'pending').toList();
+                // Chỉ hiển thị tasks chưa hoàn thành (Pending) và không gán cho người khác
+                final pendingTasks = tasks.where((t) {
+                  final status = t['status']?.toString().toLowerCase() == 'pending';
+                  if (!status) return false;
+                  final assignedTo = t['assignedTo']?.toString();
+                  final isAssignedToOther = assignedTo != null && assignedTo.trim().isNotEmpty && assignedTo != operatorSub;
+                  return !isAssignedToOther;
+                }).toList();
 
                 if (pendingTasks.isEmpty) {
                   return Center(
@@ -78,6 +92,8 @@ class PutawayTasksListScreen extends ConsumerWidget {
                       final sourceBin = task['sourceBinCode'] ?? 'Pre-Dock';
                       final targetBin = task['targetBinCode'] ?? task['suggestedBinCode'] ?? 'N/A';
                       final receiptNo = task['receiptNo'] ?? 'N/A';
+                      final assignedTo = task['assignedTo']?.toString();
+                      final isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -86,7 +102,7 @@ class PutawayTasksListScreen extends ConsumerWidget {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
-                            _showPutawayTaskDetails(context, task, taskId, targetBin);
+                            _showPutawayTaskDetails(context, ref, task, taskId, targetBin, operatorSub);
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -99,13 +115,15 @@ class PutawayTasksListScreen extends ConsumerWidget {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: AppColors.warning.withOpacity(0.15),
+                                        color: isAssignedToMe 
+                                            ? AppColors.success.withOpacity(0.15) 
+                                            : AppColors.warning.withOpacity(0.15),
                                         borderRadius: BorderRadius.circular(20),
                                       ),
-                                      child: const Text(
-                                        'Chờ cất hàng',
+                                      child: Text(
+                                        isAssignedToMe ? 'Nhiệm vụ của tôi' : 'Việc chưa nhận',
                                         style: TextStyle(
-                                          color: AppColors.warning,
+                                          color: isAssignedToMe ? AppColors.success : AppColors.warning,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
                                         ),
@@ -192,7 +210,11 @@ class PutawayTasksListScreen extends ConsumerWidget {
     );
   }
 
-  void _showPutawayTaskDetails(BuildContext context, Map<String, dynamic> task, String taskId, String targetBin) {
+  void _showPutawayTaskDetails(BuildContext context, WidgetRef ref, Map<String, dynamic> task, String taskId, String targetBin, String? operatorSub) {
+    final assignedTo = task['assignedTo']?.toString();
+    final bool isAssignedToMe = assignedTo != null && assignedTo == operatorSub;
+    final bool isAssignedToOther = assignedTo != null && assignedTo.trim().isNotEmpty && assignedTo != operatorSub;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -204,13 +226,15 @@ class PutawayTasksListScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Chi tiết Cất hàng (Putaway)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const Divider(height: 32),
+              const Divider(height: 24),
               _buildDetailRow('Mã Task', taskId),
               _buildDetailRow('Phiếu nhập', task['receiptNo'] ?? 'N/A'),
               _buildDetailRow('Sản phẩm (SKU)', task['skuCode'] ?? task['sku'] ?? 'N/A'),
               _buildDetailRow('Số lượng', '${task['quantity'] ?? 0} PCS'),
               _buildDetailRow('Nguồn (Source)', task['sourceBinCode'] ?? 'Pre-Dock'),
               _buildDetailRow('Kệ đích', targetBin),
+              if (assignedTo != null && assignedTo.trim().isNotEmpty)
+                _buildDetailRow('Người nhận', isAssignedToMe ? 'Bạn' : assignedTo),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -221,23 +245,43 @@ class PutawayTasksListScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        context.push(
-                          Uri(
-                            path: '/wms/putaway_execution',
-                            queryParameters: {
-                              'taskId': taskId,
-                              'targetBin': targetBin,
-                            },
-                          ).toString(),
-                        );
-                      },
-                      child: const Text('Tiến hành'),
+                  if (!isAssignedToOther)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            if (!isAssignedToMe) {
+                              await ref.read(putawayRepositoryProvider).assignPutawayTask(taskId);
+                              ref.invalidate(putawayTasksProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Nhận nhiệm vụ thành công')),
+                                );
+                              }
+                            }
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              context.push(
+                                Uri(
+                                  path: '/wms/putaway_execution',
+                                  queryParameters: {
+                                    'taskId': taskId,
+                                    'targetBin': targetBin,
+                                  },
+                                ).toString(),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Lỗi: ${e.toString()}')),
+                              );
+                            }
+                          }
+                        },
+                        child: Text(isAssignedToMe ? 'Tiến hành' : 'Nhận việc'),
+                      ),
                     ),
-                  ),
                 ],
               )
             ],

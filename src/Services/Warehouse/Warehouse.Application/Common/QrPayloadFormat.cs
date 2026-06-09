@@ -31,8 +31,13 @@ public static class QrPayloadFormat
         var colonIndex = rawValue.IndexOf(':');
         if (colonIndex <= 0 || colonIndex >= rawValue.Length - 1)
         {
+            var trimmed = rawValue.Trim();
+            if (trimmed.StartsWith("LMS", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return new QrParseResult(OutboundOrder, trimmed, rawValue);
+            }
             // Không có prefix → có thể là barcode nhà cung cấp → fallback SKU
-            return new QrParseResult(Sku, rawValue.Trim(), rawValue);
+            return new QrParseResult(Sku, trimmed, rawValue);
         }
 
         var prefix = rawValue[..colonIndex].Trim().ToUpperInvariant();

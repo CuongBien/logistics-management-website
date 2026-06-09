@@ -16,6 +16,18 @@ public static class WMSDbContextSeed
             if (await context.Bins.AnyAsync() || await context.OperatorActivityLogs.AnyAsync())
             {
                 logger.LogInformation("Data already exists. Skipping truncation and re-seeding.");
+                
+                // Seed WarehouseRoutes if they are missing or incomplete
+                if (await context.WarehouseRoutes.CountAsync() < 42)
+                {
+                    logger.LogInformation("WarehouseRoutes table is incomplete. Re-seeding routes independently.");
+                    var existingRoutes = await context.WarehouseRoutes.ToListAsync();
+                    context.WarehouseRoutes.RemoveRange(existingRoutes);
+                    await context.SaveChangesAsync();
+                    
+                    await SeedWarehouseRoutesOnlyAsync(context, logger);
+                }
+                
                 return;
             }
 
@@ -237,18 +249,7 @@ public static class WMSDbContextSeed
             logger.LogInformation("Successfully configured base warehouse layouts for all 7 warehouses.");
 
             // 2. Seed WarehouseRoutes for Hub-and-Spoke next-hop calculations
-            logger.LogInformation("Seeding Warehouse Routes (Next-Hop Matrix)...");
-            context.WarehouseRoutes.AddRange(
-                new WarehouseRoute(ctId, hpId, sgId), // Can Tho -> Hai Phong. Next Hop = HCM
-                new WarehouseRoute(ctId, hnId, sgId), // Can Tho -> Hanoi. Next Hop = HCM
-                new WarehouseRoute(ctId, vId, sgId),  // Can Tho -> Vinh. Next Hop = HCM
-                new WarehouseRoute(ntId, hpId, dnId), // Nha Trang -> Hai Phong. Next Hop = Da Nang
-                new WarehouseRoute(sgId, hpId, hnId), // HCM -> Hai Phong. Next Hop = Hanoi
-                new WarehouseRoute(sgId, hnId, hnId), // HCM -> Hanoi. Next Hop = Hanoi
-                new WarehouseRoute(hnId, hpId, hpId)  // Hanoi -> Hai Phong. Next Hop = Hai Phong (Direct)
-            );
-            await context.SaveChangesAsync();
-            logger.LogInformation("Successfully seeded default Warehouse Routes Next-Hop Matrix.");
+            await SeedWarehouseRoutesOnlyAsync(context, logger);
 
             // 3. Ensure BIN-RETURN and BIN-SCRAP exist for all warehouses (just in case)
             var existingWarehouses = await context.Warehouses.ToListAsync();
@@ -447,6 +448,7 @@ public static class WMSDbContextSeed
                 context.OperatorProfiles.Add(adminProfile);
                 await context.SaveChangesAsync();
             }
+            adminProfile.UpdatePersonalDetails("System Admin", "admin@shiphub.vn", "0987654321", "EMP-001");
 
             var staffProfile = await context.OperatorProfiles.FirstOrDefaultAsync(p => p.OperatorSub == "1a382041-9098-4351-ab71-d3939f8368dd");
             if (staffProfile == null)
@@ -455,8 +457,19 @@ public static class WMSDbContextSeed
                 context.OperatorProfiles.Add(staffProfile);
                 await context.SaveChangesAsync();
             }
+            staffProfile.UpdatePersonalDetails("Nguyen Staff", "staff1@shiphub.vn", "0912345678", "EMP-002");
+
+            var managerProfile = await context.OperatorProfiles.FirstOrDefaultAsync(p => p.OperatorSub == "3b382041-9098-4351-ab71-d3939f8368de");
+            if (managerProfile == null)
+            {
+                managerProfile = new OperatorProfile("default-tenant", "3b382041-9098-4351-ab71-d3939f8368de", "Nguyen Manager");
+                context.OperatorProfiles.Add(managerProfile);
+                await context.SaveChangesAsync();
+            }
+            managerProfile.UpdatePersonalDetails("Nguyen Manager", "manager1@shiphub.vn", "0909090909", "EMP-003");
 
             var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "WMS_ADMIN");
+            var supervisorRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "WMS_SUPERVISOR");
             var operatorRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "WMS_OPERATOR");
 
             if (adminRole != null && adminProfile != null)
@@ -468,6 +481,19 @@ public static class WMSDbContextSeed
                     if (!exists)
                     {
                         context.OperatorRoleAssignments.Add(new OperatorRoleAssignment(adminProfile.Id, adminRole.Id, wh.Id, null));
+                    }
+                }
+            }
+
+            if (supervisorRole != null && managerProfile != null)
+            {
+                var warehouses = await context.Warehouses.ToListAsync();
+                foreach (var wh in warehouses)
+                {
+                    var exists = await context.OperatorRoleAssignments.AnyAsync(a => a.OperatorProfileId == managerProfile.Id && a.RoleId == supervisorRole.Id && a.WarehouseId == wh.Id);
+                    if (!exists)
+                    {
+                        context.OperatorRoleAssignments.Add(new OperatorRoleAssignment(managerProfile.Id, supervisorRole.Id, wh.Id, null));
                     }
                 }
             }
@@ -543,5 +569,80 @@ public static class WMSDbContextSeed
         {
             logger.LogError(ex, "An error occurred while seeding the Warehouse database.");
         }
+    }
+
+    private static async Task SeedWarehouseRoutesOnlyAsync(WMSDbContext context, ILogger logger)
+    {
+        var ctId = Guid.Parse("b61a8f61-5238-4a18-809c-335cc293a025"); // Can Tho
+        var sgId = Guid.Parse("a3a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"); // HCM
+        var ntId = Guid.Parse("b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2"); // Nha Trang
+        var dnId = Guid.Parse("c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3"); // Da Nang
+        var vId = Guid.Parse("d4d4d4d4-d4d4-d4d4-d4d4-d4d4d4d4d4d4"); // Vinh
+        var hnId = Guid.Parse("e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5"); // Hanoi
+        var hpId = Guid.Parse("f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6"); // Hai Phong
+
+        logger.LogInformation("Seeding all 42 Warehouse Routes (Next-Hop Matrix)...");
+        var routes = new List<WarehouseRoute>
+        {
+            // From Can Tho (ctId) - South
+            new WarehouseRoute(ctId, sgId, sgId), // Can Tho -> HCM (Direct)
+            new WarehouseRoute(ctId, ntId, sgId), // Can Tho -> Nha Trang (via HCM)
+            new WarehouseRoute(ctId, dnId, sgId), // Can Tho -> Da Nang (via HCM)
+            new WarehouseRoute(ctId, vId, sgId),  // Can Tho -> Vinh (via HCM)
+            new WarehouseRoute(ctId, hnId, sgId), // Can Tho -> Hanoi (via HCM)
+            new WarehouseRoute(ctId, hpId, sgId), // Can Tho -> Hai Phong (via HCM)
+
+            // From HCM (sgId) - South Hub
+            new WarehouseRoute(sgId, ctId, ctId), // HCM -> Can Tho (Direct)
+            new WarehouseRoute(sgId, ntId, ntId), // HCM -> Nha Trang (Direct)
+            new WarehouseRoute(sgId, dnId, dnId), // HCM -> Da Nang (Direct)
+            new WarehouseRoute(sgId, vId, dnId),  // HCM -> Vinh (via Da Nang)
+            new WarehouseRoute(sgId, hnId, hnId), // HCM -> Hanoi (Direct)
+            new WarehouseRoute(sgId, hpId, hnId), // HCM -> Hai Phong (via Hanoi)
+
+            // From Nha Trang (ntId) - South-Central
+            new WarehouseRoute(ntId, ctId, sgId), // Nha Trang -> Can Tho (via HCM)
+            new WarehouseRoute(ntId, sgId, sgId), // Nha Trang -> HCM (Direct)
+            new WarehouseRoute(ntId, dnId, dnId), // Nha Trang -> Da Nang (Direct)
+            new WarehouseRoute(ntId, vId, dnId),  // Nha Trang -> Vinh (via Da Nang)
+            new WarehouseRoute(ntId, hnId, dnId), // Nha Trang -> Hanoi (via Da Nang)
+            new WarehouseRoute(ntId, hpId, dnId), // Nha Trang -> Hai Phong (via Da Nang)
+
+            // From Da Nang (dnId) - Central Hub
+            new WarehouseRoute(dnId, ctId, sgId), // Da Nang -> Can Tho (via HCM)
+            new WarehouseRoute(dnId, sgId, sgId), // Da Nang -> HCM (Direct)
+            new WarehouseRoute(dnId, ntId, ntId), // Da Nang -> Nha Trang (Direct)
+            new WarehouseRoute(dnId, vId, vId),   // Da Nang -> Vinh (Direct)
+            new WarehouseRoute(dnId, hnId, hnId), // Da Nang -> Hanoi (Direct)
+            new WarehouseRoute(dnId, hpId, hnId), // Da Nang -> Hai Phong (via Hanoi)
+
+            // From Vinh (vId) - North-Central
+            new WarehouseRoute(vId, ctId, dnId), // Vinh -> Can Tho (via Da Nang)
+            new WarehouseRoute(vId, sgId, dnId), // Vinh -> HCM (via Da Nang)
+            new WarehouseRoute(vId, ntId, dnId), // Vinh -> Nha Trang (via Da Nang)
+            new WarehouseRoute(vId, dnId, dnId), // Vinh -> Da Nang (Direct)
+            new WarehouseRoute(vId, hnId, hnId), // Vinh -> Hanoi (Direct)
+            new WarehouseRoute(vId, hpId, hnId), // Vinh -> Hai Phong (via Hanoi)
+
+            // From Hanoi (hnId) - North Hub
+            new WarehouseRoute(hnId, ctId, sgId), // Hanoi -> Can Tho (via HCM)
+            new WarehouseRoute(hnId, sgId, sgId), // Hanoi -> HCM (Direct)
+            new WarehouseRoute(hnId, ntId, dnId), // Hanoi -> Nha Trang (via Da Nang)
+            new WarehouseRoute(hnId, dnId, dnId), // Hanoi -> Da Nang (Direct)
+            new WarehouseRoute(hnId, vId, vId),   // Hanoi -> Vinh (Direct)
+            new WarehouseRoute(hnId, hpId, hpId), // Hanoi -> Hai Phong (Direct)
+
+            // From Hai Phong (hpId) - North
+            new WarehouseRoute(hpId, ctId, hnId), // Hai Phong -> Can Tho (via Hanoi)
+            new WarehouseRoute(hpId, sgId, hnId), // Hai Phong -> HCM (via Hanoi)
+            new WarehouseRoute(hpId, ntId, hnId), // Hai Phong -> Nha Trang (via Hanoi)
+            new WarehouseRoute(hpId, dnId, hnId), // Hai Phong -> Da Nang (via Hanoi)
+            new WarehouseRoute(hpId, vId, hnId),  // Hai Phong -> Vinh (via Hanoi)
+            new WarehouseRoute(hpId, hnId, hnId)  // Hai Phong -> Hanoi (Direct)
+        };
+
+        context.WarehouseRoutes.AddRange(routes);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Successfully seeded all 42 Warehouse Routes Next-Hop Matrix.");
     }
 }

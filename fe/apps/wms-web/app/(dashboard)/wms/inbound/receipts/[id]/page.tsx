@@ -13,8 +13,10 @@ import { Loader2, ArrowLeft, ClipboardList, CheckCircle2, AlertTriangle, Ban, Lo
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@repo/ui/components/dialog"
 import { getQrImageUrl } from "@/lib/services/qrcode"
+import { useSession } from "next-auth/react"
 
 export default function ReceiptDetailPage() {
+  const { data: session } = useSession()
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
@@ -30,7 +32,7 @@ export default function ReceiptDetailPage() {
   const loadPrintQr = async () => {
     if (!receipt) return
     try {
-      const url = await getQrImageUrl('receipt', receipt.id)
+      const url = await getQrImageUrl('receipt', receipt.id, session?.accessToken)
       setPrintQrUrl(url)
       setPrintQrTitle(`Phiếu nhập WMS: ${receipt.receiptNo}`)
     } catch (e) {

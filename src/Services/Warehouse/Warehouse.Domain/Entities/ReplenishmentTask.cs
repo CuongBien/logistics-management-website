@@ -20,6 +20,7 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
     public int RequestedQty { get; private set; }
     public ReplenishmentTaskStatus Status { get; private set; }
     public string? AssignedTo { get; private set; }
+    public Guid? ActualDestinationBinId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? StartedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
@@ -29,6 +30,7 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
 
     public Bin SourceBin { get; private set; } = default!;
     public Bin DestinationBin { get; private set; } = default!;
+    public Bin? ActualDestinationBin { get; private set; }
 
     private ReplenishmentTask() { }
 
@@ -53,19 +55,20 @@ public class ReplenishmentTask : Entity<Guid>, ISoftDelete
 
     public void Start()
     {
-        if (Status != ReplenishmentTaskStatus.Pending)
-            throw new InvalidOperationException("Can only start pending tasks.");
+        if (Status != ReplenishmentTaskStatus.Pending && Status != ReplenishmentTaskStatus.InProgress)
+            throw new InvalidOperationException("Can only start pending or in-progress tasks.");
             
         Status = ReplenishmentTaskStatus.InProgress;
-        StartedAt = DateTime.UtcNow;
+        StartedAt ??= DateTime.UtcNow;
     }
 
-    public void Complete()
+    public void Complete(Guid? actualDestinationBinId = null)
     {
         if (Status != ReplenishmentTaskStatus.InProgress && Status != ReplenishmentTaskStatus.Pending)
             throw new InvalidOperationException("Can only complete in-progress tasks.");
             
         Status = ReplenishmentTaskStatus.Completed;
+        ActualDestinationBinId = actualDestinationBinId ?? DestinationBinId;
         CompletedAt = DateTime.UtcNow;
         if (StartedAt == null)
         {

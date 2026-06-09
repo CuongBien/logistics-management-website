@@ -26,10 +26,12 @@ public class PickTask : Entity<Guid>
     // Put-To-Wall
     public string? TargetCubbyBinCode { get; private set; }
     public DateTime? PutToWallAt { get; private set; }
+    public Guid? ActualFromBinId { get; private set; }
 
     // Navigation Properties
     public virtual OutboundOrderLine OutboundOrderLine { get; private set; } = default!;
     public virtual Bin FromBin { get; private set; } = default!;
+    public virtual Bin? ActualFromBin { get; private set; }
 
     private PickTask() { }
 
@@ -54,21 +56,27 @@ public class PickTask : Entity<Guid>
 
     public void Start(string operatorId)
     {
-        if (Status != PickTaskStatus.Pending)
+        if (Status != PickTaskStatus.Pending && Status != PickTaskStatus.InProgress)
             throw new InvalidOperationException($"Cannot start task in status {Status}");
 
         Status = PickTaskStatus.InProgress;
         AssignedOperatorId = operatorId;
-        StartedAt = DateTime.UtcNow;
+        StartedAt ??= DateTime.UtcNow;
     }
 
-    public void Complete(string operatorId)
+    public void Assign(string operatorId)
+    {
+        AssignedOperatorId = operatorId;
+    }
+
+    public void Complete(string operatorId, Guid? actualFromBinId = null)
     {
         if (Status != PickTaskStatus.Pending && Status != PickTaskStatus.InProgress)
             throw new InvalidOperationException($"Cannot complete task from status {Status}");
 
         Status = PickTaskStatus.Completed;
         AssignedOperatorId = operatorId;
+        ActualFromBinId = actualFromBinId ?? FromBinId;
         PickedAt = DateTime.UtcNow;
         if (StartedAt == null)
         {

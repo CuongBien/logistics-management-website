@@ -22,6 +22,9 @@ public class BinConfiguration : IEntityTypeConfiguration<Bin>
         builder.Property(b => b.Rack).HasMaxLength(20).IsRequired(false);
         builder.Property(b => b.Shelf).HasMaxLength(20).IsRequired(false);
         builder.Property(b => b.PickSequence).IsRequired().HasDefaultValue(0);
+        builder.Property(b => b.MaxWeight).IsRequired(false);
+        builder.Property(b => b.MaxVolume).IsRequired(false);
+        builder.Property(b => b.MaxQuantity).IsRequired(false);
 
         builder.HasIndex(b => new { b.WarehouseId, b.BinCode })
                .IsUnique()

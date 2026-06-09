@@ -7,7 +7,7 @@ class PutawayRepository {
   PutawayRepository(this._apiClient);
 
   Future<void> assignPutawayTask(String taskId) async {
-    final response = await _apiClient.dio.post('/inbound/putaway-tasks/$taskId/assign');
+    final response = await _apiClient.dio.post('/inbound/putaway-tasks/$taskId/claim');
     if (response.statusCode != 200) {
       throw Exception('Failed to assign task');
     }

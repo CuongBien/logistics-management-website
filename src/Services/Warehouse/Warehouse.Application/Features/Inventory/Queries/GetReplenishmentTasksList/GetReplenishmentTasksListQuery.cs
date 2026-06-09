@@ -5,7 +5,12 @@ using Warehouse.Application.Common.Interfaces;
 
 namespace Warehouse.Application.Features.Inventory.Queries.GetReplenishmentTasksList;
 
-public record GetReplenishmentTasksListQuery(string OperatorSub, Guid? WarehouseId = null) : IRequest<Result<List<ReplenishmentTaskDto>>>;
+public record GetReplenishmentTasksListQuery(
+    string OperatorSub, 
+    Guid? WarehouseId = null,
+    bool? AssignedToMe = null,
+    bool? Unassigned = null
+) : IRequest<Result<List<ReplenishmentTaskDto>>>;
 
 public class ReplenishmentTaskDto
 {
@@ -68,6 +73,16 @@ public class GetReplenishmentTasksListQueryHandler : IRequestHandler<GetReplenis
             {
                 return Result<List<ReplenishmentTaskDto>>.Success(new List<ReplenishmentTaskDto>());
             }
+        }
+
+        if (request.AssignedToMe == true)
+        {
+            query = query.Where(t => t.AssignedTo == request.OperatorSub);
+        }
+
+        if (request.Unassigned == true)
+        {
+            query = query.Where(t => string.IsNullOrEmpty(t.AssignedTo));
         }
 
         var tasks = await query

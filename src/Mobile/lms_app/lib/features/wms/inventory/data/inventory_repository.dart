@@ -19,16 +19,30 @@ class InventoryRepository {
   }
 
   Future<void> assignCycleCountTask(String taskId) async {
-    final response = await _apiClient.dio.post('/inventory/cycle-count/$taskId/assign');
+    final response = await _apiClient.dio.post('/inventory/tasks/cycle-count/$taskId/assign');
     if (response.statusCode != 200) {
       throw Exception('Failed to assign count task');
     }
   }
 
   Future<void> assignReplenishmentTask(String taskId) async {
-    final response = await _apiClient.dio.post('/inventory/replenishments/$taskId/assign');
+    final response = await _apiClient.dio.post('/inventory/tasks/replenishments/$taskId/assign');
     if (response.statusCode != 200) {
       throw Exception('Failed to assign replenishment task');
+    }
+  }
+
+  Future<void> startCycleCountTask(String taskId) async {
+    final response = await _apiClient.dio.post('/inventory/tasks/cycle-count/$taskId/start');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to start cycle count task');
+    }
+  }
+
+  Future<void> startReplenishmentTask(String taskId) async {
+    final response = await _apiClient.dio.post('/inventory/tasks/replenish/$taskId/start');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to start replenishment task');
     }
   }
 

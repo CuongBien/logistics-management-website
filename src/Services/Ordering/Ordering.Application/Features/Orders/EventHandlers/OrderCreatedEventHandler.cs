@@ -59,9 +59,12 @@ public class OrderCreatedEventHandler : INotificationHandler<OrderCreatedDomainE
             order.Consignee?.PartnerId,
             items,
             order.TenantId,
-            notification.SourceWarehouseCode,
+            order.WarehouseId,
             notification.ConsignorCity,
-            notification.ConsignorAddress), cancellationToken);
+            notification.ConsignorAddress,
+            order.Consignee?.Address?.City,
+            order.Consignee?.Address?.Street,
+            order.Consignee?.FullName), cancellationToken);
     }
 }
 

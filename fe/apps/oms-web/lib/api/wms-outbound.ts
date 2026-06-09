@@ -82,7 +82,14 @@ export const getOrderTimeline = async (id: string): Promise<OutboundOrderTimelin
   const timeline = res?.value?.timeline || res?.timeline || [];
   return timeline.map((t: any, idx: number) => ({
     id: `tl-${id}-${idx}`,
-    status: t.eventType === 'OrderCreated' ? 'New' : t.eventType === 'ShipmentLoaded' ? 'Picked' : t.eventType === 'ShipmentDispatched' ? 'Shipped' : 'New',
+    status: t.eventType === 'OrderCreated' ? 'New' : 
+            t.eventType === 'Allocated' ? 'Allocated' :
+            t.eventType === 'Picking' ? 'Picking' :
+            t.eventType === 'Picked' ? 'Picked' :
+            t.eventType === 'Packing' ? 'Packing' :
+            t.eventType === 'Packed' ? 'Packed' :
+            t.eventType === 'ShipmentLoaded' ? 'Picked' : 
+            t.eventType === 'ShipmentDispatched' ? 'Shipped' : 'New',
     occurredAt: t.timestamp,
     notes: t.description,
     operatorId: t.location

@@ -159,6 +159,45 @@ public sealed class AllocateStockCommandHandler : IRequestHandler<AllocateStockC
             _logger.LogInformation("Order {OrderId} failed to allocate any items.", order.Id);
         }
 
+        // E2E DEMO CHANGE: Auto-generate PickTasks upon successful stock allocation.
+        // We use the OrderNo as the WaveId so that scanning the order QR code retrieves the tasks.
+        if (allLinesAllocated || anyLineReserved)
+        {
+            var reservations = await _context.InventoryReservations
+                .Include(r => r.InventoryItem)
+                .Where(r => r.ReferenceId == order.Id.ToString() && r.ReferenceType == ReservationType.OutboundOrder && r.Status == ReservationStatus.Active)
+                .ToListAsync(cancellationToken);
+
+            var existingPickTasks = await _context.PickTasks
+                .Where(pt => pt.OutboundOrderLine.OutboundOrderId == order.Id)
+                .ToListAsync(cancellationToken);
+
+            int tasksCreated = 0;
+
+            foreach (var line in order.Lines)
+            {
+                var lineReservations = reservations.Where(r => r.InventoryItem.Sku == line.Sku).ToList();
+                
+                foreach (var res in lineReservations)
+                {
+                    var existingTaskQty = existingPickTasks
+                        .Where(pt => pt.OutboundOrderLineId == line.Id && pt.FromBinId == res.InventoryItem.BinId)
+                        .Sum(pt => pt.Quantity);
+
+                    int missingQty = res.Quantity - existingTaskQty;
+
+                    if (missingQty > 0)
+                    {
+                        var pickTask = PickTask.Create(line.Id, res.InventoryItem.BinId, missingQty, order.OrderNo);
+                        _context.PickTasks.Add(pickTask);
+                        existingPickTasks.Add(pickTask);
+                        tasksCreated++;
+                    }
+                }
+            }
+            _logger.LogInformation("Automatically generated {TaskCount} PickTasks for Order {OrderNo}", tasksCreated, order.OrderNo);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         if (!allLinesAllocated)

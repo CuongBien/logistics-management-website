@@ -50,6 +50,7 @@ public class WMSDbContext : DbContext, IApplicationDbContext
     public DbSet<PackVerification> PackVerifications => Set<PackVerification>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<OperatorActivityLog> OperatorActivityLogs => Set<OperatorActivityLog>();
+    public DbSet<TaskOverrideLog> TaskOverrideLogs => Set<TaskOverrideLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

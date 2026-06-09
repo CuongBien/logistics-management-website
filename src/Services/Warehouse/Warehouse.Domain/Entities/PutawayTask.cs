@@ -57,6 +57,13 @@ public class PutawayTask : Entity<Guid>, IAggregateRoot
         OperatorId = operatorId;
     }
 
+    public void UpdateQuantity(int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Quantity must be greater than 0");
+        Quantity = quantity;
+    }
+
     public void Complete(Guid actualBinId, string operatorId)
     {
         if (Status != PutawayTaskStatus.Pending)

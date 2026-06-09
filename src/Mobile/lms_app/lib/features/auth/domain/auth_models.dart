@@ -63,6 +63,9 @@ class UserProfile {
   final String? warehouseId;   // warehouse_id custom claim (do admin gán)
   final String? warehouseName; // warehouse_name custom claim
   final List<String> roles;    // từ realm_access.roles
+  final String? fullName;      // từ name
+  final String? employeeCode;  // từ employee_code
+  final String? phone;         // từ phone
 
   const UserProfile({
     required this.id,
@@ -72,6 +75,9 @@ class UserProfile {
     this.warehouseId,
     this.warehouseName,
     required this.roles,
+    this.fullName,
+    this.employeeCode,
+    this.phone,
   });
 
   /// Parse thông tin người dùng từ JWT access token.
@@ -103,6 +109,9 @@ class UserProfile {
         warehouseId: payloadMap['warehouse_id'] as String?,
         warehouseName: payloadMap['warehouse_name'] as String?,
         roles: rolesList,
+        fullName: payloadMap['name'] as String?,
+        employeeCode: payloadMap['employee_code'] as String?,
+        phone: payloadMap['phone'] as String?,
       );
     } catch (e) {
       if (e is FormatException) rethrow;

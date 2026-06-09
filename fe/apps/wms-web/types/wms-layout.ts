@@ -16,6 +16,7 @@ export interface BinDto {
   rack?: string;
   shelf?: string;
   pickSequence?: number;
+  warehouseId?: string;
 }
 
 export interface ZoneDto {

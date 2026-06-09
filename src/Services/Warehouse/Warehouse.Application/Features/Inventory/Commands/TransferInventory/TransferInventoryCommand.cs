@@ -67,6 +67,49 @@ public class TransferInventoryCommandHandler : IRequestHandler<TransferInventory
             return Result<bool>.Failure(new Error("Inventory.SameBin", "Source and destination bins cannot be the same."));
         }
 
+        // Fetch Destination Bin
+        var destBin = await _context.Bins.FirstOrDefaultAsync(b => b.Id == request.DestinationBinId, cancellationToken);
+        if (destBin == null)
+        {
+            return Result<bool>.Failure(new Error("Inventory.DestinationBinNotFound", "Destination bin not found."));
+        }
+
+        // Validate Bin Status
+        if (destBin.Status == BinStatus.Maintenance.ToString() || 
+            destBin.Status == BinStatus.Locked.ToString() || 
+            destBin.Status == BinStatus.Disabled.ToString() ||
+            destBin.Status == BinStatus.Full.ToString())
+        {
+            return Result<bool>.Failure(new Error("Inventory.InvalidBinStatus", $"Destination bin is in {destBin.Status} status."));
+        }
+
+        // Capacity Check
+        var currentInventory = await _context.InventoryItems
+            .Where(i => i.WarehouseId == request.WarehouseId && i.BinId == destBin.Id)
+            .ToListAsync(cancellationToken);
+        
+        var currentQty = currentInventory.Sum(i => i.QuantityOnHand);
+        var currentWeight = currentQty * 0.5;
+        var currentVolume = currentQty * 0.001;
+
+        var additionalWeight = request.Quantity * 0.5;
+        var additionalVolume = request.Quantity * 0.001;
+
+        if (destBin.MaxQuantity.HasValue && currentQty + request.Quantity > destBin.MaxQuantity.Value)
+        {
+            return Result<bool>.Failure(new Error("Inventory.BinOverCapacity", $"Destination bin would exceed max quantity limit of {destBin.MaxQuantity.Value}. Current: {currentQty}, Adding: {request.Quantity}"));
+        }
+        
+        if (destBin.MaxWeight.HasValue && currentWeight + additionalWeight > destBin.MaxWeight.Value)
+        {
+            return Result<bool>.Failure(new Error("Inventory.BinOverWeight", $"Destination bin would exceed max weight limit of {destBin.MaxWeight.Value} kg. Current: {currentWeight} kg, Adding: {additionalWeight} kg"));
+        }
+
+        if (destBin.MaxVolume.HasValue && currentVolume + additionalVolume > destBin.MaxVolume.Value)
+        {
+            return Result<bool>.Failure(new Error("Inventory.BinOverVolume", $"Destination bin would exceed max volume limit of {destBin.MaxVolume.Value} m3. Current: {currentVolume} m3, Adding: {additionalVolume} m3"));
+        }
+
         // 2. Fetch Source Item
         var sourceItem = await _context.InventoryItems
             .FirstOrDefaultAsync(i => 
@@ -130,9 +173,8 @@ public class TransferInventoryCommandHandler : IRequestHandler<TransferInventory
 
         // 5. Update Bins
         var sourceBin = await _context.Bins.FirstOrDefaultAsync(b => b.Id == request.SourceBinId, cancellationToken);
-        var destBin = await _context.Bins.FirstOrDefaultAsync(b => b.Id == request.DestinationBinId, cancellationToken);
         
-        if (sourceBin != null && destBin != null)
+        if (sourceBin != null)
         {
             var orderId = sourceBin.CurrentOrderId;
             
@@ -147,6 +189,13 @@ public class TransferInventoryCommandHandler : IRequestHandler<TransferInventory
             {
                 destBin.AssignOrder(orderId.Value);
             }
+        }
+
+        // Update Bin Status to Full if capacity reached
+        var newQty = currentQty + request.Quantity;
+        if (destBin.MaxQuantity.HasValue && newQty >= destBin.MaxQuantity.Value)
+        {
+            destBin.UpdateStatus(BinStatus.Full);
         }
 
         await _context.SaveChangesAsync(cancellationToken);

@@ -217,7 +217,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      userProfile?.username ?? 'Tên tài khoản',
+                      userProfile?.fullName ?? userProfile?.username ?? 'Tên tài khoản',
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                     const SizedBox(height: 4),
@@ -225,10 +225,24 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                       roleName,
                       style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                     ),
+                    if (userProfile?.employeeCode != null && userProfile!.employeeCode!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Mã NV: ${userProfile.employeeCode!}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ],
                     if (userProfile?.email != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         userProfile!.email!,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      ),
+                    ],
+                    if (userProfile?.phone != null && userProfile!.phone!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'SĐT: ${userProfile.phone!}',
                         style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                       ),
                     ],

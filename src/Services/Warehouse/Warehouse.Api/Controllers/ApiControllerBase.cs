@@ -42,7 +42,7 @@ public abstract class ApiControllerBase : ControllerBase
         {
             var code when code.Contains("NotFound") => NotFound(response),
             var code when code.Contains("Unauthorized") => Unauthorized(response),
-            var code when code.Contains("Forbidden") => Forbid(),
+            var code when code.Contains("Forbidden") => StatusCode(403, response),
             _ => BadRequest(response)
         };
     }

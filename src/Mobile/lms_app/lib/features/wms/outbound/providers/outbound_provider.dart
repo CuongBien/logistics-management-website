@@ -32,3 +32,13 @@ final shipmentsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async 
   final repo = ref.read(outboundRepositoryProvider);
   return await repo.getShipments(activeWarehouse.warehouseId);
 });
+
+// Lấy danh sách Outbound Orders của kho hiện tại
+final outboundOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final activeWarehouse = ref.watch(warehouseContextProvider);
+  if (activeWarehouse == null || activeWarehouse.warehouseId.isEmpty) {
+    return [];
+  }
+  final repo = ref.read(outboundRepositoryProvider);
+  return await repo.getOutboundOrders(activeWarehouse.warehouseId);
+});
